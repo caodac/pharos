@@ -1339,7 +1339,7 @@ public class TextIndexer {
         if (DEBUG (1)) {
             Logger.debug("## Query: "
                          +query+" Filter: "
-                         +(filter!=null?filter:"none")
+                         //+(filter!=null?filter:"none")
                          +" Options:"+options);
         }
         

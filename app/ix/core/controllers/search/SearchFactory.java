@@ -102,8 +102,10 @@ public class SearchFactory extends EntityFactory {
                 Map<String, String[]> queryParams,
                 SearchOptions.FacetRange... rangeFacets) throws IOException {
         SearchOptions options = new SearchOptions (kind, top, skip, fdim);
-        for (SearchOptions.FacetRange fr : rangeFacets)
-            options.addFacet(fr);
+        if (rangeFacets != null) {
+            for (SearchOptions.FacetRange fr : rangeFacets)
+                options.addFacet(fr);
+        }
         
         StringBuilder filter = new StringBuilder ();
         if (queryParams != null) {
