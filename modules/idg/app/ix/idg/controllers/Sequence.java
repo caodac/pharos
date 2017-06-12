@@ -38,7 +38,7 @@ public class Sequence {
     final Target target;
     final String seq;
     final ObjectMapper mapper;
-    final Map<String, Map> signals;
+    final List<Event> features;
     JsonNode aaprofile;
 
     public Sequence (Target target) {
@@ -48,11 +48,35 @@ public class Sequence {
         Value val = target.getProperty(Commons.UNIPROT_SEQUENCE);
         seq = val != null ? ((Text)val).text : "";      
 
-        signals = new TreeMap<>();
-        initSignals ();
+        features = new ArrayList<>();
+        init ();
     }
 
-    void initSignals () {
+    void init () {
+        for (XRef ref : target.links) {
+            if (Timeline.class.getName().equals(ref.kind)) {
+                boolean feature = false;
+                for (Value val : ref.properties) {
+                    if ("Protein Feature".equals(val.label)) {
+                        feature = true;
+                        break;
+                    }
+                }
+                
+                if (feature) {
+                    try {
+                        Timeline tl = (Timeline)ref.deRef();
+                        features.addAll(tl.events);
+                    }
+                    catch (Exception ex) {
+                        Logger.error
+                            ("Can't deref "+ref.kind+":"+ref.refid, ex);
+                    }
+                }
+            }
+        }
+
+        // now collect localization signals
         for (Value val : target.properties) {
             if ("Localization Signal".equals(val.label)) {
                 Keyword kw = (Keyword)val;
@@ -67,43 +91,21 @@ public class Sequence {
                     List<int[]> locs = new ArrayList<>();
                     while (m.find()) {
                         for (int i = 1; i <= m.groupCount(); ++i) {
-                            locs.add(new int[]{m.start(i), m.end(i)});
+                            //locs.add(new int[]{m.start(i), m.end(i)});
+                            Event e = new Event ("helix");
+                            e.start = (long)m.start(i);
+                            e.end = (long)(m.end(i)-1);
+                            e.description = kw.term;
+                            features.add(e);
                         }
                     }
-                    Collections.sort(locs, (a,b) -> {
-                            int d = a[0] - b[0];
-                            if (d == 0)
-                                d = a[1] - b[1];
-                            return d;
-                        });
-                    for (int[] l : locs)
-                        Logger.debug("["+l[0]+","+l[1]+"]");
-                    s.put("locations", locs);
-                    signals.put(String.valueOf(kw.id), s);
                 }
                 catch (Exception ex) {
                     Logger.error("Bogus localization signal: "+kw.term, ex);
                 }
             }
         }
-            
-        for (XRef ref : target.links) {
-            if (ref.kind.equals(Keyword.class.getName())
-                && signals.containsKey(ref.refid)) {
-                Map s = signals.get(ref.refid);
-                List<Long> pubs = new ArrayList<>();
-                for (Value p : ref.properties) {
-                    if ("Localization Location".equals(p.label)) {
-                        s.put("location", p.getValue());
-                    }
-                    else if ("Localization Publication".equals(p.label)) {
-                        pubs.add((Long)p.getValue());
-                    }
-                }
-                s.put("publications", pubs);
-            }
-        }
-    }
+    } // init ()
 
     public String raw () { return seq; }
     public String sequence () {
@@ -113,8 +115,9 @@ public class Sequence {
         return formatSequence (seq, wrap);
     }
 
-    public Map<String, Map> localization () {
-        return signals;
+    public List<Event> features () { return features; }
+    public JsonNode featuresAsJson () {
+        return mapper.valueToTree(features);
     }
 
     public JsonNode profile () {

@@ -756,8 +756,83 @@
   <br><i class="fa fa-comments"></i>&nbsp;<a href="#disqus_thread">Comments</a>
 </div>
 }
+
+@** these has to go before other javascripts **@
+@pvizpre = {
+   <link rel="stylesheet" type="text/css" href='@routes.Assets.versioned("pviz/pviz-core.css")'/>
+    <script type="text/javascript" src='@routes.Assets.versioned("pviz/pviz-bundle.min.js")'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("pviz/pviz-data-plug.js")'></script>
+    <style>
+g.feature.data.turn.features{
+	stroke: green;
+    fill: none;
+    stroke-width: 2;
+}
+
+g.feature.data.helix.features{
+	stroke: green;
+    stroke-width: 2;
+    fill: none;
+}
+
+g.feature.data.strand{
+    stroke-width: 2;
+}
+
+g.feature.data.helix{
+	stroke: green;
+    stroke-width: 2
+}
+</style>      
+}
+
+@head = {
+    <!--<script src='@routes.WebJarAssets.at(WebJarAssets.locate("js/highcharts.js"))' type='text/javascript'></script>-->
+    <!--<script src='@routes.WebJarAssets.at(WebJarAssets.locate("js/highcharts-more.js"))' type='text/javascript'></script>-->
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/d3.js")'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/tinx.js")'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/d3-tip.js")'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/radar-chart.js")'></script>
+    <script type="text/javascript" src='@routes.WebJarAssets.at(WebJarAssets.locate("raphael-min.js"))'></script>
+    <script type="text/javascript" src='@routes.WebJarAssets.at(WebJarAssets.locate("morris.min.js"))'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/underscore.js")'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/underscore.string.js")'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/cart.js")'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/d3.layout.cloud.js")'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/wordcloud.js")'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/jquery.sparkline.js")'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/flickity.pkgd.min.js")'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/stupidtable.min.js")'></script>
+    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/d3-tip.css")' />
+    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/radar-chart.css")' />
+    <link type="text/css" rel="stylesheet" href='@routes.WebJarAssets.at(WebJarAssets.locate("morris.css"))' />
+    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("ncats/css/loader.css")'/>
+    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/flickity.css")'/>
+    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/main.css")'/>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/highcharts-more.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/viz.js")'></script>
+    <!--<link type="text/css" rel="stylesheet" href="https://code.highcharts.com/css/highcharts.css"></script>-->
+
+    <style type="text/css">
+
+    .carousel-image {
+       min-width: 100px;
+       min-height: 190px;
+    }
+
+    .carousel-cell {
+       width: 150px;
+    }
+
+    .flickity-page-dots {
+       bottom: -2px;
+    }
+    </style>
+}    
 	  
-@ix.ncats.views.html.main(target.name){
+@ix.ncats.views.html.main(target.name, head, pvizpre){
 @targetmenu(null,"")
 }{
 <ol class="breadcrumb" style="margin-top:60px;">
@@ -1548,6 +1623,7 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                <div class="panel-body">
 		 <div id="aa-profile" style="max-height:200px; width:100%;"></div>
                  <pre class="pre-scrollable">@seq.sequence</pre>
+		 <div id="seq-features" style="width:100%;"></div>
                </div>
              </div>
            </div>
@@ -1675,55 +1751,6 @@ role="dialog" aria-labelledby="modalLabelFolder" aria-hidden="true">
 @modalradar(null, IDGApp.getGeneSymbol(target))
 
 
-<head>
-    <!--<script src='@routes.WebJarAssets.at(WebJarAssets.locate("js/highcharts.js"))' type='text/javascript'></script>-->
-    <!--<script src='@routes.WebJarAssets.at(WebJarAssets.locate("js/highcharts-more.js"))' type='text/javascript'></script>-->
-    <!--<script src="https://code.highcharts.com/modules/exporting.js"></script>-->
-    <!--<script src="https://code.highcharts.com/js/modules/offline-exporting.js"></script>-->
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/d3.js")'></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/tinx.js")'></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/d3-tip.js")'></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/radar-chart.js")'></script>
-    <script type="text/javascript" src='@routes.WebJarAssets.at(WebJarAssets.locate("raphael-min.js"))'></script>
-    <script type="text/javascript" src='@routes.WebJarAssets.at(WebJarAssets.locate("morris.min.js"))'></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/underscore.js")'></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/underscore.string.js")'></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/cart.js")'></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/d3.layout.cloud.js")'></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/wordcloud.js")'></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/jquery.sparkline.js")'></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/flickity.pkgd.min.js")'></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/stupidtable.min.js")'></script>
-    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/d3-tip.css")' />
-    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/radar-chart.css")' />
-    <link type="text/css" rel="stylesheet" href='@routes.WebJarAssets.at(WebJarAssets.locate("morris.css"))' />
-    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("ncats/css/loader.css")'/>
-    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/flickity.css")'/>
-    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/main.css")'/>
-
-    <script src="https://code.highcharts.com/highcharts.js"></script>
-    <script src="https://code.highcharts.com/highcharts-more.js"></script>
-    <script src="https://code.highcharts.com/modules/exporting.js"></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/viz.js")'></script>
-    <!--<link type="text/css" rel="stylesheet" href="https://code.highcharts.com/css/highcharts.css"></script>-->
-
-    <style type="text/css">
-
-
-    .carousel-image {
-       min-width: 100px;
-       min-height: 190px;
-    }
-
-    .carousel-cell {
-       width: 150px;
-    }
-
-    .flickity-page-dots {
-       bottom: -2px;
-    }
-    </style>
-</head>
 
 <script>
 var disqus_config = function () {
@@ -2084,7 +2111,11 @@ $('.tree').treegrid({
 
 
     plotAAProfile('aa-profile');
-
+    @defining(IDGApp.getSequence(target)) { seq =>
+      pvizRender('#seq-features', '@seq.raw',
+                 renderDATA(@HtmlFormat.raw(seq.featuresAsJson.toString)));
+    }
+	      
    @if(target.patentCount != null && target.patentCount > 0) {
       var data = @HtmlFormat.raw(IDGApp.getPatents(target).toString);
       var patentCountPlotConfig = {
