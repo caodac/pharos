@@ -715,7 +715,8 @@
             <!--  Page menu -->
 	  <div role="group">
             <div class="dropdown btn-group pull-right" role="group">
-              <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+             <button type="button" class="btn btn-default dropdown-toggle"
+		data-toggle="dropdown">
                 <i class="fa fa-list"></i>
               </button>
               <ul class="dropdown-menu pull-left" id="toc">
@@ -755,35 +756,6 @@
   </div>
   <br><i class="fa fa-comments"></i>&nbsp;<a href="#disqus_thread">Comments</a>
 </div>
-}
-
-@** these has to go before other javascripts **@
-@pvizpre = {
-   <link rel="stylesheet" type="text/css" href='@routes.Assets.versioned("pviz/pviz-core.css")'/>
-    <script type="text/javascript" src='@routes.Assets.versioned("pviz/pviz-bundle.min.js")'></script>
-    <script type="text/javascript" src='@routes.Assets.versioned("pviz/pviz-data-plug.js")'></script>
-    <style>
-g.feature.data.turn.features{
-	stroke: green;
-    fill: none;
-    stroke-width: 2;
-}
-
-g.feature.data.helix.features{
-	stroke: green;
-    stroke-width: 2;
-    fill: none;
-}
-
-g.feature.data.strand{
-    stroke-width: 2;
-}
-
-g.feature.data.helix{
-	stroke: green;
-    stroke-width: 2
-}
-</style>      
 }
 
 @head = {
@@ -832,7 +804,7 @@ g.feature.data.helix{
     </style>
 }    
 	  
-@ix.ncats.views.html.main(target.name, head, pvizpre){
+@ix.ncats.views.html.main(target.name, head){
 @targetmenu(null,"")
 }{
 <ol class="breadcrumb" style="margin-top:60px;">
@@ -1623,7 +1595,12 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                <div class="panel-body">
 		 <div id="aa-profile" style="max-height:200px; width:100%;"></div>
                  <pre class="pre-scrollable">@seq.sequence</pre>
-		 <div id="seq-features" style="width:100%;"></div>
+		 <iframe sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-top-navigation allow-popups-to-escape-sandbox allow-modals"
+			   src='@ix.idg.controllers.routes.IDGApp.targetpviz(IDGApp.getId(target))'
+			   marginwidth="0" marginheight="0"
+			   frameBorder="0"
+			   style="height:450px; width:100%" scrolling="yes">
+		 </iframe>
                </div>
              </div>
            </div>
@@ -1776,7 +1753,6 @@ $(function () {
 
 $(document).ready(function () {
     $("#diffexptable").stupidtable();
-
     $("#modal-radardiv" ).attr("target", "@IDGApp.getId(target)");
 
     /* populate TOC menu */
@@ -2109,12 +2085,7 @@ $('.tree').treegrid({
         _handleModalSelectEvents($("#select-agg"), $(this), $("#modal-radardiv").attr("target"));
     });
 
-
     plotAAProfile('aa-profile');
-    @defining(IDGApp.getSequence(target)) { seq =>
-      pvizRender('#seq-features', '@seq.raw',
-                 renderDATA(@HtmlFormat.raw(seq.featuresAsJson.toString)));
-    }
 	      
    @if(target.patentCount != null && target.patentCount > 0) {
       var data = @HtmlFormat.raw(IDGApp.getPatents(target).toString);

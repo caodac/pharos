@@ -374,15 +374,6 @@ public class IDGApp extends App implements Commons {
         }
 
         @Override
-        public String url () {
-            if (COLLECTION.equals(super.name()))
-                return "<a class='pull-right' href='"
-                    +routes.IDGApp.editCollection()
-                    +"'><i class='fa fa-pencil'></i></a>";
-            return null;
-        }
-
-        @Override
         public String label (final int i) {
             final String label = super.label(i);
             final String name = super.name();
@@ -4149,7 +4140,7 @@ public class IDGApp extends App implements Commons {
             return _internalServerError (ex);
         }
     }
-
+    
     public static String[] getDescriptions (Target t) {
         List<String> desc = new ArrayList<String>();
         if (t.description != null && t.description.length() > 0) {
@@ -4282,5 +4273,23 @@ public class IDGApp extends App implements Commons {
 
     public static Result sampleTermValues (int size) {
         return ok (getSampleTermValues (size));
+    }
+
+    public static Result targetpviz (String name) {
+        try {
+            List<Target> targets = TargetResult.find(name);
+            if (!targets.isEmpty()) {
+                Target target = targets.get(0);
+                Sequence seq = getSequence (target);
+                if (seq != null) {
+                    return ok (ix.idg.views.html.targetpviz.render(seq));
+                }
+            }
+            return _notFound ("Unknown target: <code>"+name+"</code>");
+        }
+        catch (Exception ex) {
+            return _internalServerError
+                ("Unable to retrieve target for <code>"+name+"</code>");
+        }
     }
 }

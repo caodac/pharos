@@ -1,0 +1,51 @@
+@import ix.idg.models.Target
+@import ix.idg.controllers.Sequence
+
+@(seq: Sequence)
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+  <base target="_target">
+  <link rel="stylesheet" href='@routes.Assets.versioned("stylesheets/circlepacking.css")'>
+   <link rel="stylesheet" type="text/css" href='@routes.Assets.versioned("pviz/pviz-core.css")'/>
+    <script type="text/javascript" src='@routes.Assets.versioned("pviz/pviz-bundle.min.js")'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("pviz/pviz-data-plug.js")'></script>
+    <style>
+      g.feature.data.turn.features{
+	stroke: green;
+        fill: none;
+        stroke-width: 2;
+      }
+      
+      g.feature.data.helix.features{
+        stroke: green;
+        stroke-width: 2;
+        fill: none;
+      }
+      
+      g.feature.data.strand{
+        stroke-width: 2;
+      }
+      
+      g.feature.data.helix{
+        stroke: green;
+        stroke-width: 2
+      }
+    </style>      
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+	<div id="seq-features"></div>
+      </div>
+    </div>
+  </div>
+</body>
+<script>
+  $(document).ready(function () {
+    var features = @HtmlFormat.raw(seq.featuresAsJson.toString);
+    pvizRender('#seq-features', '@seq.raw', renderDATA (features));
+  });
+</script>
+

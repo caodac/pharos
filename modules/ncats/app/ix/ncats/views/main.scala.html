@@ -20,6 +20,7 @@
 	<![endif]-->
     <title>@title</title>
     <meta name=viewport content="width=device-width, initial-scale=1">
+    @pre            
     <link rel="stylesheet" href='@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap.min.css"))'>
     <link rel="stylesheet" href='@routes.WebJarAssets.at(WebJarAssets.locate("font-awesome.min.css"))'>
     <link rel="stylesheet" href='@routes.Assets.versioned("ncats/css/jquery.treegrid.css")'>
@@ -27,8 +28,8 @@
     <link rel="stylesheet" href='@routes.Assets.versioned("ncats/css/footer.css")'>
     <link rel="stylesheet" href='@routes.Assets.versioned("ncats/css/idg.css")'>
     <link rel="icon" type="image/png" href='@routes.Assets.versioned("images/favicon.png")'>
-    @pre
     <script src='@routes.WebJarAssets.at(WebJarAssets.locate("jquery.min.js"))' type='text/javascript'></script>
+
     <!-- make sure jquery-ui is loaded before bootstrap... otherwise it
 	 will override bootstrap's ui elements such as tooltip !-->
     <script type="text/javascript" src='@routes.WebJarAssets.at(WebJarAssets.locate("jquery-ui.min.js"))'></script>
