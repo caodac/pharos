@@ -1,4 +1,4 @@
-@(scheme: String, host: String){
+@(scheme: String, host: String, ctx: String){
   "swagger": "3.0.10",
   "info": {
     "title": "Pharos API",
@@ -14,7 +14,7 @@
     }
   },
   "host": "@host",
-  "basePath": "/idg/api/v1",
+  "basePath": "@ctx/api/v1",
   "produces": [
     "application/json"
   ],
