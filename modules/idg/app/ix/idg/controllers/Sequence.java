@@ -66,7 +66,10 @@ public class Sequence {
                 if (feature) {
                     try {
                         Timeline tl = (Timeline)ref.deRef();
-                        features.addAll(tl.events);
+                        for (Event e : tl.events) {
+                            --e.end; // inclusive
+                            features.add(e);
+                        }
                     }
                     catch (Exception ex) {
                         Logger.error

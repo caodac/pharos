@@ -846,7 +846,7 @@ public class IDGApp extends App implements Commons {
         String c = Play.application()
             .configuration().getString("application.context");
         if (c == null) c = "";
-        return ok (ix.idg.views.txt.apiswagger.render(s,h,c))
+        return ok (ix.idg.views.txt.apiswagger.render(s,u,c))
             .as("application/json");
     }
 
