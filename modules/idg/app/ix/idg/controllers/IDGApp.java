@@ -3,7 +3,10 @@ package ix.idg.controllers;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.actor.UntypedActor;
+import chemaxon.formats.MolExporter;
 import chemaxon.struc.MolAtom;
+import chemaxon.struc.Molecule;
+import chemaxon.util.MolHandler;
 import com.avaje.ebean.Expr;
 import com.avaje.ebean.QueryIterator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -51,7 +54,6 @@ import play.Play;
 import play.api.mvc.Action;
 import play.api.mvc.AnyContent;
 import play.cache.Cached;
-import play.db.ebean.Model;
 import play.libs.Akka;
 import play.mvc.BodyParser;
 import play.mvc.Call;
@@ -69,7 +71,6 @@ import java.io.PipedOutputStream;
 import java.io.PrintStream;
 import java.io.Serializable;
 import java.net.URLEncoder;
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -81,11 +82,11 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -3885,6 +3886,59 @@ public class IDGApp extends App implements Commons {
             .eq("publications.pmid", pmid).findList();
     }
 
+    public static Result _ligandsForTarget(String name, String group) throws Exception {
+        if (group == null)
+            group = "chembl";
+        if (!group.equals("chembl") && !group.equals("drugs"))
+            return _badRequest("Invalid ligand group specified");
+
+        List<Target> targets = TargetResult.find(name);
+        if (targets.size() == 0) {
+            return _notFound ("Unknown target: "+name);
+        }
+
+        if (targets.size() > 1) {
+            Logger.debug("** \""+name+"\" resolves to "+targets.size()+" targets!");
+        }
+        Target t = targets.iterator().next();
+
+        List<Ligand> ligands = null;
+        if (group.equals("chembl"))
+            ligands = getChemblLigands(t);
+        else if (group.equals("drugs"))
+            ligands = getDrugLigands(t);
+        if (ligands == null || ligands.size() == 0)
+            return _notFound("No ligands for "+IDGApp.getId(t));
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        MolExporter exporter = new MolExporter(baos, "sdf");
+        for (Ligand l : ligands) {
+            Structure s = getStructure(l);
+            MolHandler molh = new MolHandler(s.molfile);
+            Molecule mol = molh.getMolecule();
+
+            mol.setProperty("Name", l.getName());
+            mol.setProperty("Target_Uniprot", IDGApp.getId(t));
+            for (Value v : l.getProperties()) {
+                if (Commons.ChEMBL_INCHI_KEY.equals(v.label)) {
+                    String val = (String) v.getValue();
+                    if (val != null) mol.setProperty(Commons.ChEMBL_INCHI_KEY, val);
+                } else if (Commons.ChEMBL_SMILES.equals(v.label)) {
+                    String val = (String) v.getValue();
+                    if (val != null) mol.setProperty(Commons.ChEMBL_SMILES, val);
+                } else if (Commons.PUBMED_ID.equals(v.label)) {
+                    Object val = v.getValue();
+                    if (val != null) mol.setProperty(Commons.PUBMED_ID, val.toString());
+                }
+            }
+            exporter.write(mol);
+        }
+        exporter.close();
+        byte[] contents = baos.toByteArray();
+        response().setHeader("Content-Disposition", "attachment;filename="+IDGApp.getId(t)+"-"+group+".sdf");
+        return ok(contents).as("chemical/x-mdl-molfile");
+    }
+
     public static Result _publicationsForTarget (String name, int top, int skip)
         throws Exception {
         List<Target> targets = TargetResult.find(name);
@@ -3910,6 +3964,21 @@ public class IDGApp extends App implements Commons {
         
         ObjectMapper mapper = EntityFactory.getEntityMapper();
         return ok ((JsonNode)mapper.valueToTree(pubs));
+    }
+
+    public static Result ligandsForTarget(final String name, final String group) {
+        try {
+            final String key = "targets/"+name+"/"+group;
+            return getOrElse (key, new Callable<Result> () {
+                    public Result call () throws Exception {
+                        return _ligandsForTarget (name, group);
+                    }
+                });
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return _internalServerError (ex);
+        }
     }
 
     public static Result publicationsForTarget
