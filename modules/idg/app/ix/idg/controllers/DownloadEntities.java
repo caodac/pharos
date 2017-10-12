@@ -383,6 +383,7 @@ public class DownloadEntities extends Controller {
                 append(csvQuote(String.valueOf(t.patentCount))).append(",").
                 append(csvQuote(String.valueOf(t.antibodyCount))).append(",").
                 append(csvQuote(String.valueOf(t.pubmedCount))).append(",").
+                append(csvQuote(String.valueOf(t.knowledgeAvailability))).append(",").
                 append(csvQuote(sb2.toString()));
         return sb.toString();
     }
