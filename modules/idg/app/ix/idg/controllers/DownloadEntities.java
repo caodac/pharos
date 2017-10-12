@@ -334,7 +334,6 @@ public class DownloadEntities extends Controller {
     }
 
     static String csvFromTarget(Target t) {
-        Object novelty = "";
         Object function = "";
 
         StringBuilder sb2 = new StringBuilder();
@@ -344,10 +343,10 @@ public class DownloadEntities extends Controller {
             delimiter = "|";
         }
 
+
         List<Value> props = t.getProperties();
         for (Value v : props) {
-            if (v.label.equals("TINX Novelty")) novelty = v.getValue();
-            else if (v.label.equals("function")) function = v.getValue();
+            if (v.label.equals("function")) function = v.getValue();
         }
 
         // get classifications
@@ -364,7 +363,6 @@ public class DownloadEntities extends Controller {
                 chemblClass = ((Keyword) v).getValue();
         }
 
-
         StringBuilder sb = new StringBuilder();
         sb.append(routes.IDGApp.target(csvQuote(IDGApp.getId(t)))).append(",").
                 append(csvQuote(IDGApp.getId(t))).append(",").
@@ -375,7 +373,7 @@ public class DownloadEntities extends Controller {
                 append(csvQuote(dtoClass)).append(",").
                 append(csvQuote(pantherClass)).append(",").
                 append(csvQuote(chemblClass)).append(",").
-                append(csvQuote((String) novelty)).append(",").
+                append(csvQuote(t.novelty)).append(",").
                 append(csvQuote(t.idgFamily)).append(",").
                 append(csvQuote(function.toString())).append(",").
                 append(csvQuote(String.valueOf(t.grantCount))).append(",").
