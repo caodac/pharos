@@ -615,8 +615,10 @@
            }
         }
      }
+
      @if(target.grantCount != null) {
-        <tr>
+         <!--
+         <tr>
           <td>
             <span data-toggle="tooltip"
                   data-html="true"
@@ -624,16 +626,20 @@
           </td>
           <td>@Util.format(target.grantCount)</td>
         </tr>
+          -->
       }
       @if(target.r01Count != null) {
+        <!--
         <tr>
           <td><span data-toggle="tooltip"
                     data-html="true"
                     title="<p align='left'>Number of NIH funded R01 grants for 2010-2014 based on text mining of application titles and abstracts, due to nature of text mining results might be inaccurate</p>">R01 Count</span></td>
           <td>@Util.format(target.r01Count)</td>
         </tr>
+          -->
       }
       @if(target.grantTotalCost != null) {
+        <!--
         <tr>
           <td><span data-toggle="tooltip"
                     data-html="true"
@@ -644,6 +650,7 @@
           <td></td>
           }
         </tr>
+          -->
        }
 	@if(target.jensenScore != null) {
         <tr>
