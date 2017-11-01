@@ -679,7 +679,7 @@ public class IDGApp extends App implements Commons {
 
         "Log Novelty",
         "Log PubTator",
-        "R01 Grant Count",
+        //"R01 Grant Count",
         "PubMed Count",
         "Antibody Count",
         "Monoclonal Count",
@@ -699,9 +699,9 @@ public class IDGApp extends App implements Commons {
         PROTEIN_FEATURE,
         IDG_TOOLS,
         "TechDev Grant",
-        GRANT_APPLICATION,
-        GRANT_FUNDING_IC,
-        GRANT_ACTIVITY,
+        //GRANT_APPLICATION,
+        //GRANT_FUNDING_IC,
+        //GRANT_ACTIVITY,
         SOURCE  
     };
 
