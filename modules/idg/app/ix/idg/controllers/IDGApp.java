@@ -1784,7 +1784,9 @@ public class IDGApp extends App implements Commons {
                 q = null;
             
             String type = request().getQueryString("type");
-            if (q != null && type != null) {
+            // if URL contains an action we want to pass through to _targets
+            boolean download = request().uri().contains("download");
+            if (q != null && type != null && !download) {
                 if (type.equalsIgnoreCase("sequence")) {
                     return sequences (q, rows, page);
                 }

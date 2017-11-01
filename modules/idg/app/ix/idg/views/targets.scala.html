@@ -1,7 +1,7 @@
 
-@import ix.idg.models.Target
 @import ix.idg.controllers.Commons._
 @import ix.idg.controllers.IDGApp
+@import ix.idg.models.Target
 @import ix.ncats.controllers.App
 @import ix.ncats.controllers.App.FacetDecorator
 
@@ -371,13 +371,22 @@ $(function() {
 });
 
 function download () {
-   $('#download-modal-download-btn')
-	.attr('disabled','true')
-	.html('<i class="fa fa-lg fa-spinner fa-spin"></i>');
-	
-   var url = '@HtmlFormat.raw(request.uri)';
-   url += (url.indexOf('?') < 0 ? '?' : '&')+'action=download';
-   console.log('downloading '+url+'...');
+    $('#download-modal-download-btn')
+            .attr('disabled', 'true')
+            .html('<i class="fa fa-lg fa-spinner fa-spin"></i>');
+
+    var url = '@HtmlFormat.raw(request.uri)';
+    if (url.indexOf("facet") < 0 && url.indexOf("q=") < 0) {
+        // corresponds to a manual selection of rows from target table so we
+        // identify selected rows and add target id to url
+        var tids = [];
+        $("#target-table input:checked").each(function() {
+           tids.push($(this).attr("id").split("-")[1]);
+        });
+        url += (url.indexOf('?') < 0 ? '?' : '&') + "q=" + tids.join(" ");
+    }
+    url += (url.indexOf('?') < 0 ? '?' : '&') + 'action=download';
+    console.log('downloading ' + url + ' ...');
 
    var check;
    var timer;
