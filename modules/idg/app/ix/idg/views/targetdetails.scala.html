@@ -2042,7 +2042,7 @@ $('.tree').treegrid({
 	      });
 
               $("#modalLabelRadar" ).html
-                     ('<h4><span class="label label-@target.idgTDL.label">@target.idgTDL</span> @target.getName</h4>');
+                     ('<span class="label label-@target.idgTDL.label">@target.idgTDL</span> @target.getName');
           }
      });
 
@@ -2051,7 +2051,7 @@ $('.tree').treegrid({
         $("#radar-ds-container" ).empty();
         renderChart(chartData, aggType, 'modal-radardiv');
         $("#modalLabelRadar" ).html
-           ('<h4><span class="label label-@target.idgTDL.label">@target.idgTDL</span> @target.getName</h4>');
+           ('<span class="label label-@target.idgTDL.label">@target.idgTDL</span> @target.getName');
         $("#modal-radardiv" ).attr("target", "@IDGApp.getId(target)")
         $("#modal-radar" ).modal("show");
     }

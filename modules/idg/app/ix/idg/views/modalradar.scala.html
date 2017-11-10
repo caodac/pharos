@@ -11,9 +11,11 @@ role="dialog" aria-labelledby="modalLabelRadar" aria-hidden="true">
                 <button type="button" class="close"
                 data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title" id="modalLabelRadar">
-                    @Html(title + "<a class='btn btn-default' role='button' href='@ix.idg.controllers.routes.IDGApp.faq()#collapse5?expand=true' style='margin-right:1px; margin-left:1px;'><i class='fa fa-info-circle fa-lg'></i></a>")
-
+                <h4 class="modal-title">
+                    <span id="modalLabelRadar"></span>
+                    <a class='text-right text-muted'
+                    href='@ix.idg.controllers.routes.IDGApp.faq()#collapse5?expand=true'
+                    style='margin-right:1px; margin-left:3em;'>Knowledge Availability</a>
                 </h4>
 
 
