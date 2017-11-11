@@ -376,7 +376,9 @@ function getSelectedTargets() {
 }
 
 function download () {
+
     var _total = @total;
+    if (_total > 500) return; // prevent DoS
 
     // corresponds to a manual selection of rows from target table so
     // this is the targets we should be downloading
