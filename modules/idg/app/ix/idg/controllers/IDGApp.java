@@ -21,20 +21,7 @@ import ix.core.controllers.PayloadFactory;
 import ix.core.controllers.PredicateFactory;
 import ix.core.controllers.PublicationFactory;
 import ix.core.controllers.search.SearchFactory;
-import ix.core.models.EntityModel;
-import ix.core.models.Event;
-import ix.core.models.Keyword;
-import ix.core.models.Mesh;
-import ix.core.models.Payload;
-import ix.core.models.Predicate;
-import ix.core.models.Publication;
-import ix.core.models.Structure;
-import ix.core.models.Text;
-import ix.core.models.Timeline;
-import ix.core.models.VInt;
-import ix.core.models.VNum;
-import ix.core.models.Value;
-import ix.core.models.XRef;
+import ix.core.models.*;
 import ix.core.plugins.IxCache;
 import ix.core.plugins.ThreadPoolPlugin;
 import ix.core.search.SearchOptions;
@@ -1199,7 +1186,24 @@ public class IDGApp extends App implements Commons {
 
         return sources.toArray(new DataSource[0]);
     }
-    
+
+    public static List<XRef> getSortedPublications(Target t) {
+        List<XRef> pubs = new ArrayList<XRef>();
+        for (XRef xref : t.getLinks()) {
+            if (xref.kind.equals("ix.core.models.Publication")) {
+                pubs.add( (XRef) xref);
+            }
+        }
+        Collections.sort(pubs, new Comparator<XRef>() {
+            public int compare(XRef one, XRef other) {
+                Publication p1 = (Publication) one.deRef();
+                Publication p2 = (Publication) other.deRef();
+                return p1.year.compareTo(p2.year);
+            }
+        });
+        return pubs;
+    }
+
     public static DataSource[] getDataSources () {
         final String key = "IDGApp/datasources";
         try {
