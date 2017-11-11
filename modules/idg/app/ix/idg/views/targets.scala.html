@@ -35,7 +35,7 @@ facets: Array[FacetDecorator], targets: List[Target], ctx: String )
         <td>@t.patentCount@**<span class="inlinesparkline">@IDGApp.getPatentSparkline(t)</span>**@</td>
 	-->
         @*<td><div style="display: inline;" id="radar-@IDGApp.getId(t)" class="radar-div"></div></td>*@
-        <td><div id="radar-@IDGApp.getId(t)" 
+        <td><div id="radar-@IDGApp.getId(t)"
 		 class="radar-div" genesym="@IDGApp.getGeneSymbol(t)"
                  tdlLabel="@t.idgTDL.label" tdl="@t.idgTDL" tname="@t.name"></div></td>
     </tr>
@@ -128,7 +128,7 @@ facets: Array[FacetDecorator], targets: List[Target], ctx: String )
     </div>
   </form>
 } {  @* viz *@
-@**    
+@**
    <button class="btn btn-default" type="button"
 	      id="carousel-toggle"
 	      data-toggle="collapse"
@@ -188,8 +188,8 @@ facets: Array[FacetDecorator], targets: List[Target], ctx: String )
 	    }
         </ul>
     </div>
-} {    
-    @targetcarousel(ctx)    
+} {
+    @targetcarousel(ctx)
 }
 <div id="page-loader"></div>
 <div class="modal fade" tabindex="-1" role="dialog" id="loadmodal"
@@ -220,30 +220,27 @@ facets: Array[FacetDecorator], targets: List[Target], ctx: String )
 <iframe id="download-iframe" style="display:none;"></iframe>
 
 <div class="modal fade" tabindex="-1" role="dialog" id="download-modal"
-     aria-labelledby="download-modal-header" aria-hidden="true">
-  <div class="modal-dialog modal-md">
-    <div class="modal-content">
-      <div class="modal-header">
-         <button type="button" class="close"
+aria-labelledby="download-modal-header" aria-hidden="true">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close"
                 data-dismiss="modal" aria-label="Close">
-             <span aria-hidden="true">&times;</span></button>
-           <h4 class="modal-title" id="download-modal-header">Target Download</h4>
-      </div>
-      <div class="modal-body" id="download-console-body">
-@if(total < 500) {
-	Please wait; this might take a few minutes...
-} else {
-	Sorry, we're currently reworking the batch download feature. In the
-	mean time, please consider using our <a href='@ix.core.controllers.v1.routes.RouteFactory.listResources'>API</a> instead.
-}
-      </div>
-      <div class="modal-footer">
-	<button type="button" class="btn btn-primary"
-		data-dismiss="modal"
-		id="download-modal-download-btn">Close</button>
-      </div>
+                    <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="download-modal-header">Target Download</h4>
+            </div>
+            <div class="modal-body" id="download-console-body">
+                Sorry, we're currently reworking the batch download feature. In the
+                mean time, please consider using our <a href='@ix.core.controllers.v1.routes.RouteFactory.listResources'>
+                API</a> instead.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary"
+                data-dismiss="modal"
+                id="download-modal-download-btn">Close</button>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 
@@ -354,7 +351,7 @@ role="dialog" aria-labelledby="modalLabelFolder" aria-hidden="true">
     <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/radar-chart.css")' />
     <link type="text/css" rel="stylesheet" href='@routes.WebJarAssets.at(WebJarAssets.locate("morris.css"))' />
     <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("ncats/css/loader.css")'/>
-    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("css/bootstrap-select.min.css")'/>        
+    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("css/bootstrap-select.min.css")'/>
     <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/main.css")'/>
 
     <script src="https://code.highcharts.com/highcharts.js"></script>
@@ -370,19 +367,32 @@ $(function() {
    $('[data-toggle="tooltip"]').tooltip ();
 });
 
+function getSelectedTargets() {
+    var tids = [];
+    $("#target-table input:checked").each(function () {
+        tids.push($(this).attr("id").split("-")[1]);
+    });
+    return tids;
+}
+
 function download () {
+    var _total = @total;
+
+    // corresponds to a manual selection of rows from target table so
+    // this is the targets we should be downloading
+    var tids = getSelectedTargets();
+    if (tids.length > 0) _total = tids.length;
+
+    $('#download-console-body').html("Downloading "+_total+" targets");
+
     $('#download-modal-download-btn')
             .attr('disabled', 'true')
             .html('<i class="fa fa-lg fa-spinner fa-spin"></i>');
 
     var url = '@HtmlFormat.raw(request.uri)';
-    if (url.indexOf("facet") < 0 && url.indexOf("q=") < 0) {
-        // corresponds to a manual selection of rows from target table so we
+    if ( (url.indexOf("facet") < 0 && url.indexOf("q=") < 0) || tids.length > 0) {
+
         // identify selected rows and add target id to url
-        var tids = [];
-        $("#target-table input:checked").each(function() {
-           tids.push($(this).attr("id").split("-")[1]);
-        });
         url += (url.indexOf('?') < 0 ? '?' : '&') + "q=" + tids.join(" ");
     }
     url += (url.indexOf('?') < 0 ? '?' : '&') + 'action=download';
@@ -428,24 +438,25 @@ function download () {
 
    timer = window.setInterval(check, delay);
 }
-			      
-			      
+
+
 var _cart_selectType = "selected";
 
 $(document).ready(function () {
+
     /*
     $(".facet-panel-body" ).each(function() {
         $(this ).toggle();
     });
     */
-   $('#opener').on('click', function() {		
+   $('#opener').on('click', function() {
       var panel = $('#slide-panel');
       if (panel.hasClass("visible")) {
          panel.removeClass('visible').animate({'margin-right':'-300px'});
       } else {
          panel.addClass('visible').animate({'margin-right':'0px'});
-      }	
-      return false;	
+      }
+      return false;
    });
 
    $('#set-rows').on('change',function(){
@@ -453,7 +464,7 @@ $(document).ready(function () {
       console.log('rows per page: '+uri);
       location.href = uri;
    });
-   
+
   /*
    $(":checkbox").on('click',function () {
       //console.log('row '+$(this).attr('id')+' checked? '+$(this).prop('checked'));
@@ -464,7 +475,7 @@ $(document).ready(function () {
       $('#download-all').prop('disabled', checked == 0);
    });
   */
-  
+
    $('#loadmodal').on('shown.bs.modal', function (e) {
       console.log('loadmodal is shown...');
    });
@@ -562,22 +573,8 @@ $(document).ready(function () {
     });
 
     $("#download-modal").on('shown.bs.modal', function () {
-        /*
-        $.ajax({
-	   url: '@ix.ncats.controllers.routes.App.status(ctx)',
-           dataType: 'json',
-           success: function(data) {
-              console.log(data);
-	      download ();
-           },
-           error: function (xhr,status,error) {
-              console.log('error: '+error);
-              $('#download-console-body').html(error);
-           }
-        });
-        */
-
-        @if(total < 500) {
+        var _total = @total;
+        if(_total < 500 || getSelectedTargets().length > 0) {
            download ();
         }
     });
@@ -705,7 +702,7 @@ $(document).ready(function () {
     $("#compare-selected" ).click(function(e) {
        var ents = _.map(selectEntities("#target-table  input:checked"),
 	      function(x) {return(x);});
-       if (ents.length > 1) {  
+       if (ents.length > 1) {
           window.location.href = "@ix.idg.controllers.routes.IDGApp.compareTargets2()?q="+ents.join();
        }
        else {
