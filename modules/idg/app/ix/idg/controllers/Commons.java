@@ -68,6 +68,8 @@ public interface Commons {
     public static final String JENSEN_TM_TISSUE = "Jensen-TM Tissue";
     public static final String JENSEN_KB_EXPR = "Jensen-KB Expression";
     public static final String JENSEN_KB_TISSUE = "Jensen-KB Tissue";
+    public static final String HCA_RNA_CELL_LINE = "HCA RNA Cell Line";
+    public static final String CSPA_CELL_LINE = "CSPA Cell Line";
 
     public static final String KEGG_PATHWAY = "KEGG Pathway";
     public static final String PATENT_COUNT = "Patent Count";

@@ -158,7 +158,7 @@ public class TcrdRegistry extends Controller implements Commons {
             pstm16, pstm17, pstm18, pstm19, pstm20,
             pstm21, pstm22, pstm23, pstm24, pstm25,
             pstm26, pstm27, pstm28, pstm29, pstm30,
-            pstm31;
+            pstm31, pstm32;
         Map<String, Keyword> datasources = new HashMap<String, Keyword>();
 
         // xrefs for the current target
@@ -294,6 +294,8 @@ public class TcrdRegistry extends Controller implements Commons {
                 ("select * from feature where protein_id = ? ");
             pstm31 = con.prepareStatement
                 ("select * from locsig where protein_id = ?");
+            pstm32 = con.prepareStatement
+                ("select * from ortholog where protein_id = ?");
         }
 
         Keyword getTdlKw (Target.TDL tdl) {
@@ -412,6 +414,7 @@ public class TcrdRegistry extends Controller implements Commons {
             pstm29.close();
             pstm30.close();
             pstm31.close();
+            pstm32.close();
         }
 
         void instrument (Target target, TcrdTarget t) throws Exception {
@@ -960,8 +963,9 @@ public class TcrdRegistry extends Controller implements Commons {
                     String toks[] = expr.tissue.split("-");
                     if (toks.length == 2) {
                         expr.cellType = toks[1].trim();
-                        Keyword cellType = KeywordFactory.registerIfAbsent(expr.source+" Cell Type",
-                                expr.cellType, null);
+                        Keyword cellType = KeywordFactory.registerIfAbsent
+                            (expr.source+" Cell Type",
+                             expr.cellType, null);
                         target.addIfAbsent((Value)cellType);
                     }
                 }
@@ -970,6 +974,25 @@ public class TcrdRegistry extends Controller implements Commons {
                     String t = expr.source
                         .substring("JensenLab Experiment".length()+1).trim();
                     expr.sourceid = t+" Expression";
+                }
+                else if (expr.source.equals("HCA RNA")) {
+                    sourceUrl = "https://www.humancellatlas.org";
+                    expr.sourceid = expr.source+" Cell Line";
+                    // remove "Cell Line" prefix
+                    if (expr.tissue.startsWith("Cell Line"))
+                        expr.tissue = expr.tissue.substring(9).trim();
+                    tissue = KeywordFactory.registerIfAbsent
+                        (HCA_RNA_CELL_LINE, expr.tissue, null);
+                    target.addIfAbsent((Value)tissue);
+                }
+                else if (expr.source.equals("Cell Surface Protein Atlas")) {
+                    sourceUrl = "http://wlab.ethz.ch/cspa/";
+                    expr.sourceid = CSPA_CELL_LINE;
+                    if (expr.tissue.startsWith("Cell Line"))
+                        expr.tissue = expr.tissue.substring(9).trim();
+                    tissue = KeywordFactory.registerIfAbsent
+                        (CSPA_CELL_LINE, expr.tissue, null);
+                    target.addIfAbsent((Value)tissue);                    
                 }
                 else
                     Logger.warn("Unknown expression \""+expr.source
@@ -2354,12 +2377,56 @@ public class TcrdRegistry extends Controller implements Commons {
                     }
                     catch (Exception ex) {
                         Logger.error("Can't persist Techdev "
-                                     +rset.getLong("a.id")+" for protein "+protein, ex);
+                                     +rset.getLong("a.id")+" for protein "
+                                     +protein, ex);
                     }
                 }
             }
             finally {
                 rset.close();
+            }
+        }
+
+        void addOrtholog (Target target, long protein) throws Exception {
+            pstm32.setLong(1, protein);
+            try (ResultSet rset = pstm32.executeQuery()) {
+                while (rset.next()) {
+                    Ortholog ortho = new Ortholog ();
+                    ortho.species = rset.getString("species");
+                    ortho.geneId = rset.getLong("geneid");
+                    if (rset.wasNull())
+                        ortho.geneId = null;
+                    ortho.symbol = rset.getString("symbol");
+                    ortho.name = rset.getString("name");
+                    try {
+                        ortho.save();
+                        XRef ref = new XRef (ortho);
+                        
+                        String sources = rset.getString("sources");
+                        if (sources != null) {
+                            String[] toks = sources.split(",");
+                            for (String t : toks) {
+                                String source = t.trim();
+                                Keyword kw = KeywordFactory.registerIfAbsent
+                                    (SOURCE, source, null);
+                                ref.properties.add(kw);
+                                datasources.put(source, kw);
+                            }
+                        }
+                        
+                        ref.properties.add
+                            (KeywordFactory.registerIfAbsent
+                             ("Ortholog Species", ortho.species, null));
+                        
+                        ref.save();
+                        target.links.add(ref);
+                    }
+                    catch (Exception ex) {
+                        Logger.error("Can't persist Ortholog "
+                                     +rset.getLong("id")+" for protein "
+                                     +protein, ex);
+                    }
+                }
             }
         }
 
@@ -2426,6 +2493,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 addLocalization (target, t.protein);
                 addTechdev (target, t.protein);
                 addFeatures (target, t.protein);
+                addOrtholog (target, t.protein);
             }
             catch (Exception ex) {
                 Logger.error("Can't parse target "+IDGApp.getId(target)+"!");

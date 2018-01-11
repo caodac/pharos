@@ -628,6 +628,8 @@ public class IDGApp extends App implements Commons {
         HPA_RNA_TISSUE,
         HPA_PROTEIN_TISSUE,
         HPA_PROTEIN_CELL_TYPE,
+        HCA_RNA_CELL_LINE,
+        CSPA_CELL_LINE,
         
         GWAS_TRAIT,
         IMPC_TERM,
@@ -642,6 +644,7 @@ public class IDGApp extends App implements Commons {
         COMPARTMENT_EVIDENCE,
         COMPARTMENT_TYPE,
 
+        "Ortholog Species",
         "Localization Location",
         "Localization Signal",
         
