@@ -822,11 +822,11 @@
 
 @unfurl = {
     <meta property="og:title" content="@target.name"/>
-    @defining(IDGApp.getDescriptions(target)(0)){ text =>
-      @if(text.length() > 0) {
-        <meta property="og:description" content="@text"/>
+    @defining(IDGApp.getDescriptions(target)){ text =>
+      @if(text.length > 0) {
+        <meta property="og:description" content="@text(0)"/>
         }else {
-        <meta property="og:description" content="@target.idgTDL target that belongs to the @target.idgFamily family"/>
+        <meta property="og:description" content="@target.idgTDL target belonging to the @target.idgFamily family"/>
       }
     }
     <meta property="og:site_name" content="Pharos: Illuminating the Druggable Genome"/>

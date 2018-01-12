@@ -4230,7 +4230,9 @@ public class IDGApp extends App implements Commons {
         
         Value val = t.getProperty("NCBI Gene Summary");
         if (val != null && val.getValue() != null) {
-            desc.add(val.getValue().toString());
+            String s = val.getValue().toString();
+            if (s.length() > 0)
+                desc.add(s);
         }
         
         return desc.toArray(new String[0]);

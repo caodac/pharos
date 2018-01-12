@@ -1,5 +1,6 @@
 @import ix.ncats.controllers.App
 @import ix.ncats.controllers.App.FacetDecorator
+@import ix.utils.Global
 
 @(title: String, kind: String,
   resetAction: String, current: Int, rows: Int, total: Int,
@@ -34,7 +35,28 @@
     }
 }
 
-@main(title){ @header }{ @breadcrumb }{
+@unfurl = {
+<meta property="og:title" content="Showing @total @title"/>
+@defining(request().getQueryString("q")){q =>
+@if(q != null){
+<meta property="og:description" content="Query: @q"/>
+}else{
+@defining(App.getSpecifiedFacets(facets)) { filters =>
+@if(filters.size >0){
+<meta property="og:description" content="@filters.size filter(s) applied!"/>
+}else{
+<meta property="og:description" content="No filters applied!"/>
+}
+}
+}}
+<meta property="og:site_name" content="Pharos: Illuminating the Druggale Genome"/>
+<meta property="og:image" content='@{Global.getHost() + routes.Assets.versioned("ncats/images/Pharos_Logo_Rd8.svg")}'/>
+}
+
+@scripts = {
+}
+
+@main(title, scripts, unfurl){ @header }{ @breadcrumb }{
 <div class="container-fluid">
     <div class="row">
         @if(total>0) {
