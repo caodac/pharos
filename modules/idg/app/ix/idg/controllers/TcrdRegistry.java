@@ -1554,7 +1554,10 @@ public class TcrdRegistry extends Controller implements Commons {
             while (rset.next()) {
                 String chemblId = rset.getString("cmpd_chemblid");
                 String drug = rset.getString("drug");
-
+                String ref = rset.getString("reference");
+                String source = rset.getString("source");
+                String info = rset.getString("nlm_drug_info");
+                
                 List<Ligand> ligands = LigandFactory.finder.where()
                     .in("synonyms.term", drug, chemblId).findList();
 
@@ -1580,34 +1583,13 @@ public class TcrdRegistry extends Controller implements Commons {
                 if (ligand == null) {
                     // new ligand
                     String smiles = rset.getString("smiles");
-                    String ref = rset.getString("reference");
-                    String source = rset.getString("source");
                     
                     ligand = new Ligand (drug);
                     ligand.addIfAbsent(KeywordFactory.registerIfAbsent
                                        (IDG_DRUG, drug, ref));
                     ligand.properties.add(tcrd);
-                    if (source != null) {
-                        if (chemblId == null) {
-                            Keyword ds = datasources.get(source);
-                            if (ds == null) {
-                                ds = KeywordFactory.registerIfAbsent
-                                    (SOURCE, source, source.equalsIgnoreCase
-                                     (ChEMBL) ? "https://www.ebi.ac.uk/chembl"
-                                     : null);
-                                datasources.put(source, ds);
-                            }
-                            // property
-                            ligand.addIfAbsent((Value)ds);
-                        }
+                    ligand.description = info;
 
-                        // add as property
-                        Keyword kw = new Keyword (LIGAND_SOURCE, source);
-                        kw.href = ref;
-                        ligand.properties.add(kw);
-                    }
-
-                    ligand.description = rset.getString("nlm_drug_info");
                     if (smiles != null) {
                         ligand.properties.add
                             (new Text (ChEMBL_SMILES, smiles));
@@ -1641,15 +1623,33 @@ public class TcrdRegistry extends Controller implements Commons {
                     
                     ligand.save();
                     
-                    Logger.debug("New ligand "+ligand.id+" "
+                    Logger.debug("New drug "+ligand.id+" "
                                  +ligand.getName()+" added!");
                 }
                 else if (ligand.name.startsWith("CHEMBL")) {
-                    ligand.description = rset.getString("nlm_drug_info");
+                    ligand.description = info;
                     ligand.name = drug;
                     ligand.addIfAbsent
-                        (KeywordFactory.registerIfAbsent
-                         (IDG_DRUG, drug, rset.getString("reference")));
+                        (KeywordFactory.registerIfAbsent(IDG_DRUG, drug, ref));
+                }
+                
+                if (source != null) {
+                    Keyword ds = datasources.get(source);
+                    if (ds == null) {
+                        ds = KeywordFactory.registerIfAbsent
+                            (SOURCE, source, source.equalsIgnoreCase
+                             (ChEMBL) ? "https://www.ebi.ac.uk/chembl"
+                             : null);
+                        datasources.put(source, ds);
+                    }
+                    ligand.addIfAbsent((Value)ds);
+                    
+                    // add as property
+                    Keyword kw = KeywordFactory.registerIfAbsent
+                        (LIGAND_SOURCE, source, null);
+                    kw.href = ref;
+                    ligand.addIfAbsent((Value)kw);
+                    Logger.debug(ligand.getName()+" drug source: "+source);
                 }
 
                 ligand.addIfAbsent((Value)KeywordFactory.registerIfAbsent
@@ -1693,9 +1693,8 @@ public class TcrdRegistry extends Controller implements Commons {
 
                 String action = rset.getString("action_type");
                 if (action != null) {
-                    String source = rset.getString("source");
                     Keyword kw = new Keyword (PHARMALOGICAL_ACTION, action);
-                    kw.href = rset.getString("reference");
+                    kw.href = ref;
                     kw.save();
                     
                     tref.addIfAbsent((Value)kw);
