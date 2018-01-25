@@ -82,7 +82,35 @@
                                             @if(source.href != null) {
                                                 <td><a href="@source.href">@source.name</a></td>
                                             } else {
-                                                <td>@source.name</td>
+						@source.name match {
+						   case "DrugCentral" | "DrugCentral Indication" => {
+				                    <td><a href="http://drugcentral.org">@source.name</a></td>
+				                   }
+						    case "EggNOG" => {
+						    <td><a href="http://eggnogdb.embl.de">@source.name</a></td>
+						    }
+						    case "DRUG LABEL" => {
+						    <td><a href="https://dailymed.nlm.nih.gov/dailymed/">@source.name</a></td>
+						    }
+						    case "Inparanoid" => {
+						    <td><a href="http://inparanoid.sbc.su.se/">@source.name</a></td>
+						    }
+						    case "KEGG DRUG" => {
+						    <td><a href="http://www.genome.jp/kegg/drug/">@source.name</a></td>
+						    }
+						    case "Monarch" => {
+						    <td><a href="https://monarchinitiative.org/">@source.name</a></td>
+						    }
+						    case "OMA" => {
+						    <td><a href="https://omabrowser.org">@source.name</a></td>
+						    }
+						    case "UniProt Disease" => {
+						    <td><a href="http://www.uniprot.org/diseases/">@source.name</a></td>
+						    }
+				                   case _ => {
+                                                    <td>@source.name</td>
+						   }
+						}
                                             }
                                         <td><a href='@{
                                             ix.idg.controllers.routes.IDGApp.targets() + "?facet=" + URLEncoder.encode(Commons.SOURCE, "utf8") + "/" + URLEncoder.encode(source.name, "utf8")

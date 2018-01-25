@@ -67,6 +67,7 @@ import ix.core.controllers.EntityFactory;
 import ix.core.controllers.PayloadFactory;
 import ix.utils.Util;
 import ix.utils.Global;
+
 import chemaxon.formats.MolImporter;
 import chemaxon.struc.Molecule;
 import chemaxon.struc.MolAtom;
@@ -102,10 +103,8 @@ import static ix.core.search.TextIndexer.TermVectors;
  */
 public class App extends Authentication {
     private static final String KEY_DISPLAY_CD = "DISPLAY_CD";
-
-        private static final String DISPLAY_CD_VALUE_RELATIVE = "RELATIVE";
-
-        static final String APP_CACHE = App.class.getName();
+    private static final String DISPLAY_CD_VALUE_RELATIVE = "RELATIVE";
+    static final String APP_CACHE = App.class.getName();
 
     private static AssetsBuilder delegate = new AssetsBuilder();
     public static Action<AnyContent> asset(String path, String file) {
@@ -124,20 +123,6 @@ public class App extends Authentication {
         .configuration().getInt("ix.text.facet.dim", 100);
     public static final int MAX_SEARCH_RESULTS = 1000;
 
-    public static final TextIndexer _textIndexer = 
-        Play.application().plugin(TextIndexerPlugin.class).getIndexer();
-    public static final StructureIndexer _strucIndexer =
-        Play.application().plugin(StructureIndexerPlugin.class).getIndexer();
-    public static final SequenceIndexer _seqIndexer =
-        Play.application().plugin(SequenceIndexerPlugin.class).getIndexer();
-    public static final PayloadPlugin _payloader =
-        Play.application().plugin(PayloadPlugin.class);
-        
-    public static final IxContext _ix =
-        Play.application().plugin(IxContext.class);
-
-    public static final PersistenceQueue _pq =
-        Play.application().plugin(PersistenceQueue.class);
 
     /**
      * interface for rendering a result page
@@ -1143,40 +1128,6 @@ public class App extends Authentication {
         return result;
     }
 
-    public static Result getEtag (String key, Callable<Result> callable)
-        throws Exception {
-        String ifNoneMatch = request().getHeader("If-None-Match");
-        if (ifNoneMatch != null
-            && ifNoneMatch.equals(key) && IxCache.contains(key))
-            return status (304);
-
-        response().setHeader(ETAG, key);
-        return getOrElse_ (key, callable);
-    }
-    
-    public static <T> T getOrElse (String key, Callable<T> callable)
-        throws Exception {
-        return getOrElse (_textIndexer.lastModified(), key, callable);
-    }
-
-    public static <T> T getOrElse_ (String key, Callable<T> callable)
-        throws Exception {
-        String refresh = request().getQueryString("refresh");
-        if (refresh != null
-            && ("true".equalsIgnoreCase(refresh)
-                || "yes".equalsIgnoreCase(refresh)
-                || "y".equalsIgnoreCase(refresh))) {
-            IxCache.remove(key);
-        }
-        
-        return getOrElse (_textIndexer.lastModified(), key, callable);
-    }
-    
-    public static <T> T getOrElse (long modified,
-                                   String key, Callable<T> callable)
-        throws Exception {
-        return IxCache.getOrElse(modified, key, callable);
-    }
 
     public static Result marvin () {
         response().setHeader("X-Frame-Options", "SAMEORIGIN");
@@ -1726,49 +1677,6 @@ public class App extends Authentication {
         }
     }
 
-    static public class CachableContent implements Content, Serializable {
-        // change this value when the class evolve so as to invalidate
-        // any cached instance
-        static final long serialVersionUID = 0x2l;
-        final String type;
-        final String body;
-        final String sha1;
-        
-        CachableContent (play.twirl.api.Content c) {
-            type = c.contentType();
-            body = c.body();
-            sha1 = Util.sha1(body);
-        }
-
-        public String contentType () { return type; }
-        public String body () { return body; }
-        public String etag () { return sha1; }
-        public Result ok () {
-            String ifNoneMatch = request().getHeader("If-None-Match");
-            if (ifNoneMatch != null
-                && (ifNoneMatch.equals(sha1) || "*".equals(ifNoneMatch)))
-                return Results.status(304);
-
-            response().setHeader(ETAG, sha1);
-            return Results.ok(this);
-        }
-
-        static public Object wrapIfContent (Object obj) {
-            if (obj instanceof play.twirl.api.Content) {
-                obj = new CachableContent ((play.twirl.api.Content)obj);
-            }
-            return obj;
-        }
-        
-        static public CachableContent wrap (play.twirl.api.Content c) {
-            return new CachableContent (c);
-        }
-
-        static public CachableContent wrap (JsonNode json) {
-            return new CachableContent
-                (new play.twirl.api.JavaScript(json.toString()));
-        }
-    }
     
     static class SearchResultHandler extends UntypedActor {
         @Override

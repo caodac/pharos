@@ -2703,15 +2703,8 @@ public class IDGApp extends App implements Commons {
         List<Target> targets = getOrElse
             (key, new Callable<List<Target>> () {
                     public List<Target> call () throws Exception {
-                        List<Target> targets = new ArrayList<Target>();
-                        for (XRef ref : d.links) {
-                            if (Target.class.isAssignableFrom
-                                (Class.forName(ref.kind))) {
-                                Target t = (Target) ref.deRef();
-                                targets.add(t);
-                            }
-                        }
-                        return targets;
+                        //return DiseaseFactory.getTargets(d.id);
+                        return new ArrayList<>();
                     }
                 });
 

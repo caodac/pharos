@@ -58,12 +58,30 @@
 
         <script type="application/javascript">
         $(document).ready(function() {
-        $('#diseaseTable').dataTable({
-            "dom": "tr",
-            "paging":   false,
-            "lengthMeu": [-1],
-            "ordering": true
-        });
+           $('#diseaseTable').dataTable({
+              dom: "pit",
+              ordering: true,
+	      ajax: {
+	        url: '@{ix.core.controllers.v1.routes.RouteFactory.search("targets", null) + "?facet=IDG Disease/"+d.name+"&top=5000"}',
+		dataSrc: 'content'
+ 	      },
+	      rowId: 'id',
+	      columnDefs: [{
+		 targets: 0,
+		 data: 'name'
+		 },{
+	         targets: 1,
+		 data: 'idgTDL'
+		 },{
+	    	 targets: 2,
+		 data: 'idgFamily'
+	    	 }],
+	      columns: [
+	         { data: 'name' },
+		 { data: 'idgTDL' },
+		 { data: 'idgFamily' }
+	      ]
+           });
         });
         </script>
     </head>
@@ -105,7 +123,7 @@
           <div role="tabpanel">
             <ul class="nav nav-tabs" role="tablist">
                         <li role="presentation" class="active">
-                          <a href="#targets" aria-controls="targets" role="tab" data-toggle="tab">Targets (@targets.length)</a>
+                          <a href="#targets" aria-controls="targets" role="tab" data-toggle="tab">Targets</a>
                         </li>
                         <li role="presentation" >
                           <a href="#molecules" aria-controls="molecules" role="tab" data-toggle="tab">Molecules (@ligands.length)</a>
@@ -128,11 +146,13 @@
                                   <th>Target Family</th>
                               </tr>
                           </thead>
+@**
                           <tbody>
                           @for(t <- targets) {
                               @tabrow(t)
                           }
                           </tbody>
+**@
                       </table>
                   </div>
               <div role="tabpanel" class="tab-pane" id="molecules">

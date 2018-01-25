@@ -55,7 +55,7 @@ import ix.core.adapters.BeanInterceptor;
 import ix.utils.Util;
 import ix.utils.Global;
 
-public class EntityFactory extends Controller {
+public class EntityFactory extends IxController {
     static final SecureRandom rand = new SecureRandom ();
 
     static final ExecutorService _threadPool = 
@@ -63,9 +63,6 @@ public class EntityFactory extends Controller {
 
     static final Model.Finder<Long, Principal> _principalFinder = 
         new Model.Finder(Long.class, Principal.class);
-
-    static final TextIndexer _textIndexer =
-        Play.application().plugin(TextIndexerPlugin.class).getIndexer();
 
     static protected class Reindexer<K,T> implements BeanInterceptor {
         static final ReentrantLock lock = new ReentrantLock ();
@@ -329,14 +326,37 @@ public class EntityFactory extends Controller {
         }
     }
 
-    protected static <K,T> Result page (int top, int skip, String filter,
+    protected static <K,T> Result page (final int top, final int skip, 
+                                        final String filter,
                                         final Model.Finder<K, T> finder) {
+        final String key = Util.sha1(request());
+        try {
+            CachableContent content = getOrElse 
+                (key, new Callable<CachableContent> () {
+                    public CachableContent call () throws Exception {
+                        Logger.debug("** page: cache created "+key+" **");
+                        return pageContent (top, skip, filter, finder);
+                    }
+                });
+            return content.ok();
+        }
+        catch (Exception ex) {
+            return internalServerError ("Unable to page: "
+                                        +Global.getHost()+request().uri());
+        }
+    }
 
+    protected static <K,T> CachableContent pageContent
+        (int top, int skip, String filter, final Model.Finder<K, T> finder) {
+        return new CachableContent (pageJson (top, skip, filter, finder));
+    }
+
+    protected static <K,T> JsonNode pageJson 
+        (int top, int skip, String filter, final Model.Finder<K, T> finder) {
         //if (select != null) finder.select(select);
         final FetchOptions options = new FetchOptions (top, skip, filter);
         List<T> results = filter (options, finder);
-        
-        
+
         final ETag etag = new ETag ();
         etag.top = options.top;
         etag.skip = options.skip;
@@ -349,6 +369,8 @@ public class EntityFactory extends Controller {
         etag.sha1 = Util.sha1(request(), "filter");
         etag.method = request().method();
         etag.filter = options.filter;
+
+        Logger.debug("** pageJson: "+etag.uri);
 
         if (options.filter == null)
             etag.total = finder.findRowCount();
@@ -407,7 +429,7 @@ public class EntityFactory extends Controller {
         ObjectNode obj = (ObjectNode)mapper.valueToTree(etag);
         obj.put("content", mapper.valueToTree(results));
 
-        return ok (obj);
+        return obj;
     }
 
     static String canonicalizeQuery (Http.Request req) {
@@ -548,62 +570,103 @@ public class EntityFactory extends Controller {
 
     protected static <K,T> Result get (K id, String expand, 
                                        Model.Finder<K, T> finder) {
-        ObjectMapper mapper = getEntityMapper ();
-        if (expand != null && !"".equals(expand)) {
-            Query<T> query = finder.query();
-            Logger.debug(request().uri()+": expand="+expand);
+        final String key = Util.sha1(request ());
+        try {
+            CachableContent content = getOrElse
+                (key, new Callable<CachableContent> () {
+                    public CachableContent call () throws Exception {
+                        ObjectMapper mapper = getEntityMapper ();
+                        JsonNode data = null;
+                        if (expand != null && !"".equals(expand)) {
+                            Query<T> query = finder.query();
+                            Logger.debug(request().uri()+": expand="+expand);
+                            
+                            StringBuilder path = new StringBuilder ();
+                            for (String p : expand.split("\\.")) {
+                                if (path.length() > 0)
+                                    path.append('.');
+                                path.append(p);
+                                Logger.debug("  -> fetch "+path);
+                                query = query.fetch(path.toString());
+                            }
+                            
+                            T inst = query.setId(id).findUnique();
+                            if (inst != null) {
+                                data = mapper.valueToTree(inst);
+                            }
+                        }
+                        else {
+                            T inst = finder.byId(id);
+                            if (inst != null) {
+                                data = mapper.valueToTree(inst);
+                            }
+                        }
+                        
+                        return data != null ? new CachableContent (data) : null;
+                    }
+                });
 
-            StringBuilder path = new StringBuilder ();
-            for (String p : expand.split("\\.")) {
-                if (path.length() > 0)
-                    path.append('.');
-                path.append(p);
-                Logger.debug("  -> fetch "+path);
-                query = query.fetch(path.toString());
-            }
-
-            T inst = query.setId(id).findUnique();
-            if (inst != null) {
-                return ok ((JsonNode)mapper.valueToTree(inst));
-            }
+            return content != null ? content.ok() 
+                : notFound ("Bad request: "+request().uri());
         }
-        else {
-            T inst = finder.byId(id);
-            if (inst != null) {
-                return ok ((JsonNode)mapper.valueToTree(inst));
-            }
+        catch (Exception ex) {
+            Logger.trace(request().uri()+": can't fetch entity", ex);
+            return internalServerError 
+                ("Unable to retrieve entity: "+request().uri());
         }
-        return notFound ("Bad request: "+request().uri());
     }
 
-    protected static <K,T> Result resolve (Expression filter, String expand,
-                                           Model.Finder<K,T> finder) {
-        ObjectMapper mapper = getEntityMapper ();
-        if (expand != null && !"".equals(expand)) {
-            Query<T> query = finder.query();
-            Logger.debug(request().uri()+": expand="+expand);
+    protected static <K,T> Result resolve (final Expression filter, 
+                                           final String expand,
+                                           final Model.Finder<K,T> finder) {
+        final String key = Util.sha1(request ());
+        try {
+            CachableContent content = getOrElse 
+                (key, new Callable<CachableContent> () {
+                    public CachableContent call () throws Exception {
+                        ObjectMapper mapper = getEntityMapper ();
+                        JsonNode data = null;
+                        Logger.debug("## Resolving..."+request().uri());
 
-            StringBuilder path = new StringBuilder ();
-            for (String p : expand.split("\\.")) {
-                if (path.length() > 0)
-                    path.append('.');
-                path.append(p);
-                Logger.debug("  -> fetch "+path);
-                query = query.fetch(path.toString());
-            }
+                        if (expand != null && !"".equals(expand)) {
+                            Query<T> query = finder.query();
+                            Logger.debug(request().uri()+": expand="+expand);
+                            
+                            StringBuilder path = new StringBuilder ();
+                            for (String p : expand.split("\\.")) {
+                                if (path.length() > 0)
+                                    path.append('.');
+                                path.append(p);
+                                Logger.debug("  -> fetch "+path);
+                                query = query.fetch(path.toString());
+                            }
+                            
+                            T inst = query.where(filter)
+                                .setMaxRows(1).findUnique();
+                            if (inst != null) {
+                                data = mapper.valueToTree(inst);
+                            }
+                        }
+                        else {
+                            T inst = finder.where(filter)
+                                .setMaxRows(1).findUnique();
+                            if (inst != null) {
+                                data = mapper.valueToTree(inst);
+                            }
+                        }
 
-            T inst = query.where(filter).setMaxRows(1).findUnique();
-            if (inst != null) {
-                return ok ((JsonNode)mapper.valueToTree(inst));
-            }
+                        return data != null ? new CachableContent (data) : null;
+                    }
+                });
+        
+            return content != null ? content.ok() 
+                : notFound ("Bad request: "+request().uri());
         }
-        else {
-            T inst = finder.where(filter).setMaxRows(1).findUnique();
-            if (inst != null) {
-                return ok ((JsonNode)mapper.valueToTree(inst));
-            }
+        catch (Exception ex) {
+            Logger.trace(request().uri()+": can't fetch entity!", ex);
+            return internalServerError
+                ("Unable to fetch entity "+request().uri());
         }
-        return notFound ("Bad request: "+request().uri());      
     }
 
     protected static <K,T> Result count (Model.Finder<K, T> finder) {

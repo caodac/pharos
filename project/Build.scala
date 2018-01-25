@@ -66,7 +66,7 @@ object ApplicationBuild extends Build {
       ,"org.freehep" % "freehep-graphicsio-svg" % "2.4"
       ,"org.freehep" % "freehep-graphics2d" % "2.4"
       //,"ws.securesocial" %% "securesocial" % "master-SNAPSHOT"
-      ,"com.sleepycat" % "je" % "5.0.73"
+//      ,"com.sleepycat" % "je" % "5.0.73"
       ,"org.webjars" % "store.js" % "1.3.17-1"
       ,"org.webjars" % "swagger-ui" % "3.0.10"
   )

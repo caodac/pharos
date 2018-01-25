@@ -2,10 +2,15 @@ package ix.idg.controllers;
 
 import ix.core.NamedResource;
 import ix.idg.models.Disease;
+import ix.idg.models.Target;
 import ix.core.controllers.EntityFactory;
 import com.avaje.ebean.Expr;
+import com.avaje.ebean.RawSql;
+import com.avaje.ebean.RawSqlBuilder;
+import com.avaje.ebean.Query;
 import play.db.ebean.Model;
 import play.mvc.Result;
+import play.Logger;
 
 import java.util.List;
 
@@ -16,6 +21,23 @@ public class DiseaseFactory extends EntityFactory {
 
     public static Disease getDisease (Long id) {
         return getEntity (id, finder);
+    }
+
+    // return targets for a given disease
+    public static List<Target> getTargets (Long id) {
+        RawSql sql = RawSqlBuilder.parse
+            ("select d.id,d.name,d.description,d.idg_family,d.idg_tdl "
+             +" from ix_core_xref a,ix_idg_disease b, ix_idg_disease_link c,"
+             +"ix_idg_target d where ix_idg_disease_id=b.id "
+             +"and ix_core_xref_id = a.id and a.kind = 'ix.idg.models.Target' "
+             +"and d.id = a.refid and b.id="+id)
+            .columnMapping("d.id", "id")
+            .columnMapping("d.idg_tdl", "idgTDL")
+            .columnMapping("d.idg_family", "idgFamily")
+            .columnMapping("d.name", "name")
+            .columnMapping("d.description", "description")
+            .create();
+        return TargetFactory.finder.setRawSql(sql).findList();
     }
 
     public static List<Disease> getDiseases(int top, int skip, String filter) {

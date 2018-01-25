@@ -18,13 +18,14 @@ import ix.core.models.Principal;
 import ix.core.models.Session;
 import ix.ncats.models.Employee;
 import ix.ncats.controllers.NIHLdapConnector;
+import ix.core.controllers.IxController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * A simple controller to authenticate via ldap
  */
-public class Authentication extends Controller {
+public class Authentication extends IxController {
     public static final String SESSION = "ix.session";
     public static final String APP = Play.application()
         .configuration().getString("ix.app", "MyApp");

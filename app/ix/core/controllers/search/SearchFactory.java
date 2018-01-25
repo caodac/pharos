@@ -9,6 +9,7 @@ import play.*;
 import play.db.ebean.*;
 import play.data.*;
 import play.mvc.*;
+import play.libs.Json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,9 +36,6 @@ public class SearchFactory extends EntityFactory {
     static final Model.Finder<Long, ETag> etagDb = 
         new Model.Finder(Long.class, ETag.class);
 
-    static TextIndexer _indexer =
-        Play.application().plugin(TextIndexerPlugin.class).getIndexer();
-
     public static SearchOptions parseSearchOptions
         (SearchOptions options, Map<String, String[]> queryParams) {
         if (options == null) {
@@ -51,7 +49,7 @@ public class SearchFactory extends EntityFactory {
         search (Class kind, String q, int top, int skip, int fdim,
                 Map<String, String[]> queryParams,
                 SearchOptions.FacetRange... rangeFacets) throws IOException {
-        return search (_indexer, kind, null, q, top,
+        return search (_textIndexer, kind, null, q, top,
                        skip, fdim, queryParams, rangeFacets);
     }
 
@@ -59,7 +57,7 @@ public class SearchFactory extends EntityFactory {
         search (Collection subset, String q, int fdim,
                 Map<String, String[]> queryParams,
                 SearchOptions.FacetRange... rangeFacets) throws IOException {
-        return search (_indexer, null, subset,
+        return search (_textIndexer, null, subset,
                        q, subset != null ? subset.size() : 0,
                        0, fdim, queryParams, rangeFacets);
     }
@@ -67,7 +65,7 @@ public class SearchFactory extends EntityFactory {
     public static SearchResult search (int top, int skip, int fdim,
                                        Map<String, String[]> queryParams)
         throws IOException {
-        return search (_indexer, null, null, null,
+        return search (_textIndexer, null, null, null,
                        top, skip, fdim, queryParams);
     }
 
@@ -75,7 +73,7 @@ public class SearchFactory extends EntityFactory {
         search (String q, int top, int skip, int fdim,
                 Map<String, String[]> queryParams,
                 SearchOptions.FacetRange... rangeFacets) throws IOException {
-        return search (_indexer, null, null, q, top,
+        return search (_textIndexer, null, null, q, top,
                        skip, fdim, queryParams, rangeFacets);
     }
     
@@ -83,7 +81,7 @@ public class SearchFactory extends EntityFactory {
         search (Collection subset, String q, int top, int skip, int fdim,
                 Map<String, String[]> queryParams,
                 SearchOptions.FacetRange... rangeFacets) throws IOException {
-        return search (_indexer, null, subset, q, top,
+        return search (_textIndexer, null, subset, q, top,
                        skip, fdim, queryParams, rangeFacets);
     }
     
@@ -151,77 +149,93 @@ public class SearchFactory extends EntityFactory {
     public static Result search (String q, int top, int skip, int fdim) {
         return search (null, q, top, skip, fdim);
     }
-        
-    public static Result search (Class kind, String q, 
-                                 int top, int skip, int fdim) {
+
+    public static Result search (final Class kind, final String q, 
+                                 final int top, final int skip, final int fdim) {
         if (Global.DEBUG(1)) {
             Logger.debug("SearchFactory.search: kind="
                          +(kind != null ? kind.getName():"")+" q="
                          +q+" top="+top+" skip="+skip+" fdim="+fdim);
         }
 
+        final String key = SearchFactory.class.getName()+"/"
+            +(kind!=null?kind.getName():"")+"/q="+q+"/top="+top+"/skip="+skip
+            +"/fdim="+fdim;
         try {
-            SearchResult result = search
-                (kind, q, top, skip, fdim, request().queryString());
-            SearchOptions options = result.getOptions();
-            
-            ObjectMapper mapper = getEntityMapper ();
-            ArrayNode nodes = mapper.createArrayNode();
-            int added=0;
-            for (Object obj : result.getMatches()) {
-                if (obj != null) {
-                    try {
-                        ObjectNode node = (ObjectNode)mapper.valueToTree(obj);
-                        if (kind == null)
-                            node.put("kind", obj.getClass().getName());
-                        
-                        //if(added>=skip)
-                                nodes.add(node);
-                        added++;
-                        //Logger.debug("Using search function");
-                    }
-                    catch (Exception ex) {
-                        Logger.trace("Unable to serialize object to Json", ex);
-                    }
+            CachableContent content = 
+                getOrElse_ (Util.sha1(key), new Callable<CachableContent> () {
+                        public CachableContent call () throws Exception {
+                            return new CachableContent
+                                 (_search (kind, q, top, skip, fdim));
+                        }
+                    });
+            return content.ok();
+        }
+        catch (Exception ex) {
+            Logger.trace("Can't perform search with parameters: "+key, ex);
+            return internalServerError ("Unable to perform search!");
+        }
+    }
+        
+    public static JsonNode _search 
+        (Class kind, String q, int top, int skip, int fdim) throws Exception {
+        SearchResult result = search
+            (kind, q, top, skip, fdim, request().queryString());
+        SearchOptions options = result.getOptions();
+        
+        ObjectMapper mapper = getEntityMapper ();
+        ArrayNode nodes = mapper.createArrayNode();
+        int added=0;
+        for (Object obj : result.getMatches()) {
+            if (obj != null) {
+                try {
+                    ObjectNode node = (ObjectNode)mapper.valueToTree(obj);
+                    if (kind == null)
+                        node.put("kind", obj.getClass().getName());
+                    
+                    //if(added>=skip)
+                    nodes.add(node);
+                    added++;
+                    //Logger.debug("Using search function");
+                }
+                catch (Exception ex) {
+                    Logger.trace("Unable to serialize object to Json", ex);
                 }
             }
-
-            /*
-             * TODO: setup etag right here!
-             */
-            ETag etag = new ETag ();
-            etag.top = top;
-            etag.skip = skip;
-            etag.count = nodes.size();
-            etag.total = result.count();
-            etag.uri = Global.getHost()+request().uri();
-            etag.path = request().path();
-            etag.sha1 = Util.sha1(request(), "q", "facet");
-            etag.query = q;
-            etag.method = request().method();
-            etag.filter = options.filter;
-            etag.save();
-
-            ObjectNode obj = (ObjectNode)mapper.valueToTree(etag);
-            obj.put(options.sideway ? "sideway" : "drilldown",
-                    mapper.valueToTree(options.facets));
-            obj.put("facets", mapper.valueToTree(result.getFacets()));
-            obj.put("content", nodes);
-
-            return ok (obj);
         }
-        catch (IOException ex) {
-            return badRequest (ex.getMessage());
-        }
+        
+        /*
+         * TODO: setup etag right here!
+         */
+        ETag etag = new ETag ();
+        etag.top = top;
+        etag.skip = skip;
+        etag.count = nodes.size();
+        etag.total = result.count();
+        etag.uri = Global.getHost()+request().uri();
+        etag.path = request().path();
+        etag.sha1 = Util.sha1(request(), "q", "facet");
+        etag.query = q;
+        etag.method = request().method();
+        etag.filter = options.filter;
+        etag.save();
+        
+        ObjectNode obj = (ObjectNode)mapper.valueToTree(etag);
+        obj.put(options.sideway ? "sideway" : "drilldown",
+                mapper.valueToTree(options.facets));
+        obj.put("facets", mapper.valueToTree(result.getFacets()));
+        obj.put("content", nodes);
+        
+        return obj;
     }
 
     public static Result facetFields () {
-        return ok (_indexer.getFacetsConfig());
+        return ok (_textIndexer.getFacetsConfig());
     }
 
     public static Result indexFields () {
         try {
-            return ok (_indexer.getIndexFields());
+            return ok (_textIndexer.getIndexFields());
         }
         catch (Exception ex) {
             return internalServerError (ex.getMessage());
@@ -237,11 +251,9 @@ public class SearchFactory extends EntityFactory {
         (final Class kind, final String field) {
         try {
             final String key = getTermVectorCacheKey (kind, field);
-            return IxCache.getOrElse
-                (_indexer.lastModified(), key, new Callable<TermVectors> () {
-                    public TermVectors call ()
-                        throws Exception {
-                        return _indexer.getTermVectors(kind, field);
+            return getOrElse (key, new Callable<TermVectors> () {
+                    public TermVectors call () throws Exception {
+                        return _textIndexer.getTermVectors(kind, field);
                     }
                 });
         }
@@ -283,27 +295,24 @@ public class SearchFactory extends EntityFactory {
         try {
             final String key = getConditionalTermVectorCacheKey
                 (kind, field, conditional);
-            return IxCache.getOrElse
-                (_indexer.lastModified(),
-                 key, new Callable<Map<String, TermVectors>>() {
-                         public Map<String, TermVectors> call ()
-                             throws Exception {
-                             TermVectors tv = getTermVectors (kind, conditional);
-                             Map<String, TermVectors> result = null;
-                             if (tv != null) {
-                                result = new TreeMap<String, TermVectors>();
-                                Map<String, String> cond =
-                                    new HashMap<String, String>();
-                                for (String term : tv.getTerms().keySet()) {
-                                    cond.put(conditional, term);
-                                    TermVectors ctv = getConditionalTermVectors
-                                        (kind, field, cond);
-                                    result.put(term, ctv);
-                                }
-                             }
-                             return result;
-                         }
-                     });
+            return getOrElse (key, new Callable<Map<String, TermVectors>>() {
+                    public Map<String, TermVectors> call () throws Exception {
+                        TermVectors tv = getTermVectors (kind, conditional);
+                        Map<String, TermVectors> result = null;
+                        if (tv != null) {
+                            result = new TreeMap<String, TermVectors>();
+                            Map<String, String> cond =
+                                new HashMap<String, String>();
+                            for (String term : tv.getTerms().keySet()) {
+                                cond.put(conditional, term);
+                                TermVectors ctv = getConditionalTermVectors
+                                    (kind, field, cond);
+                                result.put(term, ctv);
+                            }
+                        }
+                        return result;
+                    }
+                });
         }
         catch (Exception ex) {
             Logger.error("Can't generate conditional termVectors("
@@ -318,6 +327,7 @@ public class SearchFactory extends EntityFactory {
         if (conditionals == null || conditionals.isEmpty())
             throw new IllegalArgumentException
                 ("Can't get conditional term vectors with empty constraints!");
+
         try {
             List<String> params = new ArrayList<String>();
             for (Map.Entry<String, String> me : conditionals.entrySet())
@@ -328,10 +338,10 @@ public class SearchFactory extends EntityFactory {
                 +"/termVectors/"+kind.getName()+"/"+field+"/"
                 +Util.sha1(params.toArray(new String[0]));
             return IxCache.getOrElse
-                (_indexer.lastModified(), key, new Callable<TermVectors> () {
+                (_textIndexer.lastModified(), key, new Callable<TermVectors> () {
                         public TermVectors call ()
                             throws Exception {
-                            return _indexer.getTermVectors
+                            return _textIndexer.getTermVectors
                                 (kind, field, conditionals);
                         }
                     });
@@ -345,9 +355,6 @@ public class SearchFactory extends EntityFactory {
 
     public static Result termVectors (Class kind, String field) {
         String[] facets = request().queryString().get("facet");
-
-        EntityMapper mapper = new EntityMapper ();
-        
         Object result = null;
         if (facets != null && facets.length > 0) {
             Map<String, String> filters = new TreeMap<String, String>();
@@ -364,8 +371,7 @@ public class SearchFactory extends EntityFactory {
             }
 
             if (conditional != null) {
-                result = getConditionalTermVectors
-                    (kind, field, conditional);
+                result = getConditionalTermVectors(kind, field, conditional);
             }
             else if (!filters.isEmpty()) {
                 result = getConditionalTermVectors (kind, field, filters);
@@ -378,7 +384,7 @@ public class SearchFactory extends EntityFactory {
             result = getTermVectors (kind, field);
         }
         
-        return result != null ? ok ((JsonNode)mapper.valueToTree(result))
+        return result != null ? ok ((JsonNode)Json.toJson(result))
             : notFound ("Can't find termVectors for "+kind+"/"+field);
     }
     
@@ -388,19 +394,18 @@ public class SearchFactory extends EntityFactory {
 
     public static Result suggestField (String field, String q, int max) {
         try {
-            ObjectMapper mapper = new ObjectMapper ();
             if (field != null) {
                 List<TextIndexer.SuggestResult> results = 
-                    _indexer.suggest(field, q, max);
-                return ok ((JsonNode)mapper.valueToTree(results));
+                    _textIndexer.suggest(field, q, max);
+                return ok ((JsonNode)Json.toJson(results));
             }
 
-            ObjectNode node = mapper.createObjectNode();
-            for (String f : _indexer.getSuggestFields()) {
+            ObjectNode node = Json.newObject();
+            for (String f : _textIndexer.getSuggestFields()) {
                 List<TextIndexer.SuggestResult> results = 
-                    _indexer.suggest(f, q, max);
+                    _textIndexer.suggest(f, q, max);
                 if (!results.isEmpty())
-                    node.put(f, mapper.valueToTree(results));
+                    node.put(f, Json.toJson(results));
             }
             Logger.info(node.toString());
             return ok (node);
@@ -411,8 +416,7 @@ public class SearchFactory extends EntityFactory {
     }
 
     public static Result suggestFields () {
-        ObjectMapper mapper = new ObjectMapper ();
-        return ok ((JsonNode)mapper.valueToTree(_indexer.getSuggestFields()));
+        return ok ((JsonNode)Json.toJson(_textIndexer.getSuggestFields()));
     }
 
     public static List<Facet> getFacets (final Class kind) {
@@ -423,14 +427,13 @@ public class SearchFactory extends EntityFactory {
         final String sha1 = Util.sha1(SearchFactory.class.getName()
                                       +"/facets/"+kind.getName()+"/"+fdim);
         try {
-            return IxCache.getOrElse
-                (_indexer.lastModified(), sha1, new Callable<List<Facet>>() {
-                        public List<Facet> call () throws Exception {
-                            SearchResult result = search
-                                (kind, null, 0, 0, fdim, null);
-                            return result.getFacets();
-                        }
-                    });
+            return getOrElse (sha1, new Callable<List<Facet>>() {
+                    public List<Facet> call () throws Exception {
+                        SearchResult result = search
+                            (kind, null, 0, 0, fdim, null);
+                        return result.getFacets();
+                    }
+                });
         }
         catch (Exception ex) {
             Logger.trace("Can't retrieve facets for "+kind, ex);

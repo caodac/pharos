@@ -1,6 +1,7 @@
 package ix.core.controllers.v1;
 
 import ix.core.NamedResource;
+import ix.core.controllers.IxController;
 import ix.core.controllers.EntityFactory;
 import ix.core.controllers.search.SearchFactory;
 import ix.core.models.Acl;
@@ -24,6 +25,7 @@ import play.Logger;
 import play.db.ebean.Model;
 import play.mvc.Controller;
 import play.mvc.Result;
+import play.libs.Json;
 
 import com.avaje.ebean.Expr;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,7 +33,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-public class RouteFactory extends Controller {
+public class RouteFactory extends IxController {
     static final public Model.Finder<Long, Namespace> resFinder = 
         new Model.Finder(Long.class, Namespace.class);
     static final public Model.Finder<Long, Acl> aclFinder = 
@@ -116,8 +118,7 @@ public class RouteFactory extends Controller {
             return forbidden ("You don't have permission to access resource!");
         }
                   
-        ObjectMapper mapper = new ObjectMapper ();
-        return ok((JsonNode)mapper.valueToTree(res));
+        return ok ((JsonNode)Json.toJson(res));
     }
 
     static Method getMethod (String context, 
@@ -154,8 +155,8 @@ public class RouteFactory extends Controller {
                                  int top, int skip, int fdim) {
         Class factory = _registry.get(context);
         if (factory != null) {
-            NamedResource res = 
-                (NamedResource)factory.getAnnotation(NamedResource.class);
+            NamedResource res = (NamedResource)factory.getAnnotation
+                (NamedResource.class);
             return SearchFactory.search(res.type(), q, top, skip, fdim);
         }
         return badRequest ("Unknown Context: \""+context+"\"");
