@@ -124,7 +124,7 @@
     "/targets({id})": {
       "get": {
         "tags": [
-          "browse","target"
+          "target"
         ],
         "summary": "Get a target by id",
         "description": "Returns a specific target JSON. Not fully expanded, but contains a link for full view",
@@ -151,7 +151,7 @@
     "/targets/{id}": {
       "get": {
         "tags": [
-          "browse","target"
+          "target"
         ],
         "summary": "Get a target by id - alternative",
         "description": "Alternative syntax for above. NOT PREFERRED",
@@ -178,7 +178,7 @@
     "/targets({id})?view=full": {
       "get": {
         "tags": [
-          "browse","target"
+          "target"
         ],
         "summary": "Get a target by id",
         "description": "Returns a specific target JSON, fully expanded",
@@ -205,7 +205,7 @@
     "/targets({id})/synonyms": {
       "get": {
         "tags": [
-          "browse","target"
+          "target"
         ],
         "summary": "Get synonym list for a target",
         "description": "Gets a JSONArray of the synonyms for a target. Consists of a label, term and/or a url",
@@ -229,10 +229,64 @@
         }
       }
     },
+    "/targets({id})/synonyms(label=UniProt%20Gene)": {
+      "get": {
+        "tags": [
+          "target"
+        ],
+        "summary": "Get UniProt gene name list for a target",
+        "description": "Gets a JSONArray of UniProt gene names for a target. Consists of a label, term and/or a url",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "type": "string",
+            "in": "path",
+            "required": true,
+            "default": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/targets({id})/synonyms(label=PDB%20ID)": {
+      "get": {
+        "tags": [
+          "target"
+        ],
+        "summary": "Get PDB ID list for a target",
+        "description": "Gets a JSONArray of PDB IDs for a target. Consists of an id, label, term and/or a url",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "type": "string",
+            "in": "path",
+            "required": true,
+            "default": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
     "/targets({id})/publications": {
       "get": {
         "tags": [
-          "browse","target"
+          "target"
         ],
         "summary": "Get publication list for a target",
         "description": "Gets a JSONArray of the publications for a target. Primarily a PMID, year, title and abstract",
@@ -259,10 +313,10 @@
     "/targets({id})/properties": {
       "get": {
         "tags": [
-          "browse", "target"
+           "target"
         ],
         "summary": "Get property list for a target",
-        "description": "Gets a JSONArray of the properties for a target.  Consists of a label, term and/or a url",
+        "description": "Gets a JSONArray of the properties for a target.  Consists of an id, label, term and/or a url",
         "parameters": [
           {
             "name": "id",
@@ -283,10 +337,179 @@
         }
       }
     },
+    "/targets({id})/properties(label=UniProt%20Sequence)": {
+      "get": {
+        "tags": [
+           "target"
+        ],
+        "summary": "Get UniProt Sequence of a target",
+        "description": "Gets a JSONObject of the UniProt Sequence of a target.  Consists of a label, text(sequence) and id",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "default": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/targets({id})/properties(label=PANTHER%20Protein%20Class*)": {
+      "get": {
+        "tags": [
+           "target"
+        ],
+        "summary": "Get PANTHER Protein Class terms of a target",
+        "description": "Gets a JSONObject of the PANTHER Protein Class terms of a target.  Consists of an id, label, term and rul",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "default": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/targets({id})/properties(label=GO%20Component*)": {
+      "get": {
+        "tags": [
+           "target"
+        ],
+        "summary": "Get GO Component terms for a target",
+        "description": "Gets a JSONObject of the GO Component terms for of a target.  Consists of a id, label, term and url",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "default": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/targets({id})/properties(label=GO%20Function*)": {
+      "get": {
+        "tags": [
+           "target"
+        ],
+        "summary": "Get GO Function terms for a target",
+        "description": "Gets a JSONObject of the GO Function terms for of a target.  Consists of a id, label, term and url",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "default": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/targets({id})/properties(label=GO%20Process*)": {
+      "get": {
+        "tags": [
+           "target"
+        ],
+        "summary": "Get GO Process terms for a target",
+        "description": "Gets a JSONObject of the GO Process terms for of a target.  Consists of a id, label, term and url",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "default": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/targets({id})/properties(label={label})": {
+      "get": {
+        "tags": [
+           "target"
+        ],
+        "summary": "Get property data list for a target",
+        "description": "Gets a JSONArray of the expression data for a target.  Consists of a label, term and/or a url",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "default": "1"
+          },{
+            "name": "label",
+            "description": "label to filter expression data on. '*' acts as a wildcard. Try: 'UniProt Sequence' for target sequence",
+            "in": "path",
+            "type": "string",
+            "required": true,
+            "default": "*Tissue"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
     "/targets({id})/links": {
       "get": {
         "tags": [
-          "browse", "target"
+           "target"
         ],
         "summary": "Get links for a target",
         "description": "Gets a JSONArray of links for a target",
@@ -298,6 +521,141 @@
             "in": "path",
             "required": true,
             "default": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/targets({id})/links(kind=ix.idg.models.Disease)": {
+      "get": {
+        "tags": [
+           "target"
+        ],
+        "summary": "Get disease links for a target",
+        "description": "Gets a JSONArray of related disease links for a target",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "type": "string",
+            "in": "path",
+            "required": true,
+            "default": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/targets({id})/links(kind=ix.idg.models.Assay)": {
+      "get": {
+        "tags": [
+           "target"
+        ],
+        "summary": "Get Assay links for a target",
+        "description": "Gets a JSONArray of related Assay links for a target",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "type": "string",
+            "in": "path",
+            "required": true,
+            "default": "P14416"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/targets({id})/links(kind=ix.idg.models.Compartment)": {
+      "get": {
+        "tags": [
+           "target"
+        ],
+        "summary": "Get list of Compartments for a target",
+        "description": "Gets a JSONArray of  Compartments consisting of: GO Term, type and evidence, for a target",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "type": "string",
+            "in": "path",
+            "required": true,
+            "default": "1"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+    "/targets({id})/links(kind=ix.idg.models.Ligand)": {
+      "get": {
+        "tags": [
+           "target"
+        ],
+        "summary": "Get list of drugs and ligands associated with a target",
+        "description": "Gets a JSONArray of  GeneRIF links for a target",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "type": "string",
+            "in": "path",
+            "required": true,
+            "default": "P14416"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "404": {
+            "description": "Bad request"
+          }
+        }
+      }
+    },
+"/targets({id})/links(kind=ix.idg.models.Text)": {
+      "get": {
+        "tags": [
+           "target"
+        ],
+        "summary": "Get list of GeneRIF links for a target",
+        "description": "Gets a JSONArray of  GeneRIF links for a target",
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The id of the target",
+            "type": "string",
+            "in": "path",
+            "required": true,
+            "default": "P14416"
           }
         ],
         "responses": {
@@ -386,7 +744,7 @@
     "/ligands({id})": {
       "get": {
         "tags": [
-          "browse", "ligand"
+           "ligand"
         ],
         "summary": "Get a ligand by id",
         "description": "Returns a specific ligand JSON. Not fully expanded, but contains a link for full view",
@@ -413,7 +771,7 @@
     "/ligands/{id}": {
       "get": {
         "tags": [
-          "browse", "ligand"
+           "ligand"
         ],
         "summary": "Get a ligand by id - alternative",
         "description": "Alternative syntax for above. NOT PREFERRED",
@@ -440,7 +798,7 @@
     "/ligands({id})?view=full": {
       "get": {
         "tags": [
-          "browse","ligand"
+          "ligand"
         ],
         "summary": "Get a ligand by id",
         "description": "Returns a specific ligand JSON, fully expanded",
@@ -467,7 +825,7 @@
     "/ligands({id})/synonyms": {
       "get": {
         "tags": [
-          "browse","ligand"
+          "ligand"
         ],
         "summary": "Get synonym list for a ligand",
         "description": "Gets a JSONArray of the synonyms for a ligand. Consists of a label, term and/or a url",
@@ -494,7 +852,7 @@
     "/ligands({id})/properties": {
       "get": {
         "tags": [
-          "browse","ligand"
+          "ligand"
         ],
         "summary": "Get property list for a ligand",
         "description": "Gets a JSONArray of the properties for a ligand.  Consists of a label, term and/or a url",
@@ -521,7 +879,7 @@
     "/ligands({id})/links": {
       "get": {
         "tags": [
-          "browse","ligand"
+          "ligand"
         ],
         "summary": "Get synonym list for a ligand",
         "description": "Gets a JSONArray of the publications for a ligand. Primarily a PMID, year, title and abstract",
@@ -621,7 +979,7 @@
     "/diseases({id})": {
       "get": {
         "tags": [
-          "browse","disease"
+          "disease"
         ],
         "summary": "Get a disease by id",
         "description": "Returns a specific disease JSON. Not fully expanded, but contains a link for full view",
@@ -648,7 +1006,7 @@
     "/diseases/{id}": {
       "get": {
         "tags": [
-          "browse","disease"
+          "disease"
         ],
         "summary": "Get a disease by id - alternative",
         "description": "Alternative syntax for above. NOT PREFERRED",
@@ -675,7 +1033,7 @@
     "/diseases({id})?view=full": {
       "get": {
         "tags": [
-          "browse","disease"
+          "disease"
         ],
         "summary": "Get a disease by id",
         "description": "Returns a specific disease JSON, fully expanded",
@@ -702,7 +1060,7 @@
     "/diseases({id})/synonyms": {
       "get": {
         "tags": [
-          "browse","disease"
+          "disease"
         ],
         "summary": "Get synonym list for a disease",
         "description": "Gets a JSONArray of the synonyms for a disease. Consists of a label, term and/or a url",
@@ -729,7 +1087,7 @@
     "/diseases({id})/properties": {
       "get": {
         "tags": [
-          "browse","disease"
+          "disease"
         ],
         "summary": "Get property list for a disease",
         "description": "Gets a JSONArray of the properties for a disease.  Consists of a label, term and/or a url",
@@ -756,7 +1114,7 @@
     "/diseases({id})/links": {
       "get": {
         "tags": [
-          "browse","disease"
+          "disease"
         ],
         "summary": "Get synonym list for a disease",
         "description": "Gets a JSONArray of the publications for a disease. Primarily a PMID, year, title and abstract",
@@ -783,7 +1141,7 @@
     "/assays({id})": {
       "get": {
         "tags": [
-          "browse","assay"
+          "assay"
         ],
         "summary": "Get a assay by id",
         "description": "Returns a specific assay JSON. Not fully expanded, but contains a link for full view",
@@ -810,7 +1168,7 @@
     "/assays/{id}": {
       "get": {
         "tags": [
-          "browse","assay"
+          "assay"
         ],
         "summary": "Get a assay by id - alternative",
         "description": "Alternative syntax for above. NOT PREFERRED",
@@ -837,7 +1195,7 @@
     "/assays({id})?view=full": {
       "get": {
         "tags": [
-          "browse","assay"
+          "assay"
         ],
         "summary": "Get a assay by id",
         "description": "Returns a specific assay JSON, fully expanded",
@@ -864,7 +1222,7 @@
     "/assays({id})/properties": {
       "get": {
         "tags": [
-          "browse","assay"
+          "assay"
         ],
         "summary": "Get property list for a assay",
         "description": "Gets a JSONArray of the properties for a assay.  Consists of a label, term and/or a url",
@@ -891,7 +1249,7 @@
     "/assays({id})/links": {
       "get": {
         "tags": [
-          "browse", "assay"
+           "assay"
         ],
         "summary": "Get synonym list for a assay",
         "description": "Gets a JSONArray of the publications for a assay. Primarily a PMID, year, title and abstract",
@@ -918,7 +1276,7 @@
     "/structures({id})": {
       "get": {
         "tags": [
-          "browse","ligand"
+          "ligand"
         ],
         "summary": "Get a structure by id",
         "description": "Returns a specific structure JSON. Not fully expanded, but contains a link for full view",
@@ -945,7 +1303,7 @@
     "/structures/{id}": {
       "get": {
         "tags": [
-          "browse","ligand"
+          "ligand"
         ],
         "summary": "Get a structure by id - alternative",
         "description": "Alternative syntax for above. NOT PREFERRED",
@@ -972,7 +1330,7 @@
     "/structures({id})?view=full": {
       "get": {
         "tags": [
-          "browse","ligand"
+          "ligand"
         ],
         "summary": "Get a structure by id",
         "description": "Returns a specific structure JSON, fully expanded",
@@ -999,7 +1357,7 @@
     "/structures({id})/properties": {
       "get": {
         "tags": [
-          "browse","ligand"
+          "ligand"
         ],
         "summary": "Get property list for a structure",
         "description": "Gets a JSONArray of the properties for a structure.  Consists of a label, term and/or a url",
@@ -1026,7 +1384,7 @@
     "/structures({id})/links": {
       "get": {
         "tags": [
-          "browse","ligand"
+          "ligand"
         ],
         "summary": "Get links for a structure",
         "description": "Gets a JSONArray of links for a structure",
