@@ -13,7 +13,7 @@
 @import ix.core.models.XRef
 @import ix.core.models.VNum
 
-@(target: Target, diseases: List[DiseaseRelevance], breadcrumb: List[Keyword])
+@(target: Target, diseases: Map[String,List[DiseaseRelevance]], breadcrumb: List[Keyword])
 
 @facet(label: String, value: String, href: String = null, max: Int = 40) = {
   @defining(App.getTermCount(classOf[Target], label, value)) { count =>
@@ -45,72 +45,6 @@
 
 @keyword(kw: Keyword, max: Int = 40) = {
   @facet(kw.label, kw.term, kw.href, max)
-}
-
-@disease = {
-  @if(diseases.length > 0) {
-    @if(diseases.length > 10) {
-       <div class="modal fade" id="disease-modal"
-          tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
-          aria-hidden="true">
-          <div class="modal-dialog">
-             <div class="modal-content">
-                <div class="modal-header">
-                  <button type="button" class="close"
-                        data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span></button>
-                        <h4 class="modal-title" id="myModalLabel">Diseases annotated for <em>@target.getName</em></h4>
-                </div>
-                <div class="modal-body">
-                @for(d <- diseases) {
-                  @if(d.comment != null) {
-                    @*facet(UNIPROT_DISEASE, d.disease.name)*@
-                    <span class="label label-default">@d.disease.name</span>
-                  } else {
-                    @facet(IDG_DISEASE, d.disease.name)
-                  }
-                }
-                </div>
-             </div>
-          </div>
-       </div>
-       <div class="panel panel-default">
-          <div class="panel-heading">
-            <h3 class="panel-title">Disease (@diseases.length)</h3>
-          </div>
-          <div class="panel-body">
-            @for(d <- diseases.slice(0,10)) {
-               @if(d.comment != null) {
-                    @*facet(UNIPROT_DISEASE, d.disease.name)*@
-                    <span class="label label-default">@d.disease.name</span>
-               } else {
-                    @facet(IDG_DISEASE, d.disease.name)
-               }
-            }
-            <a class="label label-danger"
-                data-toggle="modal"
-                data-target="#disease-modal"
-                href="#">See all...</a>
-          </div>
-      </div>
-    } else {
-      <div class="panel panel-default">
-        <div class="panel-heading">
-          <h3 class="panel-title">Disease (@diseases.length)</h3>
-        </div>
-        <div class="panel-body">
-            @for(d <- diseases) {
-               @if(d.comment != null) {
-                 @*facet(UNIPROT_DISEASE, d.disease.name)*@
-                 <span class="label label-default">@d.disease.name</span>
-               } else {
-                 @facet(IDG_DISEASE, d.disease.name)
-               }
-            }
-        </div>
-      </div>
-    }
-  }
 }
 
 @propertyfacets(name: String, props: List[Value], href: String = null, dir: Int = 0, tooltip: String = "") = {
@@ -242,6 +176,49 @@
     <td>@{"%1$.3f".format(xref.properties.filter(v => v.label == "log2foldchange").head.getValue())}</td>
     <td>@{"%1$.3f".format(xref.properties.filter(v => v.label == "pvalue").head.getValue())}</td>
 </tr>
+}
+
+@diseasetab(source: String, dr: List[DiseaseRelevance]) = {
+<div class="table-responsive">
+<table class="table">
+<tr>
+  <th>Disease</th>
+  <th>Target Count</th>
+  @source match {
+    case "Expression Atlas" => {
+      <th>P-value</th>
+    }
+    case "DrugCentral Indication" | "DisGeNET"|"UniProt Disease" => {
+    }
+    case _ => {
+      <th>Z-score</th>
+      <th>Confidence <i class="fa fa-info-circle"
+                  data-toggle="tooltip" data-placement="top" data-html="true"
+                  title="<p align='left'>A normalized version of the co-occurence (of the disease and this target) score, described in <a href='http://www.sciencedirect.com/science/article/pii/S1046202314003831'>Franklid et al, Methods, 2015, 83-89</a></p>"></i></th>
+    }
+  }
+</tr>
+@for(d <- dr) {
+<tr>
+  <td><a href="@ix.idg.controllers.routes.IDGApp.disease(d.disease.name)">@d.disease.name</a></td>
+  @defining(App.getTermCount(classOf[Target], IDG_DISEASE, d.disease.name)) { count =>
+  <td><a href="@{ix.idg.controllers.routes.IDGApp.targets()+"?facet="+URLEncoder.encode(IDG_DISEASE,"utf8")+"/"+URLEncoder.encode(d.disease.name, "utf8")}">@count</a></td>
+  }
+  @source match {
+    case "Expression Atlas" => {
+       <td>@d.conf</td>
+    }
+    case "DrugCentral Indication" | "DisGeNET" => {
+    }
+    case _ => {
+       <td>@diseasedblink(d.disease, d.zscore)</td>
+       <td>@diseasedblink(d.disease, d.conf)</td>
+    }
+  }
+</tr>
+}
+</table>
+</div>
 }
 
 @diseaserow(dr: DiseaseRelevance) = {
@@ -921,29 +898,24 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
             <h3 class="panel-title"><a class="loader" href="@ix.idg.controllers.routes.IDGApp.targetdescriptor(IDG_DISEASE)"><i class="fa fa-bar-chart"></i></a>&nbsp;
             <span data-toggle="tooltip"
                         data-html="true"
-                        title="<p align='left'>Disease-gene associations mined from Medline Franklid et al, Methods, 2015, 83-89</p>">Disease Relevance</span> (@diseases.size()) <a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/links(kind="+classOf[Disease].getName+")"}'><i class="fa fa-code"></i></a></h3>
+                        title="<p align='left'>Disease-gene associations mined from Medline Franklid et al, Methods, 2015, 83-89</p>">Disease Sources</span> (@diseases.size()) <a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/links(kind="+classOf[Disease].getName+")"}'><i class="fa fa-code"></i></a></h3>
           </div>
-          <div class="panel-body table-responsive"
-           style="max-height:300px;overflow-y:auto;">
-            <table class="tree table table-striped">
-              <tr>
-                <th>Disease</th>
-                <th>Z-score <i class="fa fa-info-circle"
-                  data-toggle="tooltip" data-placement="top" data-html="true"
-                  title="<p align='left'>A normalized version of the co-occurence (of the disease and this target) score, described in <a href='http://www.sciencedirect.com/science/article/pii/S1046202314003831'>Franklid et al, Methods, 2015, 83-89</a></p>"></i></th>
-                <th>Confidence <i class="fa fa-info-circle"
-                     data-toggle="tooltip" data-placement="top" data-html="true"
-                     title="<p align='left'>Half the Z-score, described in <a href='http://www.sciencedirect.com/science/article/pii/S1046202314003831'>Franklid et al, Methods, 2015, 83-89</a></p>"></i></th>
-           @** this doesn't seem to be available anymore?
-                   <th>Importance <i class="fa fa-info-circle"
-                     data-toggle="tooltip" data-placement="top" data-html="true"
-                     title="<p align='left'>A score characterizing the importance of the target, based on occurences in the published literature.</p>"></i></th>
-           **@
-                </tr>
-                     @for(dr <- diseases) {
-                            @diseaserow(dr)
-                     }
-        </table>
+          <div class="panel-body"
+               style="max-height:300px;overflow-y:auto;">
+	    <ul class="nav nav-tabs">
+	    @for((source,dr) <- diseases) {
+		<li role="presentation">
+		  <a id="disease-@Util.sha1(source)" href="#diseasetab-@Util.sha1(source)" role="tab" aria-controls="@source" data-toggle="tab">@source</a>
+		</li>
+            }
+	    </ul>
+	    <div class="tab-content">
+	      @for((source,dr) <- diseases) {
+		<div role="tabpanel" class="tab-pane" id="diseasetab-@Util.sha1(source)">
+		  @diseasetab(source, dr)
+		</div>
+	      }
+	    </div>
           </div>  @* panel-body *@
         </div>
       </div>
@@ -1787,6 +1759,18 @@ $(function () {
 $(document).ready(function () {
     $("#diffexptable").stupidtable();
     $("#modal-radardiv" ).attr("target", "@IDGApp.getId(target)");
+
+    // activate disease tab in order
+    $('#disease-@Util.sha1("JensenLab Knowledge GHR")').tab('show');
+    $('#disease-@Util.sha1("JensenLab Experiment DistiLD")').tab('show');
+    $('#disease-@Util.sha1("JensenLab Experiment COSMIC")').tab('show');
+    $('#disease-@Util.sha1("JensenLab Text Mining")').tab('show');
+    $('#disease-@Util.sha1("JensenLab Knowledge UniProtKB-KW")').tab('show');
+    $('#disease-@Util.sha1("Expression Atlas")').tab('show');
+    $('#disease-@Util.sha1("DisGeNET")').tab('show');
+    $('#disease-@Util.sha1("Monarch")').tab('show');
+    $('#disease-@Util.sha1("UniProt Disease")').tab('show');
+    $('#disease-@Util.sha1("DrugCentral Indication")').tab('show');
 
     /* populate TOC menu */
     var tocs = [];

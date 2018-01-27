@@ -1,11 +1,11 @@
-@import ix.ncats.controllers.App
+@import ix.core.controllers.IxController
 
 @(fields: Array[String])
 <script>
 $(document).ready(function () {
    var sources = [];
    @for(f <- fields) {
-     @defining(App.randvar()) { xx =>     
+     @defining(IxController.randvar()) { xx =>     
        var @xx = new Bloodhound({
           datumTokenizer: function(d) {
               return Bloodhound.tokenizers.whitespace(d.key);

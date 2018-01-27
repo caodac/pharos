@@ -153,9 +153,11 @@ public class DownloadEntities extends Controller {
         String turl = routes.IDGApp.target(csvQuote(IDGApp.getId(t))).toString();
         String uniprot = csvQuote(IDGApp.getId(t));
 
-        List<IDGApp.DiseaseRelevance> diseases = IDGApp.getDiseases(t);
-        for (IDGApp.DiseaseRelevance dr : diseases) {
-            sb2.append(turl).append(",").
+        Map<String, List<IDGApp.DiseaseRelevance>> diseases = 
+            IDGApp.getDiseases(t);
+        for (List<IDGApp.DiseaseRelevance> values : diseases.values()) {
+            for (IDGApp.DiseaseRelevance dr: values) {
+                sb2.append(turl).append(",").
                     append(uniprot).append(",").
                     append(IDGApp.getId(dr.disease)).append(",").
                     append(csvQuote(dr.disease.getName())).append(",").
@@ -164,6 +166,7 @@ public class DownloadEntities extends Controller {
                     append(dr.conf).append(",").
                     append("http://diseases.jensenlab.org/Entity?documents=10&type1=9606&id2=" + IDGApp.getId(dr.disease) + "&id1=" + t.getSynonym(Commons.STRING_ID).term).
                     append("\n");
+            }
         }
         return sb2.toString();
     }

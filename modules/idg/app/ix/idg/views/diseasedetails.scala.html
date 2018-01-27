@@ -68,7 +68,10 @@
 	      rowId: 'id',
 	      columnDefs: [{
 		 targets: 0,
-		 data: 'name'
+	         render: function(data, type,full,meta) {
+	                var url='@ix.idg.controllers.routes.IDGApp.target("")'+full.id;
+	                return '<a href="'+url+'">'+data+'</a>';
+                     }
 		 },{
 	         targets: 1,
 		 data: 'idgTDL'
@@ -126,7 +129,7 @@
                           <a href="#targets" aria-controls="targets" role="tab" data-toggle="tab">Targets</a>
                         </li>
                         <li role="presentation" >
-                          <a href="#molecules" aria-controls="molecules" role="tab" data-toggle="tab">Molecules (@ligands.length)</a>
+                          <a href="#molecules" aria-controls="molecules" role="tab" data-toggle="tab">Drugs (@ligands.length)</a>
                         </li>
                         <li role="presentation" >
                           <a href="#trials" aria-controls="trials" role="tab" data-toggle="tab">Clinical Trials</a>

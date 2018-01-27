@@ -276,8 +276,8 @@ public class IDGApp extends App implements Commons {
     public static class DiseaseRelevance
         implements Comparable<DiseaseRelevance>, Serializable {
         public Disease disease;
-        public Double zscore;
-        public Double conf;
+        public Double zscore = 0.;
+        public Double conf = 0.;
         public Double tinxScore;
         public String comment;
         public Keyword omim;
@@ -569,7 +569,8 @@ public class IDGApp extends App implements Commons {
                 try {
                     List<Target> tar = TargetResult.find(name);
                     for (Target t : tar) {
-                        List<DiseaseRelevance> dr = getDiseases (t); // cache
+                        Map<String, List<DiseaseRelevance>> dr = 
+                            getDiseases (t); // cache
                         Logger.debug(name+": id="+t.id
                                      +" #syns="+t.synonyms.size()
                                      +" #pubs="+t.publications.size()
@@ -1245,7 +1246,7 @@ public class IDGApp extends App implements Commons {
             }
         };
 
-    public static Result target(final String name) throws Exception {
+    public static Result target (final String name) throws Exception {
         String action = request().getQueryString("action");
         if (action != null && action.toLowerCase().equals("download")) {
             List<Target> targets = TargetFactory.finder
@@ -1266,19 +1267,20 @@ public class IDGApp extends App implements Commons {
         return TargetResult.get(name);
     }
 
-    static List<DiseaseRelevance> getDiseases (final Target t)
+    static Map<String, List<DiseaseRelevance>> getDiseases (final Target t)
         throws Exception {
         final String key = "targets/"+t.id+"/diseases";
         return getOrElse
-            (key, new Callable<List<DiseaseRelevance>> () {
-                    public List<DiseaseRelevance> call () throws Exception {
-                        return getDiseaseRelevances (t);
-                    }
-                });
+            (key, new Callable<Map<String, List<DiseaseRelevance>>> () {
+                public Map<String, List<DiseaseRelevance>> call ()
+                    throws Exception {
+                    return getDiseaseRelevances2 (t);
+                }
+            });
     }
 
-    public static List<XRef> getDiseasesWithDifferentialExpression(final Target t)
-            throws Exception {
+    public static List<XRef> getDiseasesWithDifferentialExpression
+        (final Target t) throws Exception {
         final String key = "targets/" + t.id + "/dysregulated";
 
         return getOrElse(key, new Callable<List<XRef>>() {
@@ -1299,7 +1301,7 @@ public class IDGApp extends App implements Commons {
     static Content getTargetContent (final List<Target> targets)
         throws Exception {
         Target t = targets.get(0);
-        List<DiseaseRelevance> diseases = getDiseases (t);
+        Map<String, List<DiseaseRelevance>> diseases = getDiseases (t);
         List<Keyword> breadcrumb = getBreadcrumb (t);
         return ix.idg.views.html
             .targetdetails.render(t, diseases, breadcrumb);
@@ -1550,33 +1552,18 @@ public class IDGApp extends App implements Commons {
         return new ArrayList<Mesh>(mesh.values());
     }
 
-    static List<DiseaseRelevance>
-        getDiseaseRelevances (Target t) throws Exception {
-        List<DiseaseRelevance> diseases = new ArrayList<DiseaseRelevance>();
-        List<DiseaseRelevance> diseases2 = new ArrayList<DiseaseRelevance>();
-        List<DiseaseRelevance> uniprot = new ArrayList<DiseaseRelevance>();
-        Map<Long, Disease> lineage = new HashMap<Long, Disease>();
-        Map<Long, DiseaseRelevance> diseaseRel =
-            new HashMap<Long, DiseaseRelevance>();
+
+    static Map<String, List<DiseaseRelevance>> 
+        getDiseaseRelevances2 (Target t) throws Exception {
+        Map<String, List<DiseaseRelevance>> diseases = new TreeMap<>();
+
         long start = System.currentTimeMillis();
         for (XRef xref : t.links) {
             if (Disease.class.getName().equals(xref.kind)) {
                 DiseaseRelevance dr = new DiseaseRelevance ();
                 dr.disease = (Disease)xref.deRef();
-                diseaseRel.put(dr.disease.id, dr);
-                long s = System.currentTimeMillis();
-                getLineage (lineage, dr.disease);
-                Logger.debug("Retrieve lineage for disease "+dr.disease.id+"..."
-                             +String.format("%1$dms", (System.currentTimeMillis()-s)));
-                
-                /*
-                { Disease d = dr.disease;
-                    for (Disease parent : getLineage (d)) {
-                        lineage.put(d.id, parent);
-                        d = parent;
-                    }
-                }
-                */
+
+                String source = null;
                 for (Value p : xref.properties) {
                     if (IDG_ZSCORE.equals(p.label))
                         dr.zscore = (Double)p.getValue();
@@ -1588,7 +1575,104 @@ public class IDGApp extends App implements Commons {
                              || p.label.equals(dr.disease.name)) {
                         dr.comment = ((Text)p).text;
                     }
+                    else if (SOURCE.equals(p.label))
+                        source = ((Keyword)p).term;
+                    else if ("pvalue".equals(p.label))
+                        dr.conf = (Double)p.getValue();
                 }
+
+                if (source != null) {
+                    List<DiseaseRelevance> list = diseases.get(source);
+                    if (list == null)
+                        diseases.put(source, list = new ArrayList<>());
+                    list.add(dr);
+                }
+            }
+        }
+
+        for (Map.Entry<String, List<DiseaseRelevance>> me : 
+                 diseases.entrySet()) {
+            switch (me.getKey()) {
+            case "Expression Atlas":
+                Collections.sort
+                    (me.getValue(), new Comparator<DiseaseRelevance> () {
+                        public int compare (DiseaseRelevance dr1, 
+                                            DiseaseRelevance dr2) {
+                            if (dr1.conf < dr2.conf) return -1;
+                            if (dr1.conf > dr2.conf) return 1;
+                            return dr1.disease.name.compareTo(dr2.disease.name);
+                        }
+                    });
+                break;
+
+            default:
+                Collections.sort
+                    (me.getValue(), new Comparator<DiseaseRelevance> () {
+                        public int compare (DiseaseRelevance dr1,
+                                            DiseaseRelevance dr2) {
+                            if (dr2.zscore > dr1.zscore) return 1;
+                            if (dr2.zscore < dr1.zscore) return -1;
+                            return dr1.disease.name.compareTo(dr2.disease.name);
+                        }
+                    });
+            }
+        }
+
+        double elapsed = (System.currentTimeMillis()-start)*1e-3;
+        Logger.debug("Elapsed time "+String.format("%1$.3fs", elapsed)
+                     +" to retrieve disease relevance for target "+t.id);
+
+        return diseases;
+    }
+
+    static List<DiseaseRelevance>
+        getDiseaseRelevances (Target t) throws Exception {
+        List<DiseaseRelevance> diseases = new ArrayList<DiseaseRelevance>();
+        List<DiseaseRelevance> diseases2 = new ArrayList<DiseaseRelevance>();
+        List<DiseaseRelevance> uniprot = new ArrayList<DiseaseRelevance>();
+        Map<Long, Disease> lineage = new HashMap<Long, Disease>();
+        Map<Long, DiseaseRelevance> diseaseRel =
+            new HashMap<Long, DiseaseRelevance>();
+
+        long start = System.currentTimeMillis();
+        for (XRef xref : t.links) {
+            if (Disease.class.getName().equals(xref.kind)) {
+                DiseaseRelevance dr = new DiseaseRelevance ();
+                dr.disease = (Disease)xref.deRef();
+                diseaseRel.put(dr.disease.id, dr);
+                /*
+                long s = System.currentTimeMillis();
+                getLineage (lineage, dr.disease);
+                Logger.debug("Retrieve lineage for disease "+dr.disease.id+"..."
+                             +String.format("%1$dms", (System.currentTimeMillis()-s)));
+                */
+                
+                /*
+                { Disease d = dr.disease;
+                    for (Disease parent : getLineage (d)) {
+                        lineage.put(d.id, parent);
+                        d = parent;
+                    }
+                }
+                */
+                String source = null;
+                for (Value p : xref.properties) {
+                    if (IDG_ZSCORE.equals(p.label))
+                        dr.zscore = (Double)p.getValue();
+                    else if (IDG_CONF.equals(p.label))
+                        dr.conf = (Double)p.getValue();
+                    else if (TINX_IMPORTANCE.equals(p.label))
+                        dr.tinxScore = (Double)p.getValue();
+                    else if (UNIPROT_DISEASE_RELEVANCE.equals(p.label)
+                             || p.label.equals(dr.disease.name)) {
+                        dr.comment = ((Text)p).text;
+                    }
+                    else if (SOURCE.equals(p.label))
+                        source = ((Keyword)p).term;
+                    else if ("pvalue".equals(p.label))
+                        dr.conf = (Double)p.getValue();
+                }
+
                 if (dr.zscore != null)
                     diseases.add(dr);
                 else
@@ -2700,13 +2784,14 @@ public class IDGApp extends App implements Commons {
     static Content getDiseaseContent (final Disease d) throws Exception {
         // resolve the targets for this disease
         final String key = "diseases/"+d.id+"/targets";
-        List<Target> targets = getOrElse
-            (key, new Callable<List<Target>> () {
+        List<Target> targets = new ArrayList<>();
+            /*
+            getOrElse (key, new Callable<List<Target>> () {
                     public List<Target> call () throws Exception {
-                        //return DiseaseFactory.getTargets(d.id);
-                        return new ArrayList<>();
+                        return DiseaseFactory.getTargets(d.id);
                     }
                 });
+            */
 
         final String ligkey = "diseases/"+d.id+"/ligands";
         List<Ligand> ligs = getOrElse(ligkey, new Callable<List<Ligand>> () {
@@ -4367,5 +4452,19 @@ public class IDGApp extends App implements Commons {
             return _internalServerError
                 ("Unable to retrieve target for <code>"+name+"</code>");
         }
+    }
+
+    public static String tcrdVersion () {
+        return tcrdVersion (true);
+    }
+
+    public static String tcrdVersion (boolean pretty) {
+        String ver = _app.configuration().getString("tcrd.version", null);
+        if (pretty && ver != null) {
+            if (ver.length() == 3) {
+                ver = ver.charAt(0)+"."+ver.charAt(1)+"."+ver.charAt(2);
+            }
+        }
+        return ver;
     }
 }

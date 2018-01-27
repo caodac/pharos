@@ -1,6 +1,9 @@
 package ix.core.controllers;
 
-import java.io.Serializable;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.*;
 import java.util.concurrent.Callable;
 
 import play.Play;
@@ -84,7 +87,121 @@ public class IxController extends Controller {
             return new CachableContent
                 (new play.twirl.api.JavaScript(json.toString()));
         }
-    }
+    } // CachableContent 
+
+    public static class SearchResultContext /*implements Serializable*/ {
+        public enum Status {
+            Pending,
+            Running,
+            Done,
+            Failed
+        }
+
+        public Status status = Status.Pending;
+        public String mesg;
+        public Long start;
+        public Long stop;
+        public List results = new CopyOnWriteArrayList ();
+        public String id = randvar (10);
+        public Integer total;
+
+        transient Set<String> keys = new HashSet<String>();
+        transient ReentrantLock lock = new ReentrantLock ();
+
+        public SearchResultContext () {
+        }
+
+        public SearchResultContext (SearchResult result) {
+            id = result.getKey();
+            start = result.getTimestamp();          
+            total = result.count();
+            if (result.finished()) {
+                stop = result.getStopTime();
+                setStatus (Status.Done);
+            }
+            else if (result.size() > 0)
+                status = Status.Running;
+            
+            // prevent setStatus from caching this context with results
+            // set
+            results = result.getMatches();            
+            if (status != Status.Done) {
+                mesg = String.format
+                    ("Loading...%1$d%%",
+                     (int)(100.*result.size()/result.count()+0.5));
+            }
+        }
+
+        public String getId () { return id; }
+        public Status getStatus () { return status; }
+        public void setStatus (Status status) { 
+            this.status = status; 
+            if (status == Status.Done) {
+                if (total == null)
+                    total = getCount ();
+                // update cache
+                for (String k : keys)
+                    IxCache.set(k, this);
+                
+                // only update the cache if the instance in the cache
+                //  is stale
+                IxCache.setIfNewer(id, this, start);
+            }
+        }
+        public String getMessage () { return mesg; }
+        public void setMessage (String mesg) { this.mesg = mesg; }
+        public Integer getCount () { return results.size(); }
+        public Integer getTotal () { return total; }
+        public Long getStart () { return start; }
+        public Long getStop () { return stop; }
+        public boolean finished () {
+            return status == Status.Done || status == Status.Failed;
+        }
+        public void updateCacheWhenComplete (String... keys) {
+            for (String k : keys)
+                this.keys.add(k);
+        }
+        
+        @com.fasterxml.jackson.annotation.JsonIgnore
+        public List getResults () { return results; }
+        public void add (Object obj) {
+            lock.lock();
+            try {
+                results.add(obj);
+            }
+            finally {
+                lock.unlock();
+            }
+        }
+
+        private void writeObject(java.io.ObjectOutputStream out)
+            throws IOException {
+            lock.lock();
+            try {
+                out.defaultWriteObject();
+            }
+            finally {
+                lock.unlock();
+            }
+        }
+        
+        private void readObject(java.io.ObjectInputStream in)
+            throws IOException, ClassNotFoundException {
+            if (lock == null)
+                lock = new ReentrantLock ();
+            
+            lock.lock();
+            try {
+                in.defaultReadObject();
+            }
+            finally {
+                lock.unlock();
+            }
+        }
+        
+        private void readObjectNoData() throws ObjectStreamException {
+        }
+    } // SearchResultContext
 
     public static Result getEtag (String key, Callable<Result> callable)
         throws Exception {
@@ -119,5 +236,13 @@ public class IxController extends Controller {
                                    String key, Callable<T> callable)
         throws Exception {
         return IxCache.getOrElse(modified, key, callable);
+    }
+
+    public static String randvar (int size) {
+        return Util.randvar(size, request ());
+    }
+
+    public static String randvar () {
+        return randvar (5);
     }
 }

@@ -220,8 +220,16 @@ public class App extends Authentication {
         }
 
         protected List<T> _find (String key, String name) throws Exception {
-            List<T> values = finder.where()
-                .eq("synonyms.term", name).findList();
+            List<T> values = null;
+            try {
+                values = finder.where()
+                    .eq("id", Long.parseLong(name)).findList();
+            }
+            catch (NumberFormatException ex) {
+                values = finder.where()
+                    .eq("synonyms.term", name).findList();
+            }
+
             if (values.isEmpty()) {
                 // let try name directly
                 values = finder.where()
@@ -852,13 +860,6 @@ public class App extends Authentication {
         return frange;
     }
     
-    public static String randvar (int size) {
-        return Util.randvar(size, request ());
-    }
-
-    public static String randvar () {
-        return randvar (5);
-    }
 
     protected static Map<String, String[]> getRequestQuery () {
         Map<String, String[]> query = new HashMap<String, String[]>();
@@ -1563,121 +1564,6 @@ public class App extends Authentication {
         protected abstract Object instrument (T r) throws Exception;
     }
 
-    public static class SearchResultContext /*implements Serializable*/ {
-        public enum Status {
-            Pending,
-            Running,
-            Done,
-            Failed
-        }
-
-        Status status = Status.Pending;
-        String mesg;
-        Long start;
-        Long stop;
-        List results = new CopyOnWriteArrayList ();
-        String id = randvar (10);
-        Integer total;
-
-        transient Set<String> keys = new HashSet<String>();
-        transient ReentrantLock lock = new ReentrantLock ();
-
-        SearchResultContext () {
-        }
-
-        SearchResultContext (SearchResult result) {
-            id = result.getKey();
-            start = result.getTimestamp();          
-            total = result.count();
-            if (result.finished()) {
-                stop = result.getStopTime();
-                setStatus (Status.Done);
-            }
-            else if (result.size() > 0)
-                status = Status.Running;
-            
-            // prevent setStatus from caching this context with results
-            // set
-            results = result.getMatches();            
-            if (status != Status.Done) {
-                mesg = String.format
-                    ("Loading...%1$d%%",
-                     (int)(100.*result.size()/result.count()+0.5));
-            }
-        }
-
-        public String getId () { return id; }
-        public Status getStatus () { return status; }
-        public void setStatus (Status status) { 
-            this.status = status; 
-            if (status == Status.Done) {
-                if (total == null)
-                    total = getCount ();
-                // update cache
-                for (String k : keys)
-                    IxCache.set(k, this);
-                
-                // only update the cache if the instance in the cache
-                //  is stale
-                IxCache.setIfNewer(id, this, start);
-            }
-        }
-        public String getMessage () { return mesg; }
-        public void setMessage (String mesg) { this.mesg = mesg; }
-        public Integer getCount () { return results.size(); }
-        public Integer getTotal () { return total; }
-        public Long getStart () { return start; }
-        public Long getStop () { return stop; }
-        public boolean finished () {
-            return status == Status.Done || status == Status.Failed;
-        }
-        public void updateCacheWhenComplete (String... keys) {
-            for (String k : keys)
-                this.keys.add(k);
-        }
-        
-        @com.fasterxml.jackson.annotation.JsonIgnore
-        public List getResults () { return results; }
-        protected void add (Object obj) {
-            lock.lock();
-            try {
-                results.add(obj);
-            }
-            finally {
-                lock.unlock();
-            }
-        }
-
-        private void writeObject(java.io.ObjectOutputStream out)
-            throws IOException {
-            lock.lock();
-            try {
-                out.defaultWriteObject();
-            }
-            finally {
-                lock.unlock();
-            }
-        }
-        
-        private void readObject(java.io.ObjectInputStream in)
-            throws IOException, ClassNotFoundException {
-            if (lock == null)
-                lock = new ReentrantLock ();
-            
-            lock.lock();
-            try {
-                in.defaultReadObject();
-            }
-            finally {
-                lock.unlock();
-            }
-        }
-        
-        private void readObjectNoData() throws ObjectStreamException {
-        }
-    }
-
-    
     static class SearchResultHandler extends UntypedActor {
         @Override
         public void onReceive (Object obj) {

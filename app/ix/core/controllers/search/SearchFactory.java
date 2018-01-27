@@ -158,31 +158,28 @@ public class SearchFactory extends EntityFactory {
                          +q+" top="+top+" skip="+skip+" fdim="+fdim);
         }
 
-        final String key = SearchFactory.class.getName()+"/"
-            +(kind!=null?kind.getName():"")+"/q="+q+"/top="+top+"/skip="+skip
-            +"/fdim="+fdim;
         try {
-            CachableContent content = 
-                getOrElse_ (Util.sha1(key), new Callable<CachableContent> () {
-                        public CachableContent call () throws Exception {
-                            return new CachableContent
-                                 (_search (kind, q, top, skip, fdim));
-                        }
-                    });
-            return content.ok();
+            JsonNode json = _search (kind, q, top, skip, fdim);
+            return ok (json);
         }
         catch (Exception ex) {
-            Logger.trace("Can't perform search with parameters: "+key, ex);
+            Logger.trace("Can't perform search with parameters "
+                         +request().uri(), ex);
             return internalServerError ("Unable to perform search!");
         }
     }
         
     public static JsonNode _search 
         (Class kind, String q, int top, int skip, int fdim) throws Exception {
-        SearchResult result = search
-            (kind, q, top, skip, fdim, request().queryString());
+        final String key = Util.sha1(request());
+        SearchResult result = getOrElse (key, new Callable<SearchResult> () {
+                public SearchResult call () throws Exception {
+                    return search (kind, q, top, skip, 
+                                   fdim, request().queryString());
+                }
+            });
+
         SearchOptions options = result.getOptions();
-        
         ObjectMapper mapper = getEntityMapper ();
         ArrayNode nodes = mapper.createArrayNode();
         int added=0;
