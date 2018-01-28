@@ -46,7 +46,8 @@ public interface Commons {
     public static final String COMPARTMENT_GOTERM = "Compartment GO Term";
     public static final String COMPARTMENT_EVIDENCE = "Compartment Evidence";
     public static final String COMPARTMENT_TYPE = "Compartment Type";
-    
+
+    public static final String ORTHOLOG_SPECIES = "Ortholog Species";
     public static final String OMIM_GENE = "OMIM Gene";
     public static final String GWAS_TRAIT = "GWAS Trait";
     public static final String IMPC_TERM = "IMPC Term";

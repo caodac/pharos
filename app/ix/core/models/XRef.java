@@ -166,4 +166,12 @@ public class XRef extends IxModel {
         }
         return false;
     }
+
+    public List<Value> getProperties (String label) {
+        List<Value> props = new ArrayList<Value>();
+        for (Value v : properties)
+            if (label.equals(v.label))
+                props.add(v);
+        return props;
+    }
 }
