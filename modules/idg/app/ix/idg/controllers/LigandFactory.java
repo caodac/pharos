@@ -43,7 +43,11 @@ public class LigandFactory extends EntityFactory {
     }
 
     public static Result resolve (String name, String expand) {
-        return resolve (Expr.eq("synonyms.term", name), expand, finder);
+        Result result = resolve (Expr.eq("synonyms.term", name),
+                                 expand, finder);
+        if (result == null)
+            result = resolve (Expr.eq("name", name), expand, finder);
+        return result;
     }
 
     public static Result field (Long id, String path) {

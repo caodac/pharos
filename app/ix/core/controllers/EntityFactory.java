@@ -30,10 +30,14 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fasterxml.jackson.databind.deser.DeserializationProblemHandler;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonToken;
@@ -48,6 +52,10 @@ import ix.core.models.Edit;
 import ix.core.models.Principal;
 import ix.core.models.BeanViews;
 import ix.core.models.Curation;
+import ix.core.models.Value;
+import ix.core.models.Keyword;
+import ix.core.models.XRef;
+import ix.core.models.Publication;
 import ix.core.search.TextIndexer;
 import ix.core.plugins.TextIndexerPlugin;
 import ix.core.adapters.EntityPersistAdapter;
@@ -236,6 +244,175 @@ public class EntityFactory extends IxController {
             return "FetchOptions{top="+top+",skip="+skip
                 +",expand="+expand.size()
                 +",filter="+filter+",order="+order.size()+"}";
+        }
+    }
+
+    protected static class JsonldListSerializer extends StdSerializer<List> {
+        JsonldListSerializer () {
+            this (null);
+        }
+        
+        JsonldListSerializer (Class<List> t) {
+            super (t);
+        }
+        
+        @Override
+        public void serialize (List values, JsonGenerator jgen,
+                               SerializerProvider provider) 
+            throws IOException {
+            Map<String, List<Value>> groups = new TreeMap<>();
+            List<XRef> links = new ArrayList<>();
+            List<Publication> pubs = new ArrayList<>();
+            for (Object v : values) {
+                if (v instanceof Value) {
+                    Value val = (Value)v;
+                    List<Value> g = groups.get(val.label);
+                    if (g == null)
+                        groups.put(val.label, g = new ArrayList<>());
+                    g.add(val);
+                }
+                else if (v instanceof XRef) {
+                    // links
+                    links.add((XRef)v);
+                }
+                else if (v instanceof Publication) {
+                    pubs.add((Publication)v);
+                }
+            }
+            
+            if (groups.isEmpty()) {
+                if (!links.isEmpty())
+                    serializeLinks (links, jgen, provider);
+                else if (!pubs.isEmpty())
+                    serializePubs (pubs, jgen, provider);
+                else if (!values.isEmpty()) {
+                    //Logger.debug("DEFAULT SERIALIZATION "+values);
+                    provider.defaultSerializeValue(values, jgen);
+                }
+                else {
+                    jgen.writeStartArray();
+                    jgen.writeEndArray();
+                }
+            }
+            else {
+                serialize (groups, jgen, provider);
+            }
+        }
+
+        void serializeLinks (List<XRef> links, JsonGenerator jgen,
+                             SerializerProvider provider) throws IOException {
+            Map<String, List<Value>> groups = new TreeMap<>();            
+            jgen.writeStartArray();
+            for (XRef xref : links) {
+                //provider.defaultSerializeValue(xref, jgen);
+                groups.clear();
+                for (Value v : xref.properties) {
+                    List<Value> vals = groups.get(v.label);
+                    if (vals == null)
+                        groups.put(v.label, vals = new ArrayList<>());
+                    vals.add(v);
+                }
+                jgen.writeStartObject();
+                jgen.writeNumberField("id", xref.id);
+                jgen.writeNumberField("version", xref.version);
+                jgen.writeStringField("refid", xref.refid);
+                jgen.writeStringField("kind", xref.kind);
+                jgen.writeBooleanField("deprecated", xref.deprecated);
+                jgen.writeFieldName("properties");
+                serialize (groups, jgen, provider);
+                jgen.writeStringField("href", xref.getHRef());
+                jgen.writeEndObject();
+            }
+            jgen.writeEndArray();
+        }
+
+        void serializePubs (List<Publication> pubs, JsonGenerator jgen,
+                            SerializerProvider provider) throws IOException {
+            jgen.writeStartArray();
+            // avoid recursive serialization by provide condensed
+            // version
+            for (Publication p : pubs) {
+                jgen.writeStartObject();
+                jgen.writeNumberField("id", p.id);
+                if (p.pmid != null)
+                    jgen.writeNumberField("pmid", p.pmid);
+                if (p.title != null)
+                    jgen.writeStringField("title", p.title);
+                if (p.year != null)
+                    jgen.writeNumberField("year", p.year);
+                if (p.abstractText != null)
+                    jgen.writeStringField("abstractText", p.abstractText);
+                jgen.writeEndObject();  
+            }
+            jgen.writeEndArray();
+        }
+        
+        void serialize (Map<String, List<Value>> groups,
+                        JsonGenerator jgen, SerializerProvider provider)
+            throws IOException {
+            //Logger.debug(getClass().getName()+": "+groups);
+            jgen.writeStartObject();
+            for (Map.Entry<String, List<Value>> me : groups.entrySet()) {
+                jgen.writeFieldName(me.getKey());
+                List<Value> vals = me.getValue();
+                if (vals.size() == 1) {
+                    provider.defaultSerializeValue(vals.get(0), jgen);
+                }
+                else {
+                    jgen.writeStartArray();
+                    for (Value v : vals) {
+                        provider.defaultSerializeValue(v, jgen);
+                    }
+                    jgen.writeEndArray();
+                }
+            }
+            jgen.writeEndObject();
+        }
+    }
+    
+    protected static class JsonldValueSerializer extends StdSerializer<Value> {
+        JsonldValueSerializer () {
+            this (null);
+        }
+        
+        JsonldValueSerializer (Class<Value> t) {
+            super (t);
+        }
+        
+        @Override
+        public void serialize
+            (Value value, JsonGenerator jgen, SerializerProvider provider) 
+            throws IOException {
+            jgen.writeStartObject();
+            jgen.writeNumberField("id", value.id);
+            if (value instanceof Keyword) {
+                Keyword kw = (Keyword)value;
+                jgen.writeStringField("term", kw.term);
+                if (kw.href != null)
+                    jgen.writeStringField("href", kw.href);
+            }
+            else {
+                Object val = value.getValue();
+                if (val == null)
+                    ;
+                else if (val instanceof Number) {
+                    if (val instanceof Float || val instanceof Double)
+                        jgen.writeNumberField
+                            ("value", ((Number)val).doubleValue());
+                    else
+                        jgen.writeNumberField
+                            ("value", ((Number)val).longValue());
+                }
+                else if (val instanceof String)
+                    jgen.writeStringField("value", val.toString());
+                else {
+                    jgen.writeFieldName("value");
+                    jgen.writeStartObject();
+                    jgen.writeObject(value.getValue());
+                    jgen.writeEndObject();
+                }
+            }
+            jgen.writeEndObject();
         }
     }
 
@@ -473,7 +650,16 @@ public class EntityFactory extends IxController {
             views.add(BeanViews.Compact.class);
         }
 
-        return new EntityMapper (views.toArray(new Class[0]));
+        EntityMapper mapper = new EntityMapper (views.toArray(new Class[0]));
+        args = params.get("format");
+        if (args != null && ("jsonld".equalsIgnoreCase(args[0])
+                             || "json-ld".equalsIgnoreCase(args[0]))) {
+            SimpleModule module = new SimpleModule ();
+            module.addSerializer(Value.class, new JsonldValueSerializer ());
+            module.addSerializer(List.class, new JsonldListSerializer());
+            mapper.registerModule(module);
+        }
+        return mapper;
     }
 
     protected static <K,T> T getEntity (K id, Model.Finder<K, T> finder) {
@@ -610,7 +796,7 @@ public class EntityFactory extends IxController {
                 : notFound ("Bad request: "+request().uri());
         }
         catch (Exception ex) {
-            Logger.trace(request().uri()+": can't fetch entity", ex);
+            Logger.error(request().uri()+": can't fetch entity", ex);
             return internalServerError 
                 ("Unable to retrieve entity: "+request().uri());
         }
