@@ -261,8 +261,8 @@ public class EntityFactory extends IxController {
                                SerializerProvider provider) 
             throws IOException {
             Map<String, List<Value>> groups = new TreeMap<>();
-            List<XRef> links = new ArrayList<>();
-            List<Publication> pubs = new ArrayList<>();
+            Map<String, List<XRef>> links = new TreeMap<>();
+            Map<String, List<Publication>> pubs = new TreeMap<>();
             for (Object v : values) {
                 if (v instanceof Value) {
                     Value val = (Value)v;
@@ -273,10 +273,18 @@ public class EntityFactory extends IxController {
                 }
                 else if (v instanceof XRef) {
                     // links
-                    links.add((XRef)v);
+                    XRef ref = (XRef)v;
+                    List<XRef> refs = links.get(ref.kind);
+                    if (refs == null)
+                        links.put(ref.kind, refs = new ArrayList<>());
+                    refs.add(ref);
                 }
                 else if (v instanceof Publication) {
-                    pubs.add((Publication)v);
+                    Publication pub = (Publication)v;
+                    List<Publication> pl = pubs.get(pub.title);
+                    if (pl == null)
+                        pubs.put(pub.title, pl = new ArrayList<>());
+                    pl.add(pub);
                 }
             }
             
@@ -299,52 +307,80 @@ public class EntityFactory extends IxController {
             }
         }
 
-        void serializeLinks (List<XRef> links, JsonGenerator jgen,
+        void serializeLinks (Map<String, List<XRef>> links, JsonGenerator jgen,
                              SerializerProvider provider) throws IOException {
-            Map<String, List<Value>> groups = new TreeMap<>();            
-            jgen.writeStartArray();
-            for (XRef xref : links) {
-                //provider.defaultSerializeValue(xref, jgen);
-                groups.clear();
-                for (Value v : xref.properties) {
-                    List<Value> vals = groups.get(v.label);
-                    if (vals == null)
-                        groups.put(v.label, vals = new ArrayList<>());
-                    vals.add(v);
+            jgen.writeStartObject();            
+            for (Map.Entry<String, List<XRef>> me : links.entrySet()) {
+                jgen.writeFieldName(me.getKey());
+                List<XRef> refs = me.getValue();
+                if (refs.size() == 1) {
+                    serializeXRef (refs.get(0), jgen, provider); 
                 }
-                jgen.writeStartObject();
-                jgen.writeNumberField("id", xref.id);
-                jgen.writeNumberField("version", xref.version);
-                jgen.writeStringField("refid", xref.refid);
-                jgen.writeStringField("kind", xref.kind);
-                jgen.writeBooleanField("deprecated", xref.deprecated);
-                jgen.writeFieldName("properties");
-                serialize (groups, jgen, provider);
-                jgen.writeStringField("href", xref.getHRef());
-                jgen.writeEndObject();
+                else {
+                    jgen.writeStartArray();
+                    for (XRef xref : refs) {
+                        serializeXRef (xref, jgen, provider);
+                    }
+                    jgen.writeEndArray();
+                }
             }
-            jgen.writeEndArray();
+            jgen.writeEndObject();
         }
 
-        void serializePubs (List<Publication> pubs, JsonGenerator jgen,
+        void serializeXRef (XRef xref, JsonGenerator jgen,
                             SerializerProvider provider) throws IOException {
-            jgen.writeStartArray();
-            // avoid recursive serialization by provide condensed
-            // version
-            for (Publication p : pubs) {
-                jgen.writeStartObject();
-                jgen.writeNumberField("id", p.id);
-                if (p.pmid != null)
-                    jgen.writeNumberField("pmid", p.pmid);
-                if (p.title != null)
-                    jgen.writeStringField("title", p.title);
-                if (p.year != null)
-                    jgen.writeNumberField("year", p.year);
-                if (p.abstractText != null)
-                    jgen.writeStringField("abstractText", p.abstractText);
-                jgen.writeEndObject();  
+            Map<String, List<Value>> groups = new TreeMap<>();
+            for (Value v : xref.properties) {
+                List<Value> vals = groups.get(v.label);
+                if (vals == null)
+                    groups.put(v.label, vals = new ArrayList<>());
+                vals.add(v);
             }
-            jgen.writeEndArray();
+            jgen.writeStartObject();
+            jgen.writeNumberField("id", xref.id);
+            jgen.writeNumberField("version", xref.version);
+            jgen.writeStringField("refid", xref.refid);
+            jgen.writeBooleanField("deprecated", xref.deprecated);
+            jgen.writeFieldName("properties");
+            serialize (groups, jgen, provider);
+            jgen.writeStringField("href", xref.getHRef());
+            jgen.writeEndObject();
+        }
+
+        void serializePubs (Map<String, List<Publication>> pubs,
+                            JsonGenerator jgen,
+                            SerializerProvider provider) throws IOException {
+            jgen.writeStartObject();            
+            for (Map.Entry<String, List<Publication>> me : pubs.entrySet()) {
+                jgen.writeFieldName(me.getKey());
+                List<Publication> publist = me.getValue();
+                if (publist.size() == 1) {
+                    serializePub (publist.get(0), jgen, provider);
+                }
+                else {
+                    jgen.writeStartArray();
+                    // avoid recursive serialization by provide condensed
+                    // version
+                    for (Publication p : publist) {
+                        serializePub (p, jgen, provider);
+                    }
+                    jgen.writeEndArray();
+                }
+            }
+            jgen.writeEndObject();
+        }
+
+        void serializePub (Publication p, JsonGenerator jgen,
+                           SerializerProvider provider) throws IOException {
+            jgen.writeStartObject();
+            jgen.writeNumberField("id", p.id);
+            if (p.pmid != null)
+                jgen.writeNumberField("pmid", p.pmid);
+            if (p.year != null)
+                jgen.writeNumberField("year", p.year);
+            if (p.abstractText != null)
+                jgen.writeStringField("abstractText", p.abstractText);
+            jgen.writeEndObject();  
         }
         
         void serialize (Map<String, List<Value>> groups,

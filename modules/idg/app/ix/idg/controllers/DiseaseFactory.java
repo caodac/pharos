@@ -63,11 +63,9 @@ public class DiseaseFactory extends EntityFactory {
     }
 
     public static Result resolve (String name, String expand) {
-        Result result = resolve (Expr.eq("synonyms.term", name),
-                                 expand, finder);
-        if (result == null)
-            result = resolve (Expr.eq("name", name), expand, finder);
-        return result;
+        return resolve (Expr.or(Expr.eq("synonyms.term", name),
+                                Expr.eq("name", name)),
+                        expand, finder);
     }
 
     public static Result field (Long id, String path) {
