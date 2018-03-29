@@ -385,7 +385,10 @@ public class DownloadEntities extends Controller {
                 append(csvQuote(String.valueOf(t.antibodyCount))).append(",").
                 append(csvQuote(String.valueOf(t.pubmedCount))).append(",").
                 append(csvQuote(String.valueOf(t.knowledgeAvailability))).append(",").
+                append(csvQuote(String.valueOf(t.jensenScore))).append(",").
+                append(csvQuote(String.valueOf(t.pubTatorScore))).append(",").
                 append(csvQuote(sb2.toString()));
+
         return sb.toString();
     }
 
@@ -449,7 +452,7 @@ public class DownloadEntities extends Controller {
         Logger.debug("generating target info...");
         // basic target info
         String tmp = "URL,Uniprot ID,GeneSymbol,Name,Description,Development Level,DTOClass,PantherClass,ChemblClass,Novelty,Target Family,Function," +
-                "GrantCount,R01Count,PatentCount,AntibodyCount,PubmedCount,PMIDs";
+                "GrantCount,R01Count,PatentCount,AntibodyCount,PubmedCount,JensenPubmedScore,PubtatorScore,PMIDs";
         tmp = tmp.replace(",", "\",\"");
         tmp = "\"" + tmp + "\"\n";
         sb.append(tmp);
