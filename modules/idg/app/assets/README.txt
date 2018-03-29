@@ -121,6 +121,9 @@ R01Count - number of R01's referring to this target
 PatentCount - number of patents referring to this target
 AntibodyCount - number of antibodies available for this target
 PubmedCount - number of articles associated with the target (obtained via text mining)
+JensenPubmedScore - derived from text mining a set of Pubmed abstracts. See https://pharos.nih.gov/idg/pmscore for more details
+PubtatorScore - a score characterizing the occurence of the target in biomedical literature. See https://www.ncbi.nlm.nih.gov/CBBresearch/Lu/Demo/PubTator/
+for more details
 PMIDS - comma separated list of Pubmed IDs for the associated articles
 
 uniprot-keywords.csv
