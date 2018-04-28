@@ -524,11 +524,16 @@
                  <tr>
                     <th>Species</th>
                     <th>Source <i class="fa fa-external-link"></i></th>
+                    <th>Disease</th>
                  </tr>
                @for(link <- orthologs){
                  <tr>
                    @defining(link.deRef().asInstanceOf[Ortholog]){ ortho =>
-                   <td>@ortho.species</td>
+                     @if(ortho.url != null){
+                     <td><a href="@ortho.url">@ortho.species</a></td>
+                     }else{
+                     <td>@ortho.species</td>
+                     }
                    }
                    <td>@for(v <- link.getProperties(SOURCE)) {
                      @v.getValue.asInstanceOf[String] match {
@@ -543,6 +548,15 @@
                          }
                          case _ => { @v.getValue
                          }
+                     }
+                   }
+                   </td>
+                   <td>
+                   @defining(link.deRef().asInstanceOf[Ortholog]){ ortho =>
+                     @for(dl <- ortho.links) {
+                       @defining(dl.getProperties(IDG_DISEASE).get(0).asInstanceOf[Keyword]){ kw =>
+                        <a href='@{ix.idg.controllers.routes.IDGApp.disease("")}@kw.href'>@kw.term</a>
+                       }
                      }
                    }
                    </td>
@@ -827,7 +841,7 @@
     <script src="https://code.highcharts.com/modules/exporting.js"></script>
     <script type="text/javascript" src='@routes.Assets.versioned("javascripts/viz.js")'></script>
     <!--<link type="text/css" rel="stylesheet" href="https://code.highcharts.com/css/highcharts.css"></script>-->
-
+    <script async src="https://badge.dimensions.ai/badge.js" charset="utf-8"></script>
     <style type="text/css">
 
     .carousel-image {
@@ -1593,6 +1607,7 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
             <div class="panel-body table-responsive">
               <table class="table table-striped">
                 <tr>
+                  <th></th>
                   <th>PMID <i class="fa fa-external-link"></i></th>
                   <th>Text</th>
                 </tr>
@@ -1601,7 +1616,8 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                       @view match {
                           case "full" => {
                               @for(x <- generifs) {
-                                  <tr>
+                                 <tr>
+                                      <td><span class="__dimensions_badge_embed__" data-pmid="@x.pmid" data-style="small_rectangle"></span></td>
                                       <td><a href="http://www.ncbi.nlm.nih.gov/pubmed/@x.pmid">@x.pmid</a></td>
                                       <td>@x.text</td>
                                   </tr>
@@ -1609,13 +1625,14 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                           }
                           case _ => {
                               @for(i <- 0 until Math.min(10, generifs.size())) {
-                                  <tr>
-                                      <td><a href="http://www.ncbi.nlm.nih.gov/pubmed/@generifs(i).pmid">@generifs(i).pmid</a></td>
+                                  <tr> 
+                                      <td><span class="__dimensions_badge_embed__" data-pmid="@generifs(i).pmid" data-style="small_rectangle"></span></td>                                               <td><a href="http://www.ncbi.nlm.nih.gov/pubmed/@generifs(i).pmid">@generifs(i).pmid</a></td>
                                       <td>@generifs(i).text</td>
                                   </tr>
                               }
                               @if(generifs.size() > 10) {
-                                  <tr>
+                                 <tr>
+                                      <td></td>
                                       <td><a href="@request().uri?view=full">More...</a></td>
                                       <td></td>
                                   </tr>

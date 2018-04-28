@@ -95,6 +95,7 @@ public class TcrdRegistry extends Controller implements Commons {
     
     static class TcrdTarget implements Comparable<TcrdTarget> {
         String acc;
+        String gene;
         String family;
         String tdl;
         Long id;
@@ -106,7 +107,7 @@ public class TcrdRegistry extends Controller implements Commons {
         boolean idg2;
 
         TcrdTarget () {}
-        TcrdTarget (String acc, String family, String tdl,
+        TcrdTarget (String acc, String gene, String family, String tdl,
                     Long id, Long protein, Double novelty,
                     Keyword source) {
             if (family == null || family.equals("")) 
@@ -115,6 +116,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 tdl = "Other";
 
             this.acc = acc;
+            this.gene = gene;
             if ("nr".equalsIgnoreCase(family))
                 this.family = "Nuclear Receptor";
             else if ("ic".equalsIgnoreCase(family))
@@ -295,7 +297,11 @@ public class TcrdRegistry extends Controller implements Commons {
             pstm31 = con.prepareStatement
                 ("select * from locsig where protein_id = ?");
             pstm32 = con.prepareStatement
-                ("select * from ortholog where protein_id = ?");
+                ("select a.*,b.did,b.score,"
+                 +"c.name,c.dtype,c.description,c.drug_name "
+                 +"from ortholog a left join (ortholog_disease b, disease c) "
+                 +"on b.ortholog_id = a.id and b.did = c.did and "
+                 +"b.protein_id = c.protein_id where a.protein_id = ?");
         }
 
         Keyword getTdlKw (Target.TDL tdl) {
@@ -430,57 +436,57 @@ public class TcrdRegistry extends Controller implements Commons {
             String value;
             
             xrefs.clear();
-            pstm12.setLong(1, t.protein);
-            ResultSet rset = pstm12.executeQuery();
             Map<String, Integer> counts = new TreeMap<String, Integer>();
-            while (rset.next()) {
-                String xtype = rset.getString("xtype");
-                value = rset.getString("value");
-                if (value == null || value.trim().equals("")) {
-                    continue;
-                }
-                value = value.trim();
+            pstm12.setLong(1, t.protein);
+            try (ResultSet rset = pstm12.executeQuery()) {
+                while (rset.next()) {
+                    String xtype = rset.getString("xtype");
+                    value = rset.getString("value");
+                    if (value == null || value.trim().equals("")) {
+                        continue;
+                    }
+                    value = value.trim();
                 
-                //Logger.info("  + "+xtype+": "+value);
-                Integer c = counts.get(xtype);
-                counts.put(xtype, c==null?1:(c+1));
-                if ("uniprot keyword".equalsIgnoreCase(xtype)) {
-                    String term = rset.getString("xtra");
-                    if (term != null) {
-                        Keyword kw = KeywordFactory.registerIfAbsent
-                            (UNIPROT_KEYWORD, term/*.replaceAll("/","-")*/,
-                             "http://www.uniprot.org/keywords/"+value);
+                    //Logger.info("  + "+xtype+": "+value);
+                    Integer c = counts.get(xtype);
+                    counts.put(xtype, c==null?1:(c+1));
+                    if ("uniprot keyword".equalsIgnoreCase(xtype)) {
+                        String term = rset.getString("xtra");
+                        if (term != null) {
+                            Keyword kw = KeywordFactory.registerIfAbsent
+                                (UNIPROT_KEYWORD, term/*.replaceAll("/","-")*/,
+                                 "http://www.uniprot.org/keywords/"+value);
 
-                        target.addIfAbsent((Value)kw);
+                            target.addIfAbsent((Value)kw);
+                        }
                     }
-                }
-                else if ("pdb".equalsIgnoreCase(xtype)) {
-                    Keyword kw = KeywordFactory.registerIfAbsent
-                        (PDB_ID, value,
-                         "http://www.rcsb.org/pdb/explore/explore.do?structureId="
-                         +value);
-                    target.addIfAbsent(kw);
-                }
-                else if ("pubmed".equalsIgnoreCase(xtype)) {
-                    /*
-                    Publication pub = PublicationFactory.registerIfAbsent
-                        (Long.parseLong(value));
-                    if (pub != null)
-                        target.addIfAbsent(pub);
-                    */
-                    target.addIfAbsent
-                        (new VInt (PUBMED_ID, Long.parseLong(value)));
-                }
-                else {
-                    List<String> names = xrefs.get(xtype);
-                    if (names == null) {
-                        xrefs.put(xtype, names = new ArrayList<String>());
+                    else if ("pdb".equalsIgnoreCase(xtype)) {
+                        Keyword kw = KeywordFactory.registerIfAbsent
+                            (PDB_ID, value,
+                             "http://www.rcsb.org/pdb/explore/"
+                             +"explore.do?structureId="+value);
+                        target.addIfAbsent(kw);
                     }
-                    names.add(value);
-                    target.addIfAbsent(new Keyword (xtype, value));
+                    else if ("pubmed".equalsIgnoreCase(xtype)) {
+                        /*
+                          Publication pub = PublicationFactory.registerIfAbsent
+                          (Long.parseLong(value));
+                          if (pub != null)
+                          target.addIfAbsent(pub);
+                        */
+                        target.addIfAbsent
+                            (new VInt (PUBMED_ID, Long.parseLong(value)));
+                    }
+                    else {
+                        List<String> names = xrefs.get(xtype);
+                        if (names == null) {
+                            xrefs.put(xtype, names = new ArrayList<String>());
+                        }
+                        names.add(value);
+                        target.addIfAbsent(new Keyword (xtype, value));
+                    }
                 }
             }
-            rset.close();
 
             Keyword source =  KeywordFactory.registerIfAbsent
                 (SOURCE, "UniProt", "http://www.uniprot.org");
@@ -511,104 +517,110 @@ public class TcrdRegistry extends Controller implements Commons {
             }
 
             pstm14.setLong(1, t.protein);
-            rset = pstm14.executeQuery();
-            while (rset.next()) {
-                target.name = rset.getString("description");
-                value = rset.getString("uniprot");
+            try (ResultSet rset = pstm14.executeQuery()) {
+                while (rset.next()) {
+                    target.name = rset.getString("description");
+                    value = rset.getString("uniprot");
                 
-                Keyword kw = new Keyword (UNIPROT_ACCESSION, value);
-                kw.href = "http://www.uniprot.org/uniprot/"+value;
-                Keyword _kw = target.addIfAbsent(kw);
-                if (_kw == kw)
-                    kw.save();
-
-                kw = new Keyword (STRING_ID, rset.getString("stringid"));
-                _kw = target.addIfAbsent(kw);
-                if (_kw == kw)
-                    kw.save();
-
-                kw = new Keyword (UNIPROT_NAME, rset.getString("name"));
-                _kw = target.addIfAbsent(kw);
-                if (_kw == kw)
-                    kw.save();
-
-                //Gene gene = GeneFactory.registerIfAbsent(rset.getString("sym"));
-                //target.links.add(new XRef (gene));
-                value = rset.getString("sym");
-                kw = new Keyword (UNIPROT_GENE, value);
-                kw.href = 
-                    "http://www.genenames.org/cgi-bin/gene_symbol_report?match="+value;
-                _kw = target.addIfAbsent(kw);
-                if (_kw == kw)
-                    kw.save();
-                
-                value = String.valueOf(rset.getLong("geneid"));
-                kw = new Keyword (ENTREZ_GENE, value);
-                kw.href = "http://www.ncbi.nlm.nih.gov/gene/"+value;
-                _kw = target.addIfAbsent(kw);
-                if (_kw == kw)
-                    kw.save();
-
-                value = rset.getString("dtoid");
-                kw = new Keyword (DTO_ID, value);
-                kw.href = "http://drugtargetontology.org/"+value;
-                _kw = target.addIfAbsent(kw);
-                if (_kw == kw)
-                    kw.save();
-
-                Text seq = new Text (UNIPROT_SEQUENCE, rset.getString("seq"));
-                seq.save();
-                
-                SEQIDX.add(String.valueOf(seq.id), seq.text);
-                target.properties.add(seq);
-            }
-            rset.close();
-
-            pstm15.setLong(1, t.protein);
-            rset = pstm15.executeQuery();
-            while (rset.next()) {
-                String type = rset.getString("type");
-                value = rset.getString("value");
-                if ("uniprot".equalsIgnoreCase(type)) {
                     Keyword kw = new Keyword (UNIPROT_ACCESSION, value);
                     kw.href = "http://www.uniprot.org/uniprot/"+value;
                     Keyword _kw = target.addIfAbsent(kw);
                     if (_kw == kw)
                         kw.save();
-                }
-                else if ("symbol".equalsIgnoreCase(type)) {
-                    Keyword kw = new Keyword (UNIPROT_SHORTNAME, value);
-                    Keyword _kw = target.addIfAbsent(kw);
+
+                    kw = new Keyword (STRING_ID, rset.getString("stringid"));
+                    _kw = target.addIfAbsent(kw);
                     if (_kw == kw)
                         kw.save();
+
+                    kw = new Keyword (UNIPROT_NAME, rset.getString("name"));
+                    _kw = target.addIfAbsent(kw);
+                    if (_kw == kw)
+                        kw.save();
+
+                    //Gene gene = GeneFactory.registerIfAbsent(rset.getString("sym"));
+                    //target.links.add(new XRef (gene));
+                    value = rset.getString("sym");
+                    if (value != null) {
+                        kw = new Keyword (UNIPROT_GENE, value);
+                        kw.href = "http://www.genenames.org/"
+                            +"cgi-bin/gene_symbol_report?match="+value;
+                        _kw = target.addIfAbsent(kw);
+                        if (_kw == kw)
+                            kw.save();
+                    }
+                
+                    value = String.valueOf(rset.getLong("geneid"));
+                    kw = new Keyword (ENTREZ_GENE, value);
+                    kw.href = "https://www.ncbi.nlm.nih.gov/gene/"+value;
+                    _kw = target.addIfAbsent(kw);
+                    if (_kw == kw)
+                        kw.save();
+
+                    value = rset.getString("dtoid");
+                    if (value != null) {
+                        kw = new Keyword (DTO_ID, value);
+                        kw.href = "http://drugtargetontology.org/"+value;
+                        _kw = target.addIfAbsent(kw);
+                        if (_kw == kw)
+                            kw.save();
+                    }
+                    
+                    Text seq = new Text (UNIPROT_SEQUENCE,
+                                         rset.getString("seq"));
+                    seq.save();
+                
+                    SEQIDX.add(String.valueOf(seq.id), seq.text);
+                    target.properties.add(seq);
                 }
-                Logger.info("  + "+type+": "+value);
             }
-            rset.close();
+
+            pstm15.setLong(1, t.protein);
+            try (ResultSet rset = pstm15.executeQuery()) {
+                while (rset.next()) {
+                    String type = rset.getString("type");
+                    value = rset.getString("value");
+                    if ("uniprot".equalsIgnoreCase(type)) {
+                        Keyword kw = new Keyword (UNIPROT_ACCESSION, value);
+                        kw.href = "http://www.uniprot.org/uniprot/"+value;
+                        Keyword _kw = target.addIfAbsent(kw);
+                        if (_kw == kw)
+                            kw.save();
+                    }
+                    else if ("symbol".equalsIgnoreCase(type)) {
+                        Keyword kw = new Keyword (UNIPROT_SHORTNAME, value);
+                        Keyword _kw = target.addIfAbsent(kw);
+                        if (_kw == kw)
+                            kw.save();
+                    }
+                    Logger.info("  + "+type+": "+value);
+                }
+            }
             
             target.properties.add(source);
             Logger.debug("Target "+target.id+" xtype: "+counts);
         }
                          
         void addPatent (Target target, long protein) throws Exception {
-            pstm13.setLong(1, protein);
-            ResultSet rset = pstm13.executeQuery();
             Timeline timeline = null;
             int np = 0;
-            while (rset.next()) {
-                long year = rset.getLong("year");
-                long count = rset.getLong("count");
-                if (timeline == null) {
-                    timeline = new Timeline ("Patent Count");
+            
+            pstm13.setLong(1, protein);
+            try (ResultSet rset = pstm13.executeQuery()) {
+                while (rset.next()) {
+                    long year = rset.getLong("year");
+                    long count = rset.getLong("count");
+                    if (timeline == null) {
+                        timeline = new Timeline ("Patent Count");
+                    }
+                    Event event = new Event ();
+                    event.start = year;
+                    event.end = count; // abusing notation
+                    event.unit = Event.Resolution.YEARS;
+                    timeline.events.add(event);
+                    ++np;
                 }
-                Event event = new Event ();
-                event.start = year;
-                event.end = count; // abusing notation
-                event.unit = Event.Resolution.YEARS;
-                timeline.events.add(event);
-                ++np;
             }
-            rset.close();
             
             if (timeline != null) {
                 timeline.save();
@@ -619,8 +631,7 @@ public class TcrdRegistry extends Controller implements Commons {
 
         void addPubTator (Target target, long protein) throws Exception {
             pstm29.setLong(1, protein);
-            ResultSet rset = pstm29.executeQuery();
-            try {
+            try (ResultSet rset = pstm29.executeQuery()) {
                 Timeline timeline = null;
                 int count = 0;
                 while (rset.next()) {
@@ -643,28 +654,26 @@ public class TcrdRegistry extends Controller implements Commons {
                 Logger.debug("Target "+target.id+" has "
                              +count+" pubtator entries!");
             }
-            finally {
-                rset.close();
-            }
         }
 
         void addPMScore (Target target, long protein) throws Exception {
-            pstm25.setLong(1, protein);
-            ResultSet rset = pstm25.executeQuery();
             Timeline timeline = null;
-            while (rset.next()) {
-                long year = rset.getLong("year");
-                double score = rset.getDouble("score");
-                if (timeline == null) {
-                    timeline = new Timeline ("PubMed Score");
+            
+            pstm25.setLong(1, protein);
+            try (ResultSet rset = pstm25.executeQuery()) {
+                while (rset.next()) {
+                    long year = rset.getLong("year");
+                    double score = rset.getDouble("score");
+                    if (timeline == null) {
+                        timeline = new Timeline ("PubMed Score");
+                    }
+                    Event event = new Event ();
+                    event.start = year;
+                    event.end = (long)(score * 1000 + 0.5); // abusing notation
+                    event.unit = Event.Resolution.YEARS;
+                    timeline.events.add(event);
                 }
-                Event event = new Event ();
-                event.start = year;
-                event.end = (long)(score * 1000 + 0.5); // abusing notation
-                event.unit = Event.Resolution.YEARS;
-                timeline.events.add(event);
             }
-            rset.close();
             
             if (timeline != null) {
                 timeline.save();
@@ -673,47 +682,47 @@ public class TcrdRegistry extends Controller implements Commons {
         }
 
         void addAssay (Target target, long protein) throws Exception {
+            int count = 0;            
             pstm21.setLong(1, protein);
-            ResultSet rset = pstm21.executeQuery();
-            int count = 0;
-            while (rset.next()) {
-                Assay assay = new Assay (rset.getString("assay_name"));
-                assay.type = rset.getString("method");
-                assay.properties.add
-                    (new VInt (MLP_ASSAY_ACTIVE, rset.getLong("active_sids")));
-                assay.properties.add
-                    (new VInt (MLP_ASSAY_INACTIVE,
-                               rset.getLong("inactive_sids")));
-                assay.properties.add
-                    (new VInt (MLP_ASSAY_INCONCLUSIVE,
-                               rset.getLong("iconclusive_sids")));
-                assay.properties.add
-                    (new VInt (MLP_ASSAY_AID, rset.getLong("aid")));
-                assay.save();
+            try (ResultSet rset = pstm21.executeQuery()) {
+                while (rset.next()) {
+                    Assay assay = new Assay (rset.getString("assay_name"));
+                    assay.type = rset.getString("method");
+                    assay.properties.add
+                        (new VInt (MLP_ASSAY_ACTIVE, rset.getLong("active_sids")));
+                    assay.properties.add
+                        (new VInt (MLP_ASSAY_INACTIVE,
+                                   rset.getLong("inactive_sids")));
+                    assay.properties.add
+                        (new VInt (MLP_ASSAY_INCONCLUSIVE,
+                                   rset.getLong("iconclusive_sids")));
+                    assay.properties.add
+                        (new VInt (MLP_ASSAY_AID, rset.getLong("aid")));
+                    assay.save();
                 
-                XRef tref = assay.addIfAbsent(new XRef (target));
-                tref.addIfAbsent((Value)getTdlKw (target.idgTDL));
-                tref.addIfAbsent((Value)getFamKw (target.idgFamily));
+                    XRef tref = assay.addIfAbsent(new XRef (target));
+                    tref.addIfAbsent((Value)getTdlKw (target.idgTDL));
+                    tref.addIfAbsent((Value)getFamKw (target.idgFamily));
                 
-                XRef aref = target.addIfAbsent(new XRef (assay));
-                aref.addIfAbsent((Value)KeywordFactory.registerIfAbsent
-                                 (MLP_ASSAY_TYPE, assay.type, null));
-                // 
-                aref.properties.add(new Text (MLP_ASSAY, assay.name));
+                    XRef aref = target.addIfAbsent(new XRef (assay));
+                    aref.addIfAbsent((Value)KeywordFactory.registerIfAbsent
+                                     (MLP_ASSAY_TYPE, assay.type, null));
+                    // 
+                    aref.properties.add(new Text (MLP_ASSAY, assay.name));
 
-                try {
-                    tref.save();
-                    aref.save();
-                    assay.update();
-                    //target.update();
+                    try {
+                        tref.save();
+                        aref.save();
+                        assay.update();
+                        //target.update();
+                    }
+                    catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                    ++count;
                 }
-                catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-                ++count;
             }
-            rset.close();
-            Logger.debug("Target " + target.id + " has " + count +" assay(s)!");    
+            Logger.debug("Target " + target.id + " has " + count +" assay(s)!");
         }
 
         void addGrant (Target target, long tid) throws Exception {
@@ -745,7 +754,8 @@ public class TcrdRegistry extends Controller implements Commons {
                 if (!rset.wasNull()) {
                     Keyword grant = new Keyword 
                         (GRANT_APPLICATION, rset.getString("full_project_num"));
-                    grant.href = "https://projectreporter.nih.gov/project_info_description.cfm?aid="+appid;
+                    grant.href = "https://projectreporter.nih.gov/"
+                        +"project_info_description.cfm?aid="+appid;
                     target.properties.add(grant);
                 }
                 ++count;
@@ -773,252 +783,253 @@ public class TcrdRegistry extends Controller implements Commons {
         }
         
         void addPathway (Target target, long protein) throws Exception {
+            Map<String, Integer> counts = new TreeMap<String, Integer>();
             pstm11.setLong(1, protein);
             pstm11.setLong(2, protein); // target_id = protein_id
             
-            ResultSet rset = pstm11.executeQuery();
-            Map<String, Integer> counts = new TreeMap<String, Integer>();
-            while (rset.next()) {
-                String source = rset.getString("pwtype");
-                String name = rset.getString("name");
-                if (name.length() > 255) {
-                    name = name.substring(0, 246)+"..."
-                        +name.substring(name.length()-6);
-                }
-                Keyword term = KeywordFactory.registerIfAbsent
-                    (source+" Pathway", name, rset.getString("url"));
-                target.addIfAbsent((Value)term);
-                /*
-                Logger.debug("Target "+target.id
-                             +" pathway ("+source+"): "+term.term);
-                */
-                
-                if ("Reactome".equals(source)) {
-                    List<String> refs = xrefs.get("Reactome");
-                    if (refs != null) {
-                        String id = refs.iterator().next();
-                        Keyword kw = KeywordFactory.registerIfAbsent
-                            (REACTOME_REF, id,
-                             "http://www.reactome.org/content/query?cluster=true&q="+id);
-                        target.addIfAbsent((Value)kw);
+            try (ResultSet rset = pstm11.executeQuery()) {
+                while (rset.next()) {
+                    String source = rset.getString("pwtype");
+                    String name = rset.getString("name");
+                    if (name.length() > 255) {
+                        name = name.substring(0, 246)+"..."
+                            +name.substring(name.length()-6);
                     }
+                    Keyword term = KeywordFactory.registerIfAbsent
+                        (source+" Pathway", name, rset.getString("url"));
+                    target.addIfAbsent((Value)term);
+                    /*
+                      Logger.debug("Target "+target.id
+                      +" pathway ("+source+"): "+term.term);
+                    */
+                
+                    if ("Reactome".equals(source)) {
+                        List<String> refs = xrefs.get("Reactome");
+                        if (refs != null) {
+                            String id = refs.iterator().next();
+                            Keyword kw = KeywordFactory.registerIfAbsent
+                                (REACTOME_REF, id,
+                                 "http://www.reactome.org/content/"
+                                 +"query?cluster=true&q="+id);
+                            target.addIfAbsent((Value)kw);
+                        }
+                    }
+                    Integer c = counts.get(source);
+                    counts.put(source, c==null?1:(c+1));
                 }
-                Integer c = counts.get(source);
-                counts.put(source, c==null?1:(c+1));
             }
-            rset.close();
             Logger.debug("Target "+target.id+" pathway: "+counts);
         }
 
         void addHarmonogram(Target target, long protein) throws Exception {
-            pstm18.setLong(1, protein);
-            ResultSet rset = pstm18.executeQuery();
             int n = 0;
             double cdfSum = 0;
-            while (rset.next()) {
-                HarmonogramCDF hg = new HarmonogramCDF();
-                hg.attrGroup = rset.getString("attribute_group");
-                hg.attrType = rset.getString("attribute_type");
-                hg.cdf = rset.getDouble("attr_cdf");
-                cdfSum += hg.cdf;
-                hg.dataSource = rset.getString("name");
-                hg.dataSourceUrl = rset.getString("url");
-                //hg.dataSourceDescription = rset.getString("description");
-                hg.dataType  =rset.getString("resource_group");
-                hg.IDGFamily = target.idgFamily;
-                hg.TDL = target.idgTDL.name;
-                hg.uniprotId = rset.getString("uniprot");
-                hg.symbol = rset.getString("sym");
-                hg.save();
-                n++;
+            
+            pstm18.setLong(1, protein);
+            try (ResultSet rset = pstm18.executeQuery()) {
+                while (rset.next()) {
+                    HarmonogramCDF hg = new HarmonogramCDF();
+                    hg.attrGroup = rset.getString("attribute_group");
+                    hg.attrType = rset.getString("attribute_type");
+                    hg.cdf = rset.getDouble("attr_cdf");
+                    cdfSum += hg.cdf;
+                    hg.dataSource = rset.getString("name");
+                    hg.dataSourceUrl = rset.getString("url");
+                    //hg.dataSourceDescription = rset.getString("description");
+                    hg.dataType  =rset.getString("resource_group");
+                    hg.IDGFamily = target.idgFamily;
+                    hg.TDL = target.idgTDL.name;
+                    hg.uniprotId = rset.getString("uniprot");
+                    hg.symbol = rset.getString("sym");
+                    hg.save();
+                    n++;
+                }
             }
             target.knowledgeAvailability = cdfSum;
-
-            rset.close();
             Logger.debug("Target "+target.id+" has "+n+" harmonogram entries!");
         }
 
         void addGO (Target target, long protein) throws Exception {
-            pstm9.setLong(1, protein);
-            ResultSet rset = pstm9.executeQuery();
             Map<String, Integer> counts = new TreeMap<String, Integer>();
-            while (rset.next()) {
-                String term = rset.getString("go_term");
-                String id = rset.getString("go_id");
-                String uniprot = rset.getString("uniprot");
+            pstm9.setLong(1, protein);
+            try (ResultSet rset = pstm9.executeQuery()) {
+                while (rset.next()) {
+                    String term = rset.getString("go_term");
+                    String id = rset.getString("go_id");
+                    String uniprot = rset.getString("uniprot");
                 
-                Keyword go = null;
-                char kind = term.charAt(0);
-                term = term.substring(term.indexOf(':')+1)
-                    /*.replaceAll("/","-")*/;
-                String href = "http://amigo.geneontology.org/amigo/search/annotation?q=*:*&fq=bioentity:\"UniProtKB:"+uniprot+"\"&sfq=document_category:\"annotation\"&fq=regulates_closure:\""+id+"\"";
+                    Keyword go = null;
+                    char kind = term.charAt(0);
+                    term = term.substring(term.indexOf(':')+1)
+                        /*.replaceAll("/","-")*/;
+                    String href = "http://amigo.geneontology.org/amigo/search/annotation?q=*:*&fq=bioentity:\"UniProtKB:"+uniprot+"\"&sfq=document_category:\"annotation\"&fq=regulates_closure:\""+id+"\"";
                 
-                switch (kind) {
-                case 'C': // component
-                    go = KeywordFactory.registerIfAbsent
-                        (GO_COMPONENT, term, href);
-                    break;
+                    switch (kind) {
+                    case 'C': // component
+                        go = KeywordFactory.registerIfAbsent
+                            (GO_COMPONENT, term, href);
+                        break;
                     
-                case 'F': // function
-                    go = KeywordFactory.registerIfAbsent
-                        (GO_FUNCTION, term, href);
-                    break;
+                    case 'F': // function
+                        go = KeywordFactory.registerIfAbsent
+                            (GO_FUNCTION, term, href);
+                        break;
                     
-                case 'P': // process
-                    go = KeywordFactory.registerIfAbsent
-                        (GO_PROCESS, term, href);
-                    break;
+                    case 'P': // process
+                        go = KeywordFactory.registerIfAbsent
+                            (GO_PROCESS, term, href);
+                        break;
                     
-                default:
-                    Logger.warn("Unknown GO term \""+term+"\"!");
-                }
+                    default:
+                        Logger.warn("Unknown GO term \""+term+"\"!");
+                    }
 
-                if (go != null && !target.properties.contains(go)) {
-                    target.properties.add(go);
-                    //Logger.debug("Target "+target.id+" GO: "+term);
+                    if (go != null && !target.properties.contains(go)) {
+                        target.properties.add(go);
+                        //Logger.debug("Target "+target.id+" GO: "+term);
+                    }
+                    Integer c = counts.get(""+kind);
+                    counts.put(""+kind,c==null?1:(c+1));
                 }
-                Integer c = counts.get(""+kind);
-                counts.put(""+kind,c==null?1:(c+1));
             }
-            rset.close();
             Logger.debug("Target "+target.id+" GO: "+counts);
         }
         
         void addExpression (Target target, long protein) throws Exception {
-            pstm8.setLong(1, protein);
-            ResultSet rset = pstm8.executeQuery();
             Map<String, Integer> counts = new TreeMap<String, Integer>();
             Map<String, Keyword> sources = new HashMap<String, Keyword>();
-            while (rset.next()) {
-                String qv = rset.getString("qual_value");
-                String ev = rset.getString("evidence");
-                if ("Not detected".equalsIgnoreCase(qv)
-                    && !"CURATED".equalsIgnoreCase(ev))
-                    continue;
+            pstm8.setLong(1, protein);
+            try (ResultSet rset = pstm8.executeQuery()) {
+                while (rset.next()) {
+                    String qv = rset.getString("qual_value");
+                    String ev = rset.getString("evidence");
+                    if ("Not detected".equalsIgnoreCase(qv)
+                        && !"CURATED".equalsIgnoreCase(ev))
+                        continue;
 
-                Expression expr = new Expression();
-                expr.proteinId = protein;
-                expr.source = rset.getString("etype");
-                expr.tissue = rset.getString("tissue");
-                expr.confidence = rset.getDouble("conf");
-                expr.qualValue = qv;
-                expr.numberValue = rset.getDouble("number_value");
-                expr.evidence = ev;
+                    Expression expr = new Expression();
+                    expr.proteinId = protein;
+                    expr.source = rset.getString("etype");
+                    expr.tissue = rset.getString("tissue");
+                    expr.confidence = rset.getDouble("conf");
+                    expr.qualValue = qv;
+                    expr.numberValue = rset.getDouble("number_value");
+                    expr.evidence = ev;
 
-                String sourceUrl = "";
-                Keyword tissue = null;
-                if (expr.source.startsWith("GTEx")) {
-                    sourceUrl = "http://www.gtexportal.org/";
-                    expr.sourceid = GTEx_EXPR;
-                    tissue = KeywordFactory.registerIfAbsent
-                        (GTEx_TISSUE, expr.tissue, null);
-                    target.addIfAbsent((Value)tissue);
-                }
-                else if (expr.source.startsWith("Consensus")) {
-                    sourceUrl = "http://targetcentral.ws";
-                    expr.sourceid = IDG_EXPR;
-                    tissue = KeywordFactory.registerIfAbsent
-                            (IDG_TISSUE, expr.tissue, null);
-                    target.addIfAbsent((Value)tissue);
-                }
-                else if (expr.source.startsWith("HPM Gene")) {
-                }
-                else if (expr.source.startsWith("HPM Protein")) {
-                    sourceUrl = "http://www.humanproteomemap.org";
-                    expr.sourceid = HPM_EXPR;
-                    tissue = KeywordFactory.registerIfAbsent
-                        (HPM_TISSUE, expr.tissue, null);
-                    target.addIfAbsent((Value)tissue);
-                }
-                else if (expr.source.startsWith("JensenLab Text Mining")) {
-                    sourceUrl = "http://tissues.jensenlab.org";
-                    expr.sourceid = JENSEN_TM_EXPR;
-                    // this is specific to each protein
-                    tissue = new Keyword (JENSEN_TM_TISSUE, expr.tissue);
-                    tissue.href = rset.getString("url");
-                    tissue.save();
-                    target.properties.add(tissue);
-                }
-                else if (expr.source.startsWith
-                           ("JensenLab Knowledge UniProtKB-RC")) {
-                    sourceUrl = "http://tissues.jensenlab.org";
-                    expr.sourceid = JENSEN_KB_EXPR;
-                    tissue = KeywordFactory.registerIfAbsent
-                        (JENSEN_KB_TISSUE, expr.tissue, null);
-                    target.addIfAbsent((Value)tissue);
-                }
-                else if (expr.source.equals("UniProt Tissue")) {
-                    tissue = KeywordFactory.registerIfAbsent
-                        (expr.source, expr.tissue, null);
-                    expr.sourceid = UNIPROT_EXPR;
-                    target.addIfAbsent((Value)tissue);              
-                }
-                else if (expr.source.startsWith("HPA")) {
-                    sourceUrl = "http://tissues.jensenlab.org";
-                    expr.sourceid = expr.source+" Expression";
-                    tissue = KeywordFactory.registerIfAbsent
-                        (expr.source+" Tissue", expr.tissue, null);
-                    target.addIfAbsent((Value)tissue);
-
-                    String toks[] = expr.tissue.split("-");
-                    if (toks.length == 2) {
-                        expr.cellType = toks[1].trim();
-                        Keyword cellType = KeywordFactory.registerIfAbsent
-                            (expr.source+" Cell Type",
-                             expr.cellType, null);
-                        target.addIfAbsent((Value)cellType);
+                    String sourceUrl = "";
+                    Keyword tissue = null;
+                    if (expr.source.startsWith("GTEx")) {
+                        sourceUrl = "http://www.gtexportal.org/";
+                        expr.sourceid = GTEx_EXPR;
+                        tissue = KeywordFactory.registerIfAbsent
+                            (GTEx_TISSUE, expr.tissue, null);
+                        target.addIfAbsent((Value)tissue);
                     }
-                }
-                else if (expr.source.startsWith("JensenLab Experiment")) {
-                    sourceUrl = "http://tissues.jensenlab.org";
-                    String t = expr.source
-                        .substring("JensenLab Experiment".length()+1).trim();
-                    expr.sourceid = t+" Expression";
-                }
-                else if (expr.source.equals("HCA RNA")) {
-                    sourceUrl = "https://www.humancellatlas.org";
-                    expr.sourceid = expr.source+" Cell Line";
-                    // remove "Cell Line" prefix
-                    if (expr.tissue.startsWith("Cell Line"))
-                        expr.tissue = expr.tissue.substring(9).trim();
-                    tissue = KeywordFactory.registerIfAbsent
-                        (HCA_RNA_CELL_LINE, expr.tissue, null);
-                    target.addIfAbsent((Value)tissue);
-                }
-                else if (expr.source.equals("Cell Surface Protein Atlas")) {
-                    sourceUrl = "http://wlab.ethz.ch/cspa/";
-                    expr.sourceid = CSPA_CELL_LINE;
-                    if (expr.tissue.startsWith("Cell Line"))
-                        expr.tissue = expr.tissue.substring(9).trim();
-                    tissue = KeywordFactory.registerIfAbsent
-                        (CSPA_CELL_LINE, expr.tissue, null);
-                    target.addIfAbsent((Value)tissue);                    
-                }
-                else
-                    Logger.warn("Unknown expression \""+expr.source
-                            +"\" for target "+target.id);
+                    else if (expr.source.startsWith("Consensus")) {
+                        sourceUrl = "http://targetcentral.ws";
+                        expr.sourceid = IDG_EXPR;
+                        tissue = KeywordFactory.registerIfAbsent
+                            (IDG_TISSUE, expr.tissue, null);
+                        target.addIfAbsent((Value)tissue);
+                    }
+                    else if (expr.source.startsWith("HPM Gene")) {
+                    }
+                    else if (expr.source.startsWith("HPM Protein")) {
+                        sourceUrl = "http://www.humanproteomemap.org";
+                        expr.sourceid = HPM_EXPR;
+                        tissue = KeywordFactory.registerIfAbsent
+                            (HPM_TISSUE, expr.tissue, null);
+                        target.addIfAbsent((Value)tissue);
+                    }
+                    else if (expr.source.startsWith("JensenLab Text Mining")) {
+                        sourceUrl = "http://tissues.jensenlab.org";
+                        expr.sourceid = JENSEN_TM_EXPR;
+                        // this is specific to each protein
+                        tissue = new Keyword (JENSEN_TM_TISSUE, expr.tissue);
+                        tissue.href = rset.getString("url");
+                        tissue.save();
+                        target.properties.add(tissue);
+                    }
+                    else if (expr.source.startsWith
+                             ("JensenLab Knowledge UniProtKB-RC")) {
+                        sourceUrl = "http://tissues.jensenlab.org";
+                        expr.sourceid = JENSEN_KB_EXPR;
+                        tissue = KeywordFactory.registerIfAbsent
+                            (JENSEN_KB_TISSUE, expr.tissue, null);
+                        target.addIfAbsent((Value)tissue);
+                    }
+                    else if (expr.source.equals("UniProt Tissue")) {
+                        tissue = KeywordFactory.registerIfAbsent
+                            (expr.source, expr.tissue, null);
+                        expr.sourceid = UNIPROT_EXPR;
+                        target.addIfAbsent((Value)tissue);              
+                    }
+                    else if (expr.source.startsWith("HPA")) {
+                        sourceUrl = "http://tissues.jensenlab.org";
+                        expr.sourceid = expr.source+" Expression";
+                        tissue = KeywordFactory.registerIfAbsent
+                            (expr.source+" Tissue", expr.tissue, null);
+                        target.addIfAbsent((Value)tissue);
 
-                expr.save();
-                XRef ref = target.addIfAbsent(new XRef(expr));
-                if (tissue != null)
-                    ref.properties.add(tissue);
-                
-                if (ref.id == null)
-                    ref.save();
-                
-                //Logger.debug("Target "+target.id+" "+expr.source+": "+expr.tissue);
-                Integer c = counts.get(expr.source);
-                counts.put(expr.source, c==null?1:(c+1));
+                        String toks[] = expr.tissue.split("-");
+                        if (toks.length == 2) {
+                            expr.cellType = toks[1].trim();
+                            Keyword cellType = KeywordFactory.registerIfAbsent
+                                (expr.source+" Cell Type",
+                                 expr.cellType, null);
+                            target.addIfAbsent((Value)cellType);
+                        }
+                    }
+                    else if (expr.source.startsWith("JensenLab Experiment")) {
+                        sourceUrl = "http://tissues.jensenlab.org";
+                        String t = expr.source
+                            .substring("JensenLab Experiment".length()+1).trim();
+                        expr.sourceid = t+" Expression";
+                    }
+                    else if (expr.source.equals("HCA RNA")) {
+                        sourceUrl = "https://www.humancellatlas.org";
+                        expr.sourceid = expr.source+" Cell Line";
+                        // remove "Cell Line" prefix
+                        if (expr.tissue.startsWith("Cell Line"))
+                            expr.tissue = expr.tissue.substring(9).trim();
+                        tissue = KeywordFactory.registerIfAbsent
+                            (HCA_RNA_CELL_LINE, expr.tissue, null);
+                        target.addIfAbsent((Value)tissue);
+                    }
+                    else if (expr.source.equals("Cell Surface Protein Atlas")) {
+                        sourceUrl = "http://wlab.ethz.ch/cspa/";
+                        expr.sourceid = CSPA_CELL_LINE;
+                        if (expr.tissue.startsWith("Cell Line"))
+                            expr.tissue = expr.tissue.substring(9).trim();
+                        tissue = KeywordFactory.registerIfAbsent
+                            (CSPA_CELL_LINE, expr.tissue, null);
+                        target.addIfAbsent((Value)tissue);                    
+                    }
+                    else
+                        Logger.warn("Unknown expression \""+expr.source
+                                    +"\" for target "+target.id);
 
-                Keyword source = datasources.get(expr.source);
-                if (source == null) {
-                    source = KeywordFactory.registerIfAbsent
+                    expr.save();
+                    XRef ref = target.addIfAbsent(new XRef(expr));
+                    if (tissue != null)
+                        ref.properties.add(tissue);
+                
+                    if (ref.id == null)
+                        ref.save();
+                
+                    //Logger.debug("Target "+target.id+" "+expr.source+": "+expr.tissue);
+                    Integer c = counts.get(expr.source);
+                    counts.put(expr.source, c==null?1:(c+1));
+
+                    Keyword source = datasources.get(expr.source);
+                    if (source == null) {
+                        source = KeywordFactory.registerIfAbsent
                             (SOURCE, expr.source, sourceUrl);
-                    datasources.put(expr.source, source);
+                        datasources.put(expr.source, source);
+                    }
+                    sources.put(expr.source, source);
                 }
-                sources.put(expr.source, source);
             }
-            rset.close();
 
             for (Keyword source: sources.values()) {
                 target.addIfAbsent((Value)source);
@@ -1095,135 +1106,136 @@ public class TcrdRegistry extends Controller implements Commons {
         }
         
         void addPhenotype (Target target, long protein) throws Exception {
-            pstm7.setLong(1, protein);
-            ResultSet rset = pstm7.executeQuery();
             Set<Keyword> terms = new HashSet<>();
             Map<String, Keyword> sources = new TreeMap<String, Keyword>();
             int phenoCount = 0;
-            while (rset.next()) {
-                String type = rset.getString("ptype");
-                if ("impc".equalsIgnoreCase(type)) {
-                    Keyword source = datasources.get(type);
-                    if (source == null) {
-                        source = KeywordFactory.registerIfAbsent
-                            (SOURCE, type,
-                             "http://www.mousephenotype.org/data/secondaryproject/idg");
-                        datasources.put(type, source);
+            pstm7.setLong(1, protein);
+            try (ResultSet rset = pstm7.executeQuery()) {
+                while (rset.next()) {
+                    String type = rset.getString("ptype");
+                    if ("impc".equalsIgnoreCase(type)) {
+                        Keyword source = datasources.get(type);
+                        if (source == null) {
+                            source = KeywordFactory.registerIfAbsent
+                                (SOURCE, type,
+                                 "http://www.mousephenotype.org/data/secondaryproject/idg");
+                            datasources.put(type, source);
+                        }
+                        sources.put(type, source);
+                        String term = rset.getString("term_name");
+                        String termId = rset.getString("term_id");
+                        if (term != null) {
+                            Keyword kw = KeywordFactory.registerIfAbsent
+                                (IMPC_TERM, term/*.replaceAll("/","-")*/,
+                                 "http://www.informatics.jax.org/searches/Phat.cgi?id=" + termId);
+                            terms.add(kw);
+                        }
                     }
-                    sources.put(type, source);
-                    String term = rset.getString("term_name");
-                    String termId = rset.getString("term_id");
-                    if (term != null) {
-                        Keyword kw = KeywordFactory.registerIfAbsent
-                            (IMPC_TERM, term/*.replaceAll("/","-")*/,
-                             "http://www.informatics.jax.org/searches/Phat.cgi?id=" + termId);
-                        terms.add(kw);
-                    }
-                }
-                else if ("gwas catalog".equalsIgnoreCase(type)) {
-                    Keyword source = datasources.get(type);
-                    if (source == null) {
-                        source = KeywordFactory.registerIfAbsent
-                            (SOURCE, type,
-                             "https://www.genome.gov/26525384");
-                        datasources.put(type, source);
-                    }
-                    String trait = rset.getString("trait");
-                    if (trait != null) {
-                        sources.put(type, source);                      
-                        //trait = trait.replaceAll("/", "-");
-                        Keyword gwas = KeywordFactory.registerIfAbsent
+                    else if ("gwas catalog".equalsIgnoreCase(type)) {
+                        Keyword source = datasources.get(type);
+                        if (source == null) {
+                            source = KeywordFactory.registerIfAbsent
+                                (SOURCE, type,
+                                 "https://www.genome.gov/26525384");
+                            datasources.put(type, source);
+                        }
+                        String trait = rset.getString("trait");
+                        if (trait != null) {
+                            sources.put(type, source);                      
+                            //trait = trait.replaceAll("/", "-");
+                            Keyword gwas = KeywordFactory.registerIfAbsent
                                 (GWAS_TRAIT, trait, null);
-                        XRef ref = target.addIfAbsent(new XRef (gwas));
-                        ref.addIfAbsent(source);
+                            XRef ref = target.addIfAbsent(new XRef (gwas));
+                            ref.addIfAbsent(source);
                         
-                        long pmid = rset.getLong("pmid");
-                        if (!rset.wasNull()) {
-                            ref.properties.add(new VInt (PUBMED_ID, pmid));
-                            /*
-                            Publication pub =
-                                PublicationFactory.registerIfAbsent(pmid);
-                            if (pub != null) {
-                                XRef ref = target.getLink(pub);
-                                Keyword t = KeywordFactory.registerIfAbsent
-                                    (GWAS_TRAIT, trait, null);
-                                if (ref == null) {
-                                    ref = new XRef (pub);
-                                    ref.properties.add(source);
-                                    ref.properties.add(t);
-                                    ref.save();
-                                    target.links.add(ref);
-                                }
-                                else {
-                                    boolean add = true;
-                                    if (!ref.properties.contains(t)) {
-                                        ref.properties.add(t);
-                                        ref.update();
-                                    }
-                                }
-                                target.addIfAbsent(pub);
+                            long pmid = rset.getLong("pmid");
+                            if (!rset.wasNull()) {
+                                ref.properties.add(new VInt (PUBMED_ID, pmid));
+                                /*
+                                  Publication pub =
+                                  PublicationFactory.registerIfAbsent(pmid);
+                                  if (pub != null) {
+                                  XRef ref = target.getLink(pub);
+                                  Keyword t = KeywordFactory.registerIfAbsent
+                                  (GWAS_TRAIT, trait, null);
+                                  if (ref == null) {
+                                  ref = new XRef (pub);
+                                  ref.properties.add(source);
+                                  ref.properties.add(t);
+                                  ref.save();
+                                  target.links.add(ref);
+                                  }
+                                  else {
+                                  boolean add = true;
+                                  if (!ref.properties.contains(t)) {
+                                  ref.properties.add(t);
+                                  ref.update();
+                                  }
+                                  }
+                                  target.addIfAbsent(pub);
+                                  }
+                                  else {
+                                  Logger.warn("Can't retrieve publication "+pmid+
+                                  "for target "+target.id);
+                                  }
+                                */
                             }
-                            else {
-                                Logger.warn("Can't retrieve publication "+pmid+
-                                            "for target "+target.id);
+                        
+                            if (ref.id == null) {
+                                ref.save();
                             }
-                            */
-                        }
                         
-                        if (ref.id == null) {
-                            ref.save();
+                            // also add this as a property
+                            target.addIfAbsent((Value)gwas);
                         }
-                        
-                        // also add this as a property
-                        target.addIfAbsent((Value)gwas);
                     }
-                }
-                else if ("JAX/MGI Human Ortholog Phenotype"
-                         .equalsIgnoreCase(type)) {
-                    Keyword source = datasources.get(type);             
-                    if (source == null) {
-                        source = KeywordFactory.registerIfAbsent
-                            (SOURCE, type,
-                             "http://www.informatics.jax.org/");
-                        datasources.put(type, source);
+                    else if ("JAX/MGI Human Ortholog Phenotype"
+                             .equalsIgnoreCase(type)) {
+                        Keyword source = datasources.get(type);             
+                        if (source == null) {
+                            source = KeywordFactory.registerIfAbsent
+                                (SOURCE, type,
+                                 "http://www.informatics.jax.org/");
+                            datasources.put(type, source);
+                        }
+                        String pheno = rset.getString("term_name");
+                        String termId = rset.getString("term_id");
+                        if (pheno != null) {
+                            //pheno = pheno.replaceAll("/", "-");
+                            sources.put(type, source);
+                            Keyword kw = KeywordFactory.registerIfAbsent
+                                (MGI_TERM, pheno,
+                                 "http://www.informatics.jax.org/searches/Phat.cgi?id="+termId);
+                            target.addIfAbsent((Value)kw);
+                            ++phenoCount;
+                        }
                     }
-                    String pheno = rset.getString("term_name");
-                    String termId = rset.getString("term_id");
-                    if (pheno != null) {
-                        //pheno = pheno.replaceAll("/", "-");
-                        sources.put(type, source);
-                        Keyword kw = KeywordFactory.registerIfAbsent
-                            (MGI_TERM, pheno,
-                             "http://www.informatics.jax.org/searches/Phat.cgi?id="+termId);
-                        target.addIfAbsent((Value)kw);
-                        ++phenoCount;
+                    else if ("OMIM".equalsIgnoreCase(type)) {
+                        Keyword source = datasources.get(type);             
+                        if (source == null) {
+                            source = KeywordFactory.registerIfAbsent
+                                (SOURCE, type, "http://omim.org/");
+                            datasources.put(type, source);
+                        }
+                        String trait = rset.getString("trait");
+                        if (trait != null) {
+                            sources.put(type, source);
+                            parseOMIMPhenotype (trait, target);
+                        }
                     }
-                }
-                else if ("OMIM".equalsIgnoreCase(type)) {
-                    Keyword source = datasources.get(type);             
-                    if (source == null) {
-                        source = KeywordFactory.registerIfAbsent
-                            (SOURCE, type, "http://omim.org/");
-                        datasources.put(type, source);
+                    else {
+                        Logger.warn("Unknown phenotype \""+type
+                                    +"\" for target "+target.id);
                     }
-                    String trait = rset.getString("trait");
-                    if (trait != null) {
-                        sources.put(type, source);
-                        parseOMIMPhenotype (trait, target);
-                    }
-                }
-                else {
-                    Logger.warn("Unknown phenotype \""+type
-                                +"\" for target "+target.id);
                 }
             }
-            rset.close();
 
             if (!terms.isEmpty()) {
                 for (Keyword term : terms) {
                     target.properties.add(term);
                 }
-                Logger.debug("Target "+target.id+" has "+terms.size() +" phenotype(s)!");
+                Logger.debug("Target "+target.id+" has "
+                             +terms.size() +" phenotype(s)!");
             }
             
             for (Keyword source: sources.values()) {
@@ -1238,101 +1250,102 @@ public class TcrdRegistry extends Controller implements Commons {
         }
         
         void addTDL (Target target, long protein) throws Exception {
-            pstm6.setLong(1, protein);
-            ResultSet rset = pstm6.executeQuery();
             int selective = 0;
             Keyword mice = KeywordFactory.registerIfAbsent
                 ("IMPC Mice Produced", "YES", null);
             Map<String, Integer> counts = new TreeMap<String, Integer>();
-            while (rset.next()) {
-                String type = rset.getString("itype");
+
+            pstm6.setLong(1, protein);
+            try (ResultSet rset = pstm6.executeQuery()) {
+                while (rset.next()) {
+                    String type = rset.getString("itype");
                 
-                Value val = null;
-                if (type.equals("IMPC Mice Produced")) {
-                    int bv = rset.getInt("boolean_value");
-                    if (bv != 0)
-                        val = mice;
-                }
-                else {
-                    for (String field : new String[]{"string_value",
-                                                     "number_value",
-                                                     "integer_value",
-                                                     "date_value",
-                                                     "boolean_value"}) {
-                        if (field.equals("string_value")) {
-                            String str = rset.getString(field);
-                            if (str != null)
-                                val = new Text (type, str);
-                        }
-                        else if (field.equals("number_value")) {
-                            double num = rset.getDouble(field);
-                            if (!rset.wasNull())
-                                val = new VNum (type, num);
-                        }
-                        else if (field.equals("boolean_value")) {
-                            int b = rset.getInt(field);
-                            if (!rset.wasNull() && b != 0) {
-                                val = KeywordFactory.registerIfAbsent
-                                    (type, "YES", null);
-                            }
-                        }
-                        else {
-                            long num = rset.getLong(field);
-                            if (!rset.wasNull())
-                                val = new VInt (type, num);
-                        }
-                    }
-                }
-                
-                if (val != null) {
-                    //Logger.debug("Target "+target.id+": "+type);
-                    Integer c = counts.get(type);
-                    counts.put(type, c==null?1:(c+1));
-                    if (type.equalsIgnoreCase("UniProt Function")) {
-                        target.description = (String)val.getValue();
-                    }
-                    else if (type.equalsIgnoreCase("PubTator Score")) {
-                        target.pubTatorScore = Math.log10
-                            (((Number)val.getValue()).doubleValue());
-                    }
-                    else if (type.equalsIgnoreCase("Ab Count")) {
-                        target.antibodyCount =
-                            ((Number)val.getValue()).intValue();
-                    }
-                    else if (type.equalsIgnoreCase("MAb Count")) {
-                        target.monoclonalCount =
-                            ((Number)val.getValue()).intValue();
-                    }
-                    else if (type.equalsIgnoreCase("PubMed Count")) {
-                        target.pubmedCount =
-                            ((Number)val.getValue()).intValue();
-                    }
-                    else if (type.equalsIgnoreCase
-                             ("JensenLab PubMed Score")) {
-                        target.jensenScore =
-                            ((Number)val.getValue()).doubleValue();
-                    }
-                    else if (type.equalsIgnoreCase
-                             ("EBI Total Patent Count")) {
-                        target.patentCount =
-                            ((Number)val.getValue()).intValue();
+                    Value val = null;
+                    if (type.equals("IMPC Mice Produced")) {
+                        int bv = rset.getInt("boolean_value");
+                        if (bv != 0)
+                            val = mice;
                     }
                     else {
-                        if (type.equalsIgnoreCase
-                            ("ChEMBL Selective Compound")) {
-                            
-                            ++selective;
+                        for (String field : new String[]{"string_value",
+                                                         "number_value",
+                                                         "integer_value",
+                                                         "date_value",
+                                                         "boolean_value"}) {
+                            if (field.equals("string_value")) {
+                                String str = rset.getString(field);
+                                if (str != null)
+                                    val = new Text (type, str);
+                            }
+                            else if (field.equals("number_value")) {
+                                double num = rset.getDouble(field);
+                                if (!rset.wasNull())
+                                    val = new VNum (type, num);
+                            }
+                            else if (field.equals("boolean_value")) {
+                                int b = rset.getInt(field);
+                                if (!rset.wasNull() && b != 0) {
+                                    val = KeywordFactory.registerIfAbsent
+                                        (type, "YES", null);
+                                }
+                            }
+                            else {
+                                long num = rset.getLong(field);
+                                if (!rset.wasNull())
+                                    val = new VInt (type, num);
+                            }
                         }
+                    }
+                
+                    if (val != null) {
+                        //Logger.debug("Target "+target.id+": "+type);
+                        Integer c = counts.get(type);
+                        counts.put(type, c==null?1:(c+1));
+                        if (type.equalsIgnoreCase("UniProt Function")) {
+                            target.description = (String)val.getValue();
+                        }
+                        else if (type.equalsIgnoreCase("PubTator Score")) {
+                            target.pubTatorScore = Math.log10
+                                (((Number)val.getValue()).doubleValue());
+                        }
+                        else if (type.equalsIgnoreCase("Ab Count")) {
+                            target.antibodyCount =
+                                ((Number)val.getValue()).intValue();
+                        }
+                        else if (type.equalsIgnoreCase("MAb Count")) {
+                            target.monoclonalCount =
+                                ((Number)val.getValue()).intValue();
+                        }
+                        else if (type.equalsIgnoreCase("PubMed Count")) {
+                            target.pubmedCount =
+                                ((Number)val.getValue()).intValue();
+                        }
+                        else if (type.equalsIgnoreCase
+                                 ("JensenLab PubMed Score")) {
+                            target.jensenScore =
+                                ((Number)val.getValue()).doubleValue();
+                        }
+                        else if (type.equalsIgnoreCase
+                                 ("EBI Total Patent Count")) {
+                            target.patentCount =
+                                ((Number)val.getValue()).intValue();
+                        }
+                        else {
+                            if (type.equalsIgnoreCase
+                                ("ChEMBL Selective Compound")) {
+                            
+                                ++selective;
+                            }
                         
-                        target.addIfAbsent(val);
+                            target.addIfAbsent(val);
+                        }
+                    }
+                    else {
+                        Logger.warn("TDL info \""+type+"\" for target "
+                                    +target.id+" is null!");
                     }
                 }
-                else {
-                    Logger.warn("TDL info \""+type+"\" for target "+target.id
-                                +" is null!");
-                }
             }
-            rset.close();
 
             if (selective > 0) {
                 Keyword kw = KeywordFactory.registerIfAbsent
@@ -1355,23 +1368,23 @@ public class TcrdRegistry extends Controller implements Commons {
             pstm10.setLong(1, protein);
             Map<String, String> parents = new HashMap<String, String>();
             Map<String, String> panther = new HashMap<String, String>();
-            ResultSet rset = pstm10.executeQuery();
-            while (rset.next()) {
-                String pcid = rset.getString("pcid");
-                String name = rset.getString("name");
-                String ancestor = rset.getString("parent_pcids");
-                for (String p : ancestor.split("\\|")) 
-                    if (!"PC00000".equals(p)) {
-                        String old = parents.put(pcid, p);
-                        if (old != null && !old.equals(p)) {
-                            Logger.warn("Target "+target.id
-                                        +" has two Panther parents: "
-                                        +p+" and "+old+"; keeping "+p+"!");
+            try (ResultSet rset = pstm10.executeQuery()) {
+                while (rset.next()) {
+                    String pcid = rset.getString("pcid");
+                    String name = rset.getString("name");
+                    String ancestor = rset.getString("parent_pcids");
+                    for (String p : ancestor.split("\\|")) 
+                        if (!"PC00000".equals(p)) {
+                            String old = parents.put(pcid, p);
+                            if (old != null && !old.equals(p)) {
+                                Logger.warn("Target "+target.id
+                                            +" has two Panther parents: "
+                                            +p+" and "+old+"; keeping "+p+"!");
+                            }
                         }
-                    }
-                panther.put(pcid, name);
+                    panther.put(pcid, name);
+                }
             }
-            rset.close();
 
             Keyword[] path = new Keyword[panther.size()];
             for (Map.Entry<String, String> me : panther.entrySet()) {
@@ -1481,37 +1494,37 @@ public class TcrdRegistry extends Controller implements Commons {
                 path.add(kw);
                 
                 pstm5.setLong(1, protein);
-                ResultSet rset = pstm5.executeQuery();
-                while (rset.next()) {
-                    String label = rset.getString("name").trim();
-                    if (target.idgFamily.equals("GPCR")) {
-                        if (label.equalsIgnoreCase("Ligand Type"))
+                try (ResultSet rset = pstm5.executeQuery()) {
+                    while (rset.next()) {
+                        String label = rset.getString("name").trim();
+                        if (target.idgFamily.equals("GPCR")) {
+                            if (label.equalsIgnoreCase("Ligand Type"))
+                                break; // we're done
+                        }
+                        else if (target.idgFamily.equals("Ion Channel")) {
+                            if (label.equalsIgnoreCase("Transporter Protein Type"))
+                                break;
+                        }
+                        else if (target.idgFamily.equals("Kinase")) {
+                            if (label.equalsIgnoreCase("Pseudokinase"))
+                                break;
+                        }
+                        else if (target.idgFamily.equals("Nuclear Receptor")) {
+                            // nothing to check
+                        }
+                    
+                        String value = rset.getString("value");
+                        if (value.equals(""))
                             break; // we're done
-                    }
-                    else if (target.idgFamily.equals("Ion Channel")) {
-                        if (label.equalsIgnoreCase("Transporter Protein Type"))
-                            break;
-                    }
-                    else if (target.idgFamily.equals("Kinase")) {
-                        if (label.equalsIgnoreCase("Pseudokinase"))
-                            break;
-                    }
-                    else if (target.idgFamily.equals("Nuclear Receptor")) {
-                        // nothing to check
-                    }
+                        //value = value.replaceAll("/", "-");
+                        Logger.debug("  name=\""+label+"\" value="+value);
                     
-                    String value = rset.getString("value");
-                    if (value.equals(""))
-                        break; // we're done
-                    //value = value.replaceAll("/", "-");
-                    Logger.debug("  name=\""+label+"\" value="+value);
-                    
-                    kw = KeywordFactory.registerIfAbsent
-                        (DTO_PROTEIN_CLASS+" ("+path.size()+")", value, null);
-                    target.properties.add(kw);
-                    path.add(kw);
+                        kw = KeywordFactory.registerIfAbsent
+                            (DTO_PROTEIN_CLASS+" ("+path.size()+")", value, null);
+                        target.properties.add(kw);
+                        path.add(kw);
+                    }
                 }
-                rset.close();
             }
             else {
                 
@@ -1549,191 +1562,194 @@ public class TcrdRegistry extends Controller implements Commons {
         void addDrugs (Target target, long tid, Keyword tcrd)
             throws Exception {
             pstm17.setLong(1, tid);
-            ResultSet rset = pstm17.executeQuery();
-            int count = 0;
-            while (rset.next()) {
-                String chemblId = rset.getString("cmpd_chemblid");
-                String drug = rset.getString("drug");
-                String ref = rset.getString("reference");
-                String source = rset.getString("source");
-                String info = rset.getString("nlm_drug_info");
+            try (ResultSet rset = pstm17.executeQuery()) {
+                int count = 0;
+                while (rset.next()) {
+                    String chemblId = rset.getString("cmpd_chemblid");
+                    String drug = rset.getString("drug");
+                    String ref = rset.getString("reference");
+                    String source = rset.getString("source");
+                    String info = rset.getString("nlm_drug_info");
                 
-                List<Ligand> ligands = LigandFactory.finder.where()
-                    .in("synonyms.term", drug, chemblId).findList();
+                    List<Ligand> ligands = LigandFactory.finder.where()
+                        .in("synonyms.term", drug, chemblId).findList();
 
-                Ligand ligand = null;
-                if (ligands.isEmpty()) {
-                }
-                else {
-                    Set<Long> uniq = new HashSet<>();
-                    for (Ligand lig : ligands) {
-                        uniq.add(lig.id);
-                        if (drug.equalsIgnoreCase(lig.name))
-                            ligand = lig;
+                    Ligand ligand = null;
+                    if (ligands.isEmpty()) {
                     }
+                    else {
+                        Set<Long> uniq = new HashSet<>();
+                        for (Ligand lig : ligands) {
+                            uniq.add(lig.id);
+                            if (drug.equalsIgnoreCase(lig.name))
+                                ligand = lig;
+                        }
                     
-                    if (uniq.size() > 1) {
-                        Logger.warn("Drug \""+drug+"\" and ligand \""+chemblId
-                                    +"\" are different instances: "+uniq);
+                        if (uniq.size() > 1) {
+                            Logger.warn
+                                ("Drug \""+drug+"\" and ligand \""+chemblId
+                                 +"\" are different instances: "+uniq);
+                        }
+                        if (ligand == null)
+                            ligand = ligands.get(0); // just get one
                     }
-                    if (ligand == null)
-                        ligand = ligands.get(0); // just get one
-                }
 
-                if (ligand == null) {
-                    // new ligand
-                    String smiles = rset.getString("smiles");
+                    if (ligand == null) {
+                        // new ligand
+                        String smiles = rset.getString("smiles");
                     
-                    ligand = new Ligand (drug);
-                    ligand.addIfAbsent(KeywordFactory.registerIfAbsent
-                                       (IDG_DRUG, drug, ref));
-                    ligand.properties.add(tcrd);
-                    ligand.description = info;
+                        ligand = new Ligand (drug);
+                        ligand.addIfAbsent(KeywordFactory.registerIfAbsent
+                                           (IDG_DRUG, drug, ref));
+                        ligand.properties.add(tcrd);
+                        ligand.description = info;
 
-                    if (smiles != null) {
-                        ligand.properties.add
-                            (new Text (ChEMBL_SMILES, smiles));
-                        Structure struc = StructureProcessor.instrument
-                            (smiles, null, false);
-                        struc.save();
-                        XRef xref = new XRef (struc);
-                        ligand.links.add(xref);
-                        MOLIDX.add(null, struc.id.toString(), struc.molfile);
-                    }
+                        if (smiles != null) {
+                            ligand.properties.add
+                                (new Text (ChEMBL_SMILES, smiles));
+                            Structure struc = StructureProcessor.instrument
+                                (smiles, null, false);
+                            struc.save();
+                            XRef xref = new XRef (struc);
+                            ligand.links.add(xref);
+                            MOLIDX.add(null, struc.id.toString(), struc.molfile);
+                        }
 
-                    pstm23.setString(1, drug);
-                    ResultSet rs = pstm23.executeQuery();
-                    while (rs.next()) {
-                        String syn = rs.getString(1);
-                        if (syn != null) {
-                            if (syn.startsWith("CHEMBL")) {
-                                ligand.addIfAbsent
-                                    (KeywordFactory.registerIfAbsent
-                                     (ChEMBL_ID, syn,
-                                      "https://www.ebi.ac.uk/chembl/compound/inspect/" +syn));
-                            }
-                            else {
-                                ligand.addIfAbsent
-                                    (KeywordFactory.registerIfAbsent
-                                     (ChEMBL_SYNONYM, syn, null));
+                        pstm23.setString(1, drug);
+                        ResultSet rs = pstm23.executeQuery();
+                        while (rs.next()) {
+                            String syn = rs.getString(1);
+                            if (syn != null) {
+                                if (syn.startsWith("CHEMBL")) {
+                                    ligand.addIfAbsent
+                                        (KeywordFactory.registerIfAbsent
+                                         (ChEMBL_ID, syn,
+                                          "https://www.ebi.ac.uk/chembl/compound/inspect/" +syn));
+                                }
+                                else {
+                                    ligand.addIfAbsent
+                                        (KeywordFactory.registerIfAbsent
+                                         (ChEMBL_SYNONYM, syn, null));
+                                }
                             }
                         }
+                        rs.close();
+                    
+                        ligand.save();
+                    
+                        Logger.debug("New drug "+ligand.id+" "
+                                     +ligand.getName()+" added!");
                     }
-                    rs.close();
-                    
-                    ligand.save();
-                    
-                    Logger.debug("New drug "+ligand.id+" "
-                                 +ligand.getName()+" added!");
-                }
-                else if (ligand.name.startsWith("CHEMBL")) {
-                    ligand.description = info;
-                    ligand.name = drug;
-                    ligand.addIfAbsent
-                        (KeywordFactory.registerIfAbsent(IDG_DRUG, drug, ref));
-                }
-                
-                if (source != null) {
-                    Keyword ds = datasources.get(source);
-                    if (ds == null) {
-                        ds = KeywordFactory.registerIfAbsent
-                            (SOURCE, source, source.equalsIgnoreCase
-                             (ChEMBL) ? "https://www.ebi.ac.uk/chembl"
-                             : null);
-                        datasources.put(source, ds);
+                    else if (ligand.name.startsWith("CHEMBL")) {
+                        ligand.description = info;
+                        ligand.name = drug;
+                        ligand.addIfAbsent
+                            (KeywordFactory.registerIfAbsent(IDG_DRUG, drug, ref));
                     }
-                    ligand.addIfAbsent((Value)ds);
-                    
-                    // add as property
-                    Keyword kw = KeywordFactory.registerIfAbsent
-                        (LIGAND_SOURCE, source, null);
-                    kw.href = ref;
-                    ligand.addIfAbsent((Value)kw);
-                    Logger.debug(ligand.getName()+" drug source: "+source);
-                }
-
-                ligand.addIfAbsent((Value)KeywordFactory.registerIfAbsent
-                                   (LIGAND_DRUG, "YES", null));
                 
-                if (chemblId != null) {
-                    Keyword kw = KeywordFactory.registerIfAbsent
-                        (ChEMBL_ID, chemblId,
-                         "https://www.ebi.ac.uk/chembl/compound/inspect/"
-                         +chemblId);
-                    ligand.addIfAbsent(kw);
-
-                    Keyword ds = datasources.get(ChEMBL);
-                    if (ds == null) {
-                        ds = KeywordFactory.registerIfAbsent
-                            (SOURCE, ChEMBL, "https://www.ebi.ac.uk/chembl");
-                        datasources.put(ChEMBL, ds);
+                    if (source != null) {
+                        Keyword ds = datasources.get(source);
+                        if (ds == null) {
+                            ds = KeywordFactory.registerIfAbsent
+                                (SOURCE, source, source.equalsIgnoreCase
+                                 (ChEMBL) ? "https://www.ebi.ac.uk/chembl"
+                                 : null);
+                            datasources.put(source, ds);
+                        }
+                        ligand.addIfAbsent((Value)ds);
+                    
+                        // add as property
+                        Keyword kw = KeywordFactory.registerIfAbsent
+                            (LIGAND_SOURCE, source, null);
+                        kw.href = ref;
+                        ligand.addIfAbsent((Value)kw);
+                        Logger.debug(ligand.getName()+" drug source: "+source);
                     }
-                    ligand.addIfAbsent((Value)ds);
-                }
 
-                XRef tref = ligand.addIfAbsent(new XRef (target));
-                tref.addIfAbsent((Value)getTdlKw (target.idgTDL));
-                tref.addIfAbsent((Value)getFamKw (target.idgFamily));
-                Keyword acc = target.getSynonym(UNIPROT_GENE);
-                if (acc != null)
-                    tref.addIfAbsent((Value)getKeyword
-                                     (IDG_TARGET, acc.term, acc.href));
+                    ligand.addIfAbsent((Value)KeywordFactory.registerIfAbsent
+                                       (LIGAND_DRUG, "YES", null));
                 
-                XRef lref = target.addIfAbsent(new XRef (ligand));
-                lref.addIfAbsent((Value)getKeyword
-                                 (IDG_LIGAND, ligand.getName()));
+                    if (chemblId != null) {
+                        Keyword kw = KeywordFactory.registerIfAbsent
+                            (ChEMBL_ID, chemblId,
+                             "https://www.ebi.ac.uk/chembl/compound/inspect/"
+                             +chemblId);
+                        ligand.addIfAbsent(kw);
 
-                String actType = rset.getString("act_type");
-                if (actType != null) {
-                    double act = rset.getDouble("act_value");
-                    VNum val = new VNum (actType, act);
-                    tref.properties.add(val);
-                    lref.properties.add(val);
-                }
+                        Keyword ds = datasources.get(ChEMBL);
+                        if (ds == null) {
+                            ds = KeywordFactory.registerIfAbsent
+                                (SOURCE, ChEMBL, "https://www.ebi.ac.uk/chembl");
+                            datasources.put(ChEMBL, ds);
+                        }
+                        ligand.addIfAbsent((Value)ds);
+                    }
 
-                String action = rset.getString("action_type");
-                if (action != null) {
-                    Keyword kw = new Keyword (PHARMALOGICAL_ACTION, action);
-                    kw.href = ref;
-                    kw.save();
+                    XRef tref = ligand.addIfAbsent(new XRef (target));
+                    tref.addIfAbsent((Value)getTdlKw (target.idgTDL));
+                    tref.addIfAbsent((Value)getFamKw (target.idgFamily));
+                    Keyword acc = target.getSynonym(UNIPROT_GENE);
+                    if (acc != null)
+                        tref.addIfAbsent((Value)getKeyword
+                                         (IDG_TARGET, acc.term, acc.href));
+                
+                    XRef lref = target.addIfAbsent(new XRef (ligand));
+                    lref.addIfAbsent((Value)getKeyword
+                                     (IDG_LIGAND, ligand.getName()));
+
+                    String actType = rset.getString("act_type");
+                    if (actType != null) {
+                        double act = rset.getDouble("act_value");
+                        VNum val = new VNum (actType, act);
+                        tref.properties.add(val);
+                        lref.properties.add(val);
+                    }
+
+                    String action = rset.getString("action_type");
+                    if (action != null) {
+                        Keyword kw = KeywordFactory.registerIfAbsent
+                            (PHARMALOGICAL_ACTION, action, ref);
                     
-                    tref.addIfAbsent((Value)kw);
-                    lref.addIfAbsent((Value)kw);
-                }
+                        tref.addIfAbsent((Value)kw);
+                        lref.addIfAbsent((Value)kw);
+                    }
 
-                try {
-                    tref.save();
-                    lref.save();
-                    ligand.update();
-                    //target.update();
-                }
-                catch (Exception ex) {
-                    ex.printStackTrace();
-                }
+                    try {
+                        tref.save();
+                        lref.save();
+                        ligand.update();
+                        //target.update();
+                    }
+                    catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
 
-                ++count;
+                    ++count;
+                }
+                Logger.debug("Target " + target.id + " has "
+                             + count +" drug(s)!");
             }
-            rset.close();
-            Logger.debug("Target " + target.id + " has " + count +" drug(s)!");
         }
 
         void addTINX(Target target, long tid) throws Exception {
             pstm.setLong(1, tid);
-            ResultSet rs = pstm.executeQuery();
-            int n = 0;
-            while (rs.next()) {
-                String doid = rs.getString("doid");
-                double tinx = rs.getDouble("importance");
-                double diseaseNovelty = rs.getDouble("diseaseNovelty");
-                String uniprot = rs.getString("uniprot");
-                double targetNovelty = rs.getDouble("targetNovelty");
-                TINX tinxe = new TINX
+            try (ResultSet rs = pstm.executeQuery()) {
+                int n = 0;
+                while (rs.next()) {
+                    String doid = rs.getString("doid");
+                    double tinx = rs.getDouble("importance");
+                    double diseaseNovelty = rs.getDouble("diseaseNovelty");
+                    String uniprot = rs.getString("uniprot");
+                    double targetNovelty = rs.getDouble("targetNovelty");
+                    TINX tinxe = new TINX
                         (uniprot, doid, targetNovelty, tinx, diseaseNovelty);
-                tinxe.save();
-                n++;
+                    tinxe.save();
+                    n++;
+                }
+                rs.close();
+                Logger.debug("Target " + target.id + " has "
+                             + n +" TINX entries!");
             }
-            rs.close();
-            Logger.debug("Target " + target.id + " has " + n +" TINX entries!");
         }
         
         void addChembl (Target target, long tid, Keyword tcrd)
@@ -1746,171 +1762,161 @@ public class TcrdRegistry extends Controller implements Commons {
             }
             
             pstm16.setLong(1, tid);
-            ResultSet rset = pstm16.executeQuery();
-            int count = 0;
-            Set<String> seen = new HashSet<String>();
-            long start = System.currentTimeMillis();        
-            while (rset.next()) {
-                String chemblId = rset.getString("cmpd_chemblid");
-                if (seen.contains(chemblId))
-                    continue;
+            try (ResultSet rset = pstm16.executeQuery()) {
+                int count = 0;
+                Set<String> seen = new HashSet<String>();
+                long start = System.currentTimeMillis();        
+                while (rset.next()) {
+                    String chemblId = rset.getString("cmpd_chemblid");
+                    if (seen.contains(chemblId))
+                        continue;
 
-                seen.add(chemblId);
-                String syn = rset.getString("cmpd_name_in_ref");
+                    seen.add(chemblId);
+                    String syn = rset.getString("cmpd_name_in_ref");
                 
-                List<Ligand> ligands = LigandFactory.finder.where()
-                    .eq("synonyms.term", chemblId).findList();
+                    List<Ligand> ligands = LigandFactory.finder.where()
+                        .eq("synonyms.term", chemblId).findList();
                 
-                Ligand ligand = null;
-                if (ligands.isEmpty()) {
-                    ligand = new Ligand (chemblId);
-                    ligand.properties.add(source);
-                    ligand.properties.add(tcrd);
-                    ligand.synonyms.add
-                        (KeywordFactory.registerIfAbsent
-                         (ChEMBL_SYNONYM, chemblId,
-                          "https://www.ebi.ac.uk/chembl/compound/inspect/"
-                          +chemblId));
+                    Ligand ligand = null;
+                    if (ligands.isEmpty()) {
+                        ligand = new Ligand (chemblId);
+                        ligand.properties.add(source);
+                        ligand.properties.add(tcrd);
+                        ligand.synonyms.add
+                            (KeywordFactory.registerIfAbsent
+                             (ChEMBL_SYNONYM, chemblId,
+                              "https://www.ebi.ac.uk/chembl/compound/inspect/"
+                              +chemblId));
                     
-                    Keyword kw = new Keyword (LIGAND_SOURCE, source.term);
-                    kw.href = source.href;
-                    ligand.properties.add(kw);
+                        Keyword kw = new Keyword (LIGAND_SOURCE, source.term);
+                        kw.href = source.href;
+                        ligand.properties.add(kw);
                     
-                    String smiles = rset.getString("smiles");
-                    if (smiles != null && smiles.length() > 0) {
-                        long t0 = System.currentTimeMillis();
-                        ligand.properties.add
-                            (new Text (ChEMBL_SMILES, smiles));
-                        Structure struc = StructureProcessor.instrument
-                            (smiles, null, false);
-                        struc.save();
-                        XRef xref = new XRef (struc);
-                        ligand.links.add(xref);
-                        // now index the structure for searching
+                        String smiles = rset.getString("smiles");
+                        if (smiles != null && smiles.length() > 0) {
+                            long t0 = System.currentTimeMillis();
+                            ligand.properties.add
+                                (new Text (ChEMBL_SMILES, smiles));
+                            Structure struc = StructureProcessor.instrument
+                                (smiles, null, false);
+                            struc.save();
+                            XRef xref = new XRef (struc);
+                            ligand.links.add(xref);
+                            // now index the structure for searching
 
-                        try {
-                            MOLIDX.add(null,
-                                       struc.id.toString(), struc.molfile);
+                            try {
+                                MOLIDX.add(null,
+                                           struc.id.toString(), struc.molfile);
+                            }
+                            catch (IllegalArgumentException e) {
+                                Logger.debug(e.toString());
+                            }
+                            /*
+                              Logger.debug("... "+chemblId+": structure "
+                              +struc.id+" indexed in "
+                              +(System.currentTimeMillis()-t0)+"ms");
+                            */
                         }
-                        catch (IllegalArgumentException e) {
-                            Logger.debug(e.toString());
+
+                        pstm24.setString(1, chemblId);
+                        ResultSet rs = pstm24.executeQuery();
+                        while (rs.next()) {
+                            String s = rs.getString(1);
+                            if (s != null && s.length() <= 255) {
+                                ligand.addIfAbsent
+                                    (KeywordFactory.registerIfAbsent
+                                     (ChEMBL_SYNONYM, s,
+                                      "https://www.ebi.ac.uk/chembl/compound/inspect/"+chemblId));
+                            }
                         }
+                        rs.close();
+                    
+                        ligand.save();
+                    }
+                    else {
+                        if (ligands.size() > 1)
+                            Logger.warn("Ligand "+chemblId+" has "+ligands.size()
+                                        +"instances!");
+                        ligand = ligands.get(0);
+                    }
+
+                    if (syn != null && syn.length() <= 255) {
+                        Keyword found = null;
+                        for (Keyword kw : ligand.getSynonyms())
+                            if (syn.equalsIgnoreCase(kw.term)) {
+                                found = kw;
+                                break;
+                            }
+                    
+                        if (found == null) {
+                            Keyword kw = getKeyword 
+                                (ChEMBL_SYNONYM, syn,
+                                 "https://www.ebi.ac.uk/chembl/compound/inspect/"
+                                 +chemblId);
+                            ligand.addIfAbsent(kw);
+                        }
+                    }
+
+                    VNum act = new VNum (rset.getString("act_type"),
+                                         rset.getDouble("act_value"));
+                    act.save();
+
+                    long pmid = rset.getLong("pubmed_id");
+                    if (pmid != 0) {
                         /*
-                        Logger.debug("... "+chemblId+": structure "
-                        +struc.id+" indexed in "
-                                     +(System.currentTimeMillis()-t0)+"ms");
+                          Publication pub = PublicationFactory.registerIfAbsent(pmid);
+                          XRef ref = new XRef (pub);
+                          ref.properties.add(act);
+                          ligand.addIfAbsent(ref);
+                          ligand.addIfAbsent(pub);
                         */
+                        ligand.properties.add(new VInt (PUBMED_ID, pmid));
                     }
 
-                    pstm24.setString(1, chemblId);
-                    ResultSet rs = pstm24.executeQuery();
-                    while (rs.next()) {
-                        String s = rs.getString(1);
-                        if (s != null && s.length() <= 255) {
-                            ligand.addIfAbsent
-                                (KeywordFactory.registerIfAbsent
-                                 (ChEMBL_SYNONYM, s,
-                                  "https://www.ebi.ac.uk/chembl/compound/inspect/"+chemblId));
+                    Keyword endpoint = getKeyword (LIGAND_ACTIVITY, act.label);
+                    XRef tref = ligand.addIfAbsent(new XRef (target));
+                    tref.addIfAbsent((Value)getTdlKw (target.idgTDL));
+                    tref.addIfAbsent((Value)getFamKw (target.idgFamily));
+                    Keyword acc = target.getSynonym(UNIPROT_GENE);
+                    if (acc != null)
+                        tref.addIfAbsent((Value)getKeyword
+                                         (IDG_TARGET, acc.term, acc.href));
+                    tref.addIfAbsent(endpoint);
+                
+                    XRef lref = target.addIfAbsent(new XRef (ligand));
+                    lref.addIfAbsent(getKeyword (IDG_LIGAND, ligand.getName()));
+                    lref.addIfAbsent(endpoint);
+                
+                    tref.properties.add(act);
+                    lref.properties.add(act);
+                
+                    try {
+                        if (tref.id == null)
+                            tref.save();
+                        else
+                            tref.update();
+                        ligand.update();
+                    
+                        if (lref.id == null) {
+                            lref.save();
+                            if (((count+1) % 100) == 0)
+                                target.update();
                         }
+                        else
+                            lref.update();
+                    
+                        Logger.debug("..."+count+" ligand "
+                                     +ligand.name+" "+act.label+"="+act.numval);
                     }
-                    rs.close();
-                    
-                    ligand.save();
-                }
-                else {
-                    if (ligands.size() > 1)
-                        Logger.warn("Ligand "+chemblId+" has "+ligands.size()
-                                    +"instances!");
-                    ligand = ligands.get(0);
-                }
-
-                if (syn != null && syn.length() <= 255) {
-                    Keyword found = null;
-                    for (Keyword kw : ligand.getSynonyms())
-                        if (syn.equalsIgnoreCase(kw.term)) {
-                            found = kw;
-                            break;
-                        }
-                    
-                    if (found == null) {
-                        Keyword kw = getKeyword 
-                            (ChEMBL_SYNONYM, syn,
-                             "https://www.ebi.ac.uk/chembl/compound/inspect/"
-                             +chemblId);
-                        ligand.addIfAbsent(kw);
+                    catch (Exception ex) {
+                        ex.printStackTrace();
                     }
+                    ++count;
                 }
-
-                VNum act = new VNum (rset.getString("act_type"),
-                                     rset.getDouble("act_value"));
-                act.save();
-
-                long pmid = rset.getLong("pubmed_id");
-                if (pmid != 0) {
-                    /*
-                    Publication pub = PublicationFactory.registerIfAbsent(pmid);
-                    XRef ref = new XRef (pub);
-                    ref.properties.add(act);
-                    ligand.addIfAbsent(ref);
-                    ligand.addIfAbsent(pub);
-                    */
-                    ligand.properties.add(new VInt (PUBMED_ID, pmid));
-                }
-
-                Keyword endpoint = getKeyword (LIGAND_ACTIVITY, act.label);
-                XRef tref = ligand.addIfAbsent(new XRef (target));
-                tref.addIfAbsent((Value)getTdlKw (target.idgTDL));
-                tref.addIfAbsent((Value)getFamKw (target.idgFamily));
-                Keyword acc = target.getSynonym(UNIPROT_GENE);
-                if (acc != null)
-                    tref.addIfAbsent((Value)getKeyword
-                                     (IDG_TARGET, acc.term, acc.href));
-                tref.addIfAbsent(endpoint);
                 
-                XRef lref = target.addIfAbsent(new XRef (ligand));
-                lref.addIfAbsent(getKeyword (IDG_LIGAND, ligand.getName()));
-                lref.addIfAbsent(endpoint);
-                
-                tref.properties.add(act);
-                lref.properties.add(act);
-                
-                try {
-                    if (tref.id == null)
-                        tref.save();
-                    else
-                        tref.update();
-                    ligand.update();
-                    
-                    if (lref.id == null) {
-                        lref.save();
-                        if (((count+1) % 100) == 0)
-                            target.update();
-                    }
-                    else
-                        lref.update();
-                    
-                    Logger.debug("..."+count+" ligand "
-                                 +ligand.name+" "+act.label+"="+act.numval);
-                }
-                catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-                ++count;
+                Logger.debug("Target "+target.id+" has "+count+" ligand(s)... "
+                             +(System.currentTimeMillis()-start)+"ms!");
             }
-            rset.close();
-
-            /*
-            if (count > 0) {
-                try {
-                    target.update();
-                }
-                catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            }
-            */
-            Logger.debug("Target "+target.id+" has "+count+" ligand(s)... "
-                         +(System.currentTimeMillis()-start)+"ms!");
         }
 
         Disease registerDiseaseIfAbsent
@@ -1928,6 +1934,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 String did = rset.getString("did");
                 if (did != null)
                     did = did.trim();
+
                 
                 String drugName = rset.getString("drug_name");
                 if (drugName != null) {
@@ -1958,6 +1965,17 @@ public class TcrdRegistry extends Controller implements Commons {
                              (DISGENET_DISEASE, did,
                               "http://linkedlifedata.com/resource/umls/id/"
                               + did.substring(did.indexOf(':') + 1)));
+                    }
+                    else {
+                        String href = null;
+                        if (did.startsWith("OMIM")) {
+                            int pos = did.indexOf(':');
+                            if (pos > 0) pos = pos+1;
+                            else pos = 0;
+                            href = "http://omim.org/entry/"+did.substring(pos);
+                        }
+                        d.synonyms.add(KeywordFactory.registerIfAbsent
+                                       (type, did, href));
                     }
                 }
                 else { // this is obsoleted as of tcrd v3.1.4
@@ -2012,8 +2030,7 @@ public class TcrdRegistry extends Controller implements Commons {
             }
             
             pstm20.setLong(1, tid);
-            final ResultSet rset = pstm20.executeQuery();
-            try {
+            try (ResultSet rset = pstm20.executeQuery()) {
                 int cnt = 0;
                 while (rset.next()) {
                     final String name = rset.getString("name");
@@ -2127,15 +2144,11 @@ public class TcrdRegistry extends Controller implements Commons {
 
                 Logger.debug("Target "+target.id+" has "+cnt+" disease(s)!");
             }
-            finally {
-                rset.close();
-            }
         }
 
         void addGeneRIF (Target target, long protein) throws Exception {
             pstm4.setLong(1, protein);
-            ResultSet rset = pstm4.executeQuery();
-            try {
+            try (ResultSet rset = pstm4.executeQuery()) {
                 while (rset.next()) {
                     String desc = rset.getString("text");
                     Text text = new Text (IDG_GENERIF, desc);
@@ -2151,15 +2164,11 @@ public class TcrdRegistry extends Controller implements Commons {
                     target.links.add(ref);
                 }
             }
-            finally {
-                rset.close();
-            }
         }
 
         void addCompartment (Target target, long protein) throws Exception {
             pstm27.setLong(1, protein);
-            ResultSet rset = pstm27.executeQuery();
-            try {
+            try (ResultSet rset = pstm27.executeQuery()) {
                 int count = 0;
                 long start = System.currentTimeMillis();
                 while (rset.next()) {
@@ -2204,15 +2213,11 @@ public class TcrdRegistry extends Controller implements Commons {
                              +count+" compartments..."+String.format
                              ("%1$dms!", System.currentTimeMillis()-start));
             }
-            finally {
-                rset.close();
-            }
         }
 
         void addLocalization (Target target, long protein) throws Exception {
             pstm31.setLong(1, protein);
-            ResultSet rset = pstm31.executeQuery();
-            try {
+            try (ResultSet rset = pstm31.executeQuery()) {
                 int count = 0;
                 long start= System.currentTimeMillis();
                 while (rset.next()) {
@@ -2255,15 +2260,11 @@ public class TcrdRegistry extends Controller implements Commons {
                              +String.format("%1$dms!",
                                             System.currentTimeMillis()-start));
             }
-            finally {
-                rset.close();
-            }
         }
 
         void addPublication (Target target, long protein) throws Exception {
             pstm22.setLong(1, protein);
-            ResultSet rset = pstm22.executeQuery();
-            try {
+            try (ResultSet rset = pstm22.executeQuery()) {
                 int count = 0;
                 long start = System.currentTimeMillis();
                 while (rset.next()) {
@@ -2293,26 +2294,18 @@ public class TcrdRegistry extends Controller implements Commons {
                              +String.format("%1$dms!",
                                             System.currentTimeMillis()-start));
             }
-            finally {
-                rset.close();
-            }
         }
 
         void addPPI (Target target, long protein) throws Exception {
             pstm26.setLong(1, protein);
-            ResultSet rset = pstm26.executeQuery();
-            try {
+            try (ResultSet rset = pstm26.executeQuery()) {
                 TcrdRegistry.addPPI(rset, target, protein);
-            }
-            finally {
-                rset.close();
             }
         }
 
         void addFeatures (Target target, long protein) throws Exception {
             pstm30.setLong(1, protein);
-            ResultSet rset = pstm30.executeQuery();
-            try {
+            try (ResultSet rset = pstm30.executeQuery()) {
                 Timeline features = new Timeline ("Protein Features");
                 Map<String, Long> counts = new TreeMap<>();
                 while (rset.next()) {
@@ -2341,15 +2334,11 @@ public class TcrdRegistry extends Controller implements Commons {
                 target.links.add(ref);
                 Logger.debug("Target "+target.id+" protein features "+counts);
             }
-            finally {
-                rset.close();
-            }
         }
 
         void addTechdev (Target target, long protein) throws Exception {
             pstm28.setLong(1, protein);
-            ResultSet rset = pstm28.executeQuery();
-            try {
+            try (ResultSet rset = pstm28.executeQuery()) {
                 while (rset.next()) {
                     Techdev dev = new Techdev ();
                     dev.pi = rset.getString("pi");
@@ -2381,31 +2370,68 @@ public class TcrdRegistry extends Controller implements Commons {
                     }
                 }
             }
-            finally {
-                rset.close();
-            }
         }
 
-        void addOrtholog (Target target, long protein) throws Exception {
+        void addOrtholog (Target target, long protein, Keyword tcrd)
+            throws Exception {
             pstm32.setLong(1, protein);
             try (ResultSet rset = pstm32.executeQuery()) {
+                Map<Long, Ortholog> orthologs = new HashMap<>();
+                Map<Long, String[]> sources = new HashMap<>();
                 while (rset.next()) {
-                    Ortholog ortho = new Ortholog ();
-                    ortho.species = rset.getString("species");
-                    ortho.geneId = rset.getLong("geneid");
-                    if (rset.wasNull())
-                        ortho.geneId = null;
-                    ortho.symbol = rset.getString("symbol");
-                    ortho.name = rset.getString("name");
+                    long id = rset.getLong("id");
+                    Ortholog ortho = orthologs.get(id);
+                    if (ortho == null) {
+                        ortho = new Ortholog ();
+                        orthologs.put(id, ortho);
+                        ortho.refid = rset.getString("db_id");
+                        ortho.species = rset.getString("species");
+                        ortho.geneId = rset.getLong("geneid");
+                        if (rset.wasNull())
+                            ortho.geneId = null;
+                        ortho.symbol = rset.getString("symbol");
+                        ortho.name = rset.getString("name");
+                        ortho.url = rset.getString("mod_url");
+                        
+                        String srcs = rset.getString("sources");
+                        if (srcs != null) {
+                            List<String> toks = new ArrayList<>();
+                            for (String t : srcs.split(",")) {
+                                toks.add(t.trim());
+                            }
+                            sources.put(id, toks.toArray(new String[0]));
+                        }
+                    }
+                    
+                    String dtype = rset.getString("dtype");
+                    if (dtype != null) {
+                        String name = rset.getString("name");
+                        Disease d = registerDiseaseIfAbsent
+                            (name, dtype, tcrd, rset);
+                        XRef ref = new XRef (d);
+                        VNum score = new VNum
+                            ("Ortholog Disease Score", rset.getDouble("score"));
+                        ref.properties.add(score);
+                        ref.addIfAbsent(KeywordFactory.registerIfAbsent
+                                        (SOURCE, dtype, null));
+                        ref.addIfAbsent(KeywordFactory.registerIfAbsent
+                                        (IDG_DISEASE, name,
+                                         rset.getString("did")));
+                        
+                        ref.save();
+                        ortho.links.add(ref);
+                    }
+                }
+
+                for (Map.Entry<Long, Ortholog> me : orthologs.entrySet()) {
+                    Ortholog ortho = me.getValue();
                     try {
                         ortho.save();
                         XRef ref = new XRef (ortho);
-                        
-                        String sources = rset.getString("sources");
-                        if (sources != null) {
-                            String[] toks = sources.split(",");
-                            for (String t : toks) {
-                                String source = t.trim();
+
+                        String[] srcs = sources.get(me.getKey());
+                        if (srcs != null) {
+                            for (String source : srcs) {
                                 Keyword kw = KeywordFactory.registerIfAbsent
                                     (SOURCE, source, null);
                                 ref.properties.add(kw);
@@ -2426,6 +2452,9 @@ public class TcrdRegistry extends Controller implements Commons {
                                      +protein, ex);
                     }
                 }
+                
+                Logger.debug("Target "+target.id+" has "+orthologs.size()
+                             +" ortholog(s)");
             }
         }
 
@@ -2438,6 +2467,8 @@ public class TcrdRegistry extends Controller implements Commons {
             
             final Target target = new Target ();
             target.idgFamily = t.family;
+            target.accession = t.acc;
+            target.gene = t.gene;
             for (Target.TDL tdl : EnumSet.allOf(Target.TDL.class)) {
                 if (t.tdl.equals(tdl.name)) 
                     target.idgTDL = tdl;
@@ -2492,7 +2523,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 addLocalization (target, t.protein);
                 addTechdev (target, t.protein);
                 addFeatures (target, t.protein);
-                addOrtholog (target, t.protein);
+                addOrtholog (target, t.protein, t.source);
             }
             catch (Exception ex) {
                 Logger.error("Can't parse target "+IDGApp.getId(target)+"!");
@@ -2625,7 +2656,7 @@ public class TcrdRegistry extends Controller implements Commons {
                  +"left join tinx_novelty d\n"
                  +"    on d.protein_id = a.protein_id \n"
                  //+"where c.id in (18204,862,74,6571)\n"
-                 //+"where a.target_id in (8008,8009,8010)\n"
+                 +"where a.target_id in (15902,13829)\n"
                  //+"where c.uniprot = 'Q9H3Y6'\n"
                  //+"where b.tdl in ('Tclin','Tchem')\n"
                  //+"where b.idgfam = 'kinase'\n"
@@ -2706,7 +2737,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 if (tlist.isEmpty()) {
                     //Logger.debug("Adding "+acc);
                     TcrdTarget t =
-                        new TcrdTarget (acc, fam, tdl, id, protId,
+                        new TcrdTarget (acc, sym, fam, tdl, id, protId,
                                         novelty, source);
                     t.dto = dto;
                     t.dtoNode = dto.get(dtoid);

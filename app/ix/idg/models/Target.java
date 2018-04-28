@@ -60,6 +60,8 @@ public class Target extends EntityModel {
     @Column(length=1024)
     @Indexable(suggest=true,name="Target")
     public String name;
+    public String accession; // uniprot accession
+    public String gene; // gene symbol
 
     @Lob
     @Basic(fetch=FetchType.EAGER)
