@@ -555,7 +555,7 @@
                    @defining(link.deRef().asInstanceOf[Ortholog]){ ortho =>
                      @for(dl <- ortho.links) {
                        @defining(dl.getProperties(IDG_DISEASE).get(0).asInstanceOf[Keyword]){ kw =>
-                        <a href='@{ix.idg.controllers.routes.IDGApp.disease("")}@kw.href'>@kw.term</a>
+                        <a href='@{ix.idg.controllers.routes.IDGApp.disease(kw.term)}'>@kw.term [@{dl.getProperties(SOURCE).get(0).asInstanceOf[Keyword].term}]</a><br>
                        }
                      }
                    }

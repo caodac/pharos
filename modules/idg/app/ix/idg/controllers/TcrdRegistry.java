@@ -12,9 +12,11 @@ import ix.core.search.TextIndexer;
 import ix.idg.models.*;
 import ix.seqaln.SequenceIndexer;
 import tripod.chem.indexer.StructureIndexer;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import play.Logger;
 import play.Play;
+import play.libs.Json;
 import play.cache.Cache;
 import play.data.DynamicForm;
 import play.data.Form;
@@ -149,6 +151,25 @@ public class TcrdRegistry extends Controller implements Commons {
         }
     }
 
+    static class IDGCollection {
+        final String name;
+        final String family;
+        final Set<String> targets = new HashSet<>();
+
+        IDGCollection (JsonNode json) {
+            name = json.get("name").asText();
+            family = json.get("family").asText();
+            JsonNode node = json.get("targets");
+            for (int i = 0; i < node.size(); ++i)
+                targets.add(node.get(i).asText());
+        }
+
+        public boolean remove (String t) {
+            return targets.remove(t);
+        }
+        public int size () { return targets.size(); }
+    }
+
     static class PersistRegistration
         extends PersistenceQueue.AbstractPersistenceContext {
         final Connection con;
@@ -173,6 +194,7 @@ public class TcrdRegistry extends Controller implements Commons {
         Map<String, Keyword> famKeywords = new HashMap<String, Keyword>();
         Map<String, Map<String, Keyword>> keywords =
             new HashMap<String, Map<String, Keyword>>();
+        List<IDGCollection> collections = new ArrayList<>();
         
         PersistRegistration (Connection con, Http.Context ctx,
                              Collection<TcrdTarget> targets)
@@ -180,6 +202,21 @@ public class TcrdRegistry extends Controller implements Commons {
             this.con = con;
             this.ctx = ctx;
             this.targets = targets;
+
+            File file = Play.application()
+                .getFile("conf/idg-collections.json");
+            if (file.exists()) {
+                try {
+                    JsonNode json = Json.parse(new FileInputStream (file));
+                    for (int i = 0; i < json.size(); ++i) {
+                        JsonNode node = json.get(i);
+                        collections.add(new IDGCollection (node));
+                    }
+                }
+                catch (Exception ex) {
+                    Logger.error("Can't parse json file: "+file, ex);
+                }
+            }
 
             List<Keyword> keywords = KeywordFactory.finder
                 .where().eq("label", IDG_DEVELOPMENT).findList();
@@ -297,8 +334,9 @@ public class TcrdRegistry extends Controller implements Commons {
             pstm31 = con.prepareStatement
                 ("select * from locsig where protein_id = ?");
             pstm32 = con.prepareStatement
-                ("select a.*,b.did,b.score,"
-                 +"c.name,c.dtype,c.description,c.drug_name "
+                ("select a.name as ortho_name,a.db_id,a.species,"
+                 +"a.geneid,a.symbol,a.mod_url,a.sources,"
+                 +"b.ortholog_id,b.score,c.* "
                  +"from ortholog a left join (ortholog_disease b, disease c) "
                  +"on b.ortholog_id = a.id and b.did = c.did and "
                  +"b.protein_id = c.protein_id where a.protein_id = ?");
@@ -383,6 +421,14 @@ public class TcrdRegistry extends Controller implements Commons {
                     ex.printStackTrace();
                 }
             }
+
+            for (IDGCollection ic : collections) {
+                if (ic.size() > 0) {
+                    Logger.warn("!! Not all targets for collection \""+ic.name
+                                +"\" have been accounted for: "+ic.targets);
+                }
+            }
+            
             Logger.debug("\n#### PERSISTENCE STARTED ON "+start+" ####"
                          +"\n#### AND COMPLETE AT "
                          +new java.util.Date()+"! #####");
@@ -454,7 +500,7 @@ public class TcrdRegistry extends Controller implements Commons {
                         String term = rset.getString("xtra");
                         if (term != null) {
                             Keyword kw = KeywordFactory.registerIfAbsent
-                                (UNIPROT_KEYWORD, term/*.replaceAll("/","-")*/,
+                                (UNIPROT_KEYWORD, term.replaceAll("/","-"),
                                  "http://www.uniprot.org/keywords/"+value);
 
                             target.addIfAbsent((Value)kw);
@@ -492,7 +538,17 @@ public class TcrdRegistry extends Controller implements Commons {
                 (SOURCE, "UniProt", "http://www.uniprot.org");
             datasources.put("UniProt", source);
 
-            if (t.idg2) {
+            if (!collections.isEmpty()) {
+                for (IDGCollection ic : collections) {
+                    if (ic.remove(target.gene)) {
+                        target.addIfAbsent
+                            ((Value)KeywordFactory.registerIfAbsent
+                             (COLLECTION, ic.name, null));
+                        break;
+                    }
+                }
+            }
+            else if (t.idg2) {
                 Keyword collection = null;
                 if ("gpcr".equalsIgnoreCase(t.family)) {
                     collection = KeywordFactory.registerIfAbsent
@@ -861,7 +917,7 @@ public class TcrdRegistry extends Controller implements Commons {
                     Keyword go = null;
                     char kind = term.charAt(0);
                     term = term.substring(term.indexOf(':')+1)
-                        /*.replaceAll("/","-")*/;
+                        .replaceAll("/","-");
                     String href = "http://amigo.geneontology.org/amigo/search/annotation?q=*:*&fq=bioentity:\"UniProtKB:"+uniprot+"\"&sfq=document_category:\"annotation\"&fq=regulates_closure:\""+id+"\"";
                 
                     switch (kind) {
@@ -1093,7 +1149,7 @@ public class TcrdRegistry extends Controller implements Commons {
                             Logger.debug
                                 ("OMIM: "+disorder+" ["+id+"] ("+key+")");
                             if (key.charAt(0) == '3') {
-                                //disorder = disorder.replaceAll("/", "-");
+                                disorder = disorder.replaceAll("/", "-");
                                 Keyword kw = KeywordFactory.registerIfAbsent
                                     (OMIM_TERM, disorder,
                                      "http://omim.org/entry/"+id);
@@ -1126,7 +1182,7 @@ public class TcrdRegistry extends Controller implements Commons {
                         String termId = rset.getString("term_id");
                         if (term != null) {
                             Keyword kw = KeywordFactory.registerIfAbsent
-                                (IMPC_TERM, term/*.replaceAll("/","-")*/,
+                                (IMPC_TERM, term.replaceAll("/","-"),
                                  "http://www.informatics.jax.org/searches/Phat.cgi?id=" + termId);
                             terms.add(kw);
                         }
@@ -1142,7 +1198,7 @@ public class TcrdRegistry extends Controller implements Commons {
                         String trait = rset.getString("trait");
                         if (trait != null) {
                             sources.put(type, source);                      
-                            //trait = trait.replaceAll("/", "-");
+                            trait = trait.replaceAll("/", "-");
                             Keyword gwas = KeywordFactory.registerIfAbsent
                                 (GWAS_TRAIT, trait, null);
                             XRef ref = target.addIfAbsent(new XRef (gwas));
@@ -1201,7 +1257,7 @@ public class TcrdRegistry extends Controller implements Commons {
                         String pheno = rset.getString("term_name");
                         String termId = rset.getString("term_id");
                         if (pheno != null) {
-                            //pheno = pheno.replaceAll("/", "-");
+                            pheno = pheno.replaceAll("/", "-");
                             sources.put(type, source);
                             Keyword kw = KeywordFactory.registerIfAbsent
                                 (MGI_TERM, pheno,
@@ -1471,7 +1527,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 for (DTOParser.Node n : nodes) {
                     Keyword kw = KeywordFactory.registerIfAbsent
                         (DTO_PROTEIN_CLASS+" ("+path.size()+")",
-                         n.name/*.replaceAll("/", "-")*/,
+                         n.name.replaceAll("/", "-"),
                          // not a real url.. 
                          "http://drugtargetontology.org/"+n.id);
 
@@ -1924,6 +1980,14 @@ public class TcrdRegistry extends Controller implements Commons {
             throws Exception {
             List<Disease> diseases = DiseaseFactory
                 .finder.where().eq("name", name).findList();
+            
+            String did = rset.getString("did");
+            if (did != null)
+                did = did.trim();
+
+            if (did == null || did.equals(""))
+                did = "TCRD:"+rset.getLong("id");
+            
             Disease d = null;
             if (diseases.isEmpty()) {
                 d = new Disease();
@@ -1931,10 +1995,6 @@ public class TcrdRegistry extends Controller implements Commons {
                 d.description = rset.getString("description");
                 //d.properties.add(datasources.get(type));                
                 d.properties.add(tcrd);
-                String did = rset.getString("did");
-                if (did != null)
-                    did = did.trim();
-
                 
                 String drugName = rset.getString("drug_name");
                 if (drugName != null) {
@@ -1997,8 +2057,7 @@ public class TcrdRegistry extends Controller implements Commons {
                     }
                     else { // DrugCentral
                         did = null;
-                        Keyword kw =
-                            datasources.get("DrugCentral");
+                        Keyword kw = datasources.get("DrugCentral");
                         if (kw == null) {
                             kw = KeywordFactory.registerIfAbsent
                                 (SOURCE, "DrugCentral", null);
@@ -2014,6 +2073,11 @@ public class TcrdRegistry extends Controller implements Commons {
             }
             else {
                 d = diseases.iterator().next();
+                if (did != null) {
+                    d.addIfAbsent(KeywordFactory.registerIfAbsent
+                                  (type, did, null));
+                    d.update();
+                }
             }
 
             return d;
@@ -2379,7 +2443,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 Map<Long, Ortholog> orthologs = new HashMap<>();
                 Map<Long, String[]> sources = new HashMap<>();
                 while (rset.next()) {
-                    long id = rset.getLong("id");
+                    long id = rset.getLong("ortholog_id");
                     Ortholog ortho = orthologs.get(id);
                     if (ortho == null) {
                         ortho = new Ortholog ();
@@ -2390,7 +2454,7 @@ public class TcrdRegistry extends Controller implements Commons {
                         if (rset.wasNull())
                             ortho.geneId = null;
                         ortho.symbol = rset.getString("symbol");
-                        ortho.name = rset.getString("name");
+                        ortho.name = rset.getString("ortho_name");
                         ortho.url = rset.getString("mod_url");
                         
                         String srcs = rset.getString("sources");
@@ -2656,7 +2720,7 @@ public class TcrdRegistry extends Controller implements Commons {
                  +"left join tinx_novelty d\n"
                  +"    on d.protein_id = a.protein_id \n"
                  //+"where c.id in (18204,862,74,6571)\n"
-                 +"where a.target_id in (15902,13829)\n"
+                 //+"where a.target_id in (15902,13829)\n"
                  //+"where c.uniprot = 'Q9H3Y6'\n"
                  //+"where b.tdl in ('Tclin','Tchem')\n"
                  //+"where b.idgfam = 'kinase'\n"
