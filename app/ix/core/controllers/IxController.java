@@ -37,6 +37,8 @@ public class IxController extends Controller {
         _app.plugin(SequenceIndexerPlugin.class).getIndexer();
     public static final PayloadPlugin _payloader =
         _app.plugin(PayloadPlugin.class);
+    public static final FirebaseStore _firebase =
+        _app.plugin(FirebaseStore.class);
 
     static public class CachableContent 
         implements play.twirl.api.Content, Serializable {

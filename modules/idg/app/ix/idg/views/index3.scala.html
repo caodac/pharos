@@ -5,20 +5,20 @@
 <html>
   <head>
     <!--[if lte IE 9]>
-	<style type="text/css">
+    <style type="text/css">
 #ie6msg{border:3px solid #c33; margin:8px 0; background:#fcc; color:#000;}
 #ie6msg h4{margin:8px; padding:0;}
 #ie6msg p{margin:8px; padding:0;}
 #ie6msg p a.getie7{font-weight:bold; color:#006;}
 #ie6msg p a.ie6expl{font-weight:bold; color:#006;}
 </style>
-	<div id="ie6msg">
-	  <h4>Did you know that your browser is out of date?</h4>
-	  <p>To get the best possible experience using this website it is recommended that you upgrade your browser to a newer version.
-	  <p>You could also try some other popular browsers like <a class="ie6expl" href="http://mozilla.com">FireFox</a> or
-	    <a class="ie6expl" href="https://www.google.com/chrome/S">Chrome</a>.</p>
-	</div>
-	<![endif]-->
+    <div id="ie6msg">
+      <h4>Did you know that your browser is out of date?</h4>
+      <p>To get the best possible experience using this website it is recommended that you upgrade your browser to a newer version.
+      <p>You could also try some other popular browsers like <a class="ie6expl" href="http://mozilla.com">FireFox</a> or
+        <a class="ie6expl" href="https://www.google.com/chrome/S">Chrome</a>.</p>
+    </div>
+    <![endif]-->
 
     <title>Pharos: @title</title>
     <meta name=viewport content="width=device-width, initial-scale=1">    
@@ -26,10 +26,25 @@
     <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
     <link href='@routes.WebJarAssets.at(WebJarAssets.locate("css/bootstrap.min.css"))' rel='stylesheet' >
     <link rel="stylesheet" type="text/css"
-	  href='@routes.WebJarAssets.at(WebJarAssets.locate("font-awesome.min.css"))'>
+      href='@routes.WebJarAssets.at(WebJarAssets.locate("font-awesome.min.css"))'>
     <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("css/multiple.css")'/>
     <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("css/screen.css")'/>
+    <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/qa-messages.css")'/>
     <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/main.css")'/>
+    <script src="https://www.gstatic.com/firebasejs/4.13.0/firebase.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/4.13.0/firebase-firestore.js"></script>
+    <script>
+      // Initialize Firebase
+      var config = {
+      apiKey: "AIzaSyD8Da_3_tnyIoBYrV8VYmm03c0IK3HfA8Y",
+      authDomain: "ncatsdev.firebaseapp.com",
+      databaseURL: "https://ncatsdev.firebaseio.com",
+      projectId: "ncatsdev",
+      storageBucket: "ncatsdev.appspot.com",
+      messagingSenderId: "116861715745"
+      };
+      firebase.initializeApp(config);
+    </script>
     <script src='@routes.WebJarAssets.at(WebJarAssets.locate("jquery.min.js"))' type='text/javascript' ></script>
     <script src='@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap.min.js"))' type='text/javascript' ></script>
     <script src='@routes.WebJarAssets.at(WebJarAssets.locate("respond.js"))' type='text/javascript'></script>
@@ -47,6 +62,46 @@ ga('create', 'UA-53774738-1', 'auto');
 ga('send', 'pageview');
     </script>
 
+    <script id="item-template" type="text/x-handlebars-template">
+      <div class="message-item" id="{{id}}">
+        <div class="message-inner">
+          <div class="message-head clearfix">
+            {{#if imgurl}}
+            <div class="avatar pull-left">
+              <img class="message-img" src="{{{imgurl}}}">
+            </div>
+            {{/if}}
+            <div class="user-detail">
+              <h5>{{{author}}}</h5>
+              {{date}}
+            </div>
+          </div>
+          <div class="qa-message-content">
+            {{{message}}}
+          </div>
+        </div>
+      </div>
+    </script>
+
+    <script id="inner-template" type="text/x-handlebars-template">
+        <div class="message-inner">
+          <div class="message-head clearfix">
+            {{#if imgurl}}
+            <div class="avatar pull-left">
+              <img class="message-img" src="{{{imgurl}}}">
+            </div>
+            {{/if}}
+            <div class="user-detail">
+              <h5>{{{author}}}</h5>
+              {{date}}
+            </div>
+          </div>
+          <div class="qa-message-content">
+            {{{message}}}
+          </div>
+        </div>
+    </script>
+              
     @ix.ncats.views.html.typeahead(Array("Target","Disease","Ligand","UniProt_Gene","OMIM_Gene","OMIM_Term","UniProt_Shortname","IMPC_Term","DisGeNET_Disease","MGI_Term","IDG_Drug","KEGG_Pathway","Reactome_Pathway","GWAS_Trait","WikePathways_Pathway","UniProt_Keyword","UniProt_Accession"))
     <style type="text/css">
       .twitter-typeahead {
@@ -67,234 +122,235 @@ ga('send', 'pageview');
     </style>
   </head>
   <body style="background:white">
-      <div class="site-wrapper">
-	<div class="site-wrapper-inner">
-	  <div class="container-fluid">
-	    <div class="row separate-boxes">
+    <div class="site-wrapper">
+      <div class="site-wrapper-inner">
+        <div class="container-fluid">
+          <div class="row separate-boxes">
+            <a href="" id="box-1-href" style="color: white;
+                                              font-weight: bold;">
+              <div class="box light item box-w25perc border-bottom pull-right">
+                <div class="content" id="box-1">
+                  <div class="content-sup-text">
+                    <span id="box-1-name"></span>
+                  </div>
+                  <div class="content-main-text">
+                    <span class="content-accent" id="box-1-count"></span>
+                    <span class="content-suffix" id="box-1-total"></span>
+                  </div>
+                  <div class="content-sub-text">
+                    <span id="box-1-term"></span>
+                  </div>
+                </div>
+              </div>
+            </a>
 
-			<a href="" id="box-1-href" style="color: white;
-				font-weight: bold;">
-				<div class="box light item box-w25perc border-bottom pull-right">
-					<div class="content" id="box-1">
-						<div class="content-sup-text">
-							<span id="box-1-name"></span>
-						</div>
-						<div class="content-main-text">
-							<span class="content-accent" id="box-1-count"></span>
-							<span class="content-suffix" id="box-1-total"></span>
-						</div>
-						<div class="content-sub-text">
-							<span id="box-1-term"></span>
-						</div>
-					</div>
-				</div>
-			</a>
-
-			<a href="" id="box-2-href" style="color: white;
-				font-weight: bold;">
-				<div class="box light item box-w25perc border-bottom pull-right">
-					<div class="content" id="box-2">
-						<div class="content-sup-text">
-							<span id="box-2-name"></span>
-						</div>
-						<div class="content-main-text">
-							<span class="content-accent" id="box-2-count"></span>
-							<span class="content-suffix" id="box-2-total"></span>
-						</div>
-						<div class="content-sub-text">
-							<span id="box-2-term"></span>
-						</div>
-					</div>
-				</div>
-			</a>
-
-			<a href="" id="box-3-href" style="color: white;
-				font-weight: bold;">
-				<div class="box light item box-w25perc border-bottom pull-right">
-					<div class="content" id="box-3">
-						<div class="content-sup-text">
-							<span id="box-3-name"></span>
-						</div>
-						<div class="content-main-text">
-							<span class="content-accent" id="box-3-count"></span>
-							<span class="content-suffix" id="box-3-total"></span>
-						</div>
-						<div class="content-sub-text">
-							<span id="box-3-term"></span>
-						</div>
-					</div>
-				</div>
-			</a>
-
-			<a href="" id="box-4-href" style="color: white;
-				font-weight: bold;">
-				<div class="box light item box-w25perc border-bottom pull-right">
-					<div class="content" id="box-4">
-						<div class="content-sup-text">
-							<span id="box-4-name"></span>
-						</div>
-						<div class="content-main-text">
-							<span class="content-accent" id="box-4-count"></span>
-							<span class="content-suffix" id="box-4-total"></span>
-						</div>
-						<div class="content-sub-text">
-							<span id="box-4-term"></span>
-						</div>
-					</div>
-				</div>
-			</a>
-
-	    </div>
-	    <div class="inner cover">
-	      <div class="row">
-		<div class="col-sm-4 col-md-4 col-md-offset-1">
-		  <img class="img-responsive pull-right" height="200" alt="Pharos Logo" 
-		       src='@routes.Assets.versioned("ncats/images/Pharos_Logo_Rd8.svg")'
-		       class = "img-responsive" id="pharos"/>
-		</div>
-	      </div>
-	      <div class="row">
-		<div class="col-sm-8 col-md-6 col-md-offset-3 col-sm-offset-2">
-		  <form class="main-search" role="search" method="GET"
-			action="@ix.idg.controllers.routes.IDGApp.search(null)">
-		    <div class="input-group" id="scrollable-dropdown-menu">
-		      <input type="text" class="form-control typeahead" id="search"
-			     title="Search" placeholder="Search for targets (e.g., 'ITK') or diseases (e.g., 'asthma')" name="q">
-		      <span class="input-group-btn">
-			<button class="btn btn-default" id="search" type="search"
-				value="submit">
-			  <span class="fa fa-search"></span>
-			</button>
-		      </span>
-		    </div>
-		  </form>
-		  <ol class="breadcrumb pull-right" style="background:white">
-		    <li><a class="navbar-link"
-			   href="@ix.idg.controllers.routes.IDGApp.diseases(null, 10, 1)">Diseases</a>
-		    <li><a class="navbar-link"
-			   href="@ix.idg.controllers.routes.IDGApp.targets(null, 10, 1)">Targets</a></li>
-			  <li><a class="navbar-link"
-					 href="@ix.idg.controllers.routes.IDGApp.ligands(null, 10, 1)">Ligands</a></li>
-		    <li><a class="navbar-link"
-			   href="@ix.idg.controllers.routes.IDGApp.api">API</a></li>
-		    <li><a class="navbar-link"
-			   data-trigger="click"
-			   data-target="#help-panel"
-			   data-toggle="collapse" href="#">Help</a>
-		    </li>
-		  </ol>
-		</div>
-	      </div>
-	      <div class="row">
-		<div class="col-sm-8 col-md-6 col-md-offset-3 col-sm-offset-2">
-		  <div id="help-panel" class="collapse list-group">
-		    <a class="list-group-item" href="@ix.idg.controllers.routes.IDGApp.help">General information</a>
-		    <a class="list-group-item" href="@ix.idg.controllers.routes.IDGApp.faq">Frequently asked questions</a>
-		    <a class="list-group-item" href="https://www.youtube.com/channel/UCr5BtMcSjL7C4jwCEJOCKGg" target="_blank">Video tutorials</a>
-		    <a class="list-group-item" href="@ix.idg.controllers.routes.IDGApp.about">About</a>
-		  </div>
-		</div>
-	      </div>
-	      <div class="row">
-		<div class="col-sm-8 col-md-6 col-md-offset-3 col-sm-offset-2">
-		  <div id="getting-started" class="collapse panel panel-default">
-		    <div class="panel-body">
-		      <div class="pull-center embed-responsive embed-responsive-4by3">
-			<iframe id="getting-started-iframe"
-				sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-top-navigation allow-popups-to-escape-sandbox allow-modals"
-				class="embed-responsive-item"
-				src="https://www.youtube.com/embed/rAu6D0-Fanw"
-				allowfullscreen><p>Sorry, your browser does not support <code>iframe</code>
-			</iframe>
-		      </div>
-		    </div>
-		  </div>
-		</div>
-	      </div>
-	    </div>
-
-	    <div class="row separate-boxes">
-
-			<a href="" id="box-5-href" style="color: white;
-				font-weight: bold;">
-				<div class="box light item box-w25perc border-bottom pull-left">
-					<div class="content" id="box-5">
-						<div class="content-sup-text">
-							<span id="box-5-name"></span>
-						</div>
-						<div class="content-main-text">
-							<span class="content-accent" id="box-5-count"></span>
-							<span class="content-suffix" id="box-5-total"></span>
-						</div>
-						<div class="content-sub-text">
-							<span id="box-5-term"></span>
-						</div>
-					</div>
-				</div>
-			</a>
-
-			<a href="" id="box-6-href" style="color: white;
-				font-weight: bold;">
-				<div class="box light item box-w25perc border-bottom pull-left">
-					<div class="content" id="box-6">
-						<div class="content-sup-text">
-							<span id="box-6-name"></span>
-						</div>
-						<div class="content-main-text">
-							<span class="content-accent" id="box-6-count"></span>
-							<span class="content-suffix" id="box-6-total"></span>
-						</div>
-						<div class="content-sub-text">
-							<span id="box-6-term"></span>
-						</div>
-					</div>
-				</div>
-			</a>
-
-			<a href="" id="box-7-href" style="color: white;
-				font-weight: bold;">
-				<div class="box light item box-w25perc border-bottom pull-left">
-					<div class="content" id="box-7">
-						<div class="content-sup-text">
-							<span id="box-7-name"></span>
-						</div>
-						<div class="content-main-text">
-							<span class="content-accent" id="box-7-count"></span>
-							<span class="content-suffix" id="box-7-total"></span>
-						</div>
-						<div class="content-sub-text">
-							<span id="box-7-term"></span>
-						</div>
-					</div>
-				</div>
-			</a>
-
-			<a href="" id="box-8-href" style="color: white; font-weight: bold;">
-				<div class="box light item box-w25perc border-bottom pull-left">
-					<div class="content" id="box-8">
-						<div class="content-sup-text">
-							<span id="box-8-name"></span>
-						</div>
-						<div class="content-main-text">
-							<span class="content-accent" id="box-8-count"></span>
-							<span class="content-suffix" id="box-8-total"></span>
-						</div>
-						<div class="content-sub-text">
-							<span id="box-8-term"></span>
-						</div>
-
-					</div>
-				</div>
-			</a>
-
-
-            </div>
+            <a href="" id="box-2-href" style="color: white;
+                                              font-weight: bold;">
+              <div class="box light item box-w25perc border-bottom pull-right">
+                <div class="content" id="box-2">
+                  <div class="content-sup-text">
+                    <span id="box-2-name"></span>
+                  </div>
+                  <div class="content-main-text">
+                    <span class="content-accent" id="box-2-count"></span>
+                    <span class="content-suffix" id="box-2-total"></span>
+                  </div>
+                  <div class="content-sub-text">
+                    <span id="box-2-term"></span>
+                  </div>
+                </div>
+              </div>
+            </a>
+            
+            <a href="" id="box-3-href" style="color: white;
+                                              font-weight: bold;">
+              <div class="box light item box-w25perc border-bottom pull-right">
+                <div class="content" id="box-3">
+                  <div class="content-sup-text">
+                    <span id="box-3-name"></span>
+                  </div>
+                  <div class="content-main-text">
+                    <span class="content-accent" id="box-3-count"></span>
+                    <span class="content-suffix" id="box-3-total"></span>
+                  </div>
+                  <div class="content-sub-text">
+                    <span id="box-3-term"></span>
+                  </div>
+                </div>
+              </div>
+            </a>
+            
+            <a href="" id="box-4-href" style="color: white;
+                                              font-weight: bold;">
+              <div class="box light item box-w25perc border-bottom pull-right">
+                <div class="content" id="box-4">
+                  <div class="content-sup-text">
+                    <span id="box-4-name"></span>
+                  </div>
+                  <div class="content-main-text">
+                    <span class="content-accent" id="box-4-count"></span>
+                    <span class="content-suffix" id="box-4-total"></span>
+                  </div>
+                  <div class="content-sub-text">
+                    <span id="box-4-term"></span>
+                  </div>
+                </div>
+              </div>
+            </a>
           </div>
-	</div>
-      </div>	
-      <div id="footer">
-	<code>Build: @ix.BuildInfo.TIME (commit: <a href="https://spotlite.nih.gov/ncats/pharos/tree/@ix.BuildInfo.COMMIT">@ix.BuildInfo.COMMIT</a><span id="uptime"></span>)</code>
-      </div>
+          
+          <div class="row inner cover" style="margin-top:15px">
+            <div class="col-md-8">
+              <div class="row">
+                <div class="col-sm-6 col-md-6 col-md-offset-1">
+                  <img class="img-responsive pull-right"
+                       height="200" alt="Pharos Logo" 
+                       src='@routes.Assets.versioned("ncats/images/Pharos_Logo_Rd8.svg")'
+                       class = "img-responsive" id="pharos"/>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-sm-10 col-md-8 col-md-offset-3 col-sm-offset-2">
+                  <form class="main-search" role="search" method="GET"
+                        action="@ix.idg.controllers.routes.IDGApp.search(null)">
+                    <div class="input-group" id="scrollable-dropdown-menu">
+                      <input type="text" class="form-control typeahead" id="search"
+                             title="Search" placeholder="Search for targets (e.g., 'ITK') or diseases (e.g., 'asthma')" name="q">
+                      <span class="input-group-btn">
+                        <button class="btn btn-default" id="search" type="search"
+                                value="submit">
+                          <span class="fa fa-search"></span>
+                        </button>
+                      </span>
+                    </div>
+                  </form>
+                  <ol class="breadcrumb pull-right" style="background:white">
+                    <li><a class="navbar-link"
+                           href="@ix.idg.controllers.routes.IDGApp.diseases(null, 10, 1)">Diseases</a>
+                    <li><a class="navbar-link"
+                           href="@ix.idg.controllers.routes.IDGApp.targets(null, 10, 1)">Targets</a></li>
+                    <li><a class="navbar-link"
+                           href="@ix.idg.controllers.routes.IDGApp.ligands(null, 10, 1)">Ligands</a></li>
+                    <li><a class="navbar-link"
+                           href="@ix.idg.controllers.routes.IDGApp.api">API</a></li>
+                    <li><a class="navbar-link"
+                           data-trigger="click"
+                           data-target="#help-panel"
+                           data-toggle="collapse" href="#">Help</a>
+                    </li>
+                  </ol>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-sm-8 col-md-6 col-md-offset-3 col-sm-offset-2">
+                  <div id="help-panel" class="collapse list-group">
+                    <a class="list-group-item" href="@ix.idg.controllers.routes.IDGApp.help">General information</a>
+                    <a class="list-group-item" href="@ix.idg.controllers.routes.IDGApp.faq">Frequently asked questions</a>
+                    <a class="list-group-item" href="https://www.youtube.com/channel/UCr5BtMcSjL7C4jwCEJOCKGg" target="_blank">Video tutorials</a>
+                    <a class="list-group-item" href="@ix.idg.controllers.routes.IDGApp.about">About</a>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-sm-8 col-md-6 col-md-offset-3 col-sm-offset-2">
+                  <div id="getting-started" class="collapse panel panel-default">
+                    <div class="panel-body">
+                      <div class="pull-center embed-responsive embed-responsive-4by3">
+                        <iframe id="getting-started-iframe"
+                                sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-top-navigation allow-popups-to-escape-sandbox allow-modals"
+                                class="embed-responsive-item"
+                                src="https://www.youtube.com/embed/rAu6D0-Fanw"
+                                allowfullscreen><p>Sorry, your browser does not support <code>iframe</code>
+                        </iframe>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div> <!-- row -->
+            </div> <!-- col-md-8 -->
+            <div class="col-md-4" style="height:300px;overflow-y:auto;">
+              <div class="qa-message-list" id="wallmessages"></div>
+            </div>
+          </div> <!-- inner cover -->
+          
+          <div class="row separate-boxes">
+            <a href="" id="box-5-href" style="color: white;
+                                              font-weight: bold;">
+              <div class="box light item box-w25perc border-bottom pull-left">
+                <div class="content" id="box-5">
+                  <div class="content-sup-text">
+                    <span id="box-5-name"></span>
+                  </div>
+                  <div class="content-main-text">
+                    <span class="content-accent" id="box-5-count"></span>
+                    <span class="content-suffix" id="box-5-total"></span>
+                  </div>
+                  <div class="content-sub-text">
+                    <span id="box-5-term"></span>
+                  </div>
+                </div>
+              </div>
+            </a>
+            
+            <a href="" id="box-6-href" style="color: white;
+                                              font-weight: bold;">
+              <div class="box light item box-w25perc border-bottom pull-left">
+                <div class="content" id="box-6">
+                  <div class="content-sup-text">
+                    <span id="box-6-name"></span>
+                  </div>
+                  <div class="content-main-text">
+                    <span class="content-accent" id="box-6-count"></span>
+                    <span class="content-suffix" id="box-6-total"></span>
+                  </div>
+                  <div class="content-sub-text">
+                    <span id="box-6-term"></span>
+                  </div>
+                </div>
+              </div>
+            </a>
+            
+            <a href="" id="box-7-href" style="color: white;
+                                              font-weight: bold;">
+              <div class="box light item box-w25perc border-bottom pull-left">
+                <div class="content" id="box-7">
+                  <div class="content-sup-text">
+                    <span id="box-7-name"></span>
+                  </div>
+                  <div class="content-main-text">
+                    <span class="content-accent" id="box-7-count"></span>
+                    <span class="content-suffix" id="box-7-total"></span>
+                  </div>
+                  <div class="content-sub-text">
+                    <span id="box-7-term"></span>
+                  </div>
+                </div>
+              </div>
+            </a>
+            
+            <a href="" id="box-8-href" style="color: white; font-weight: bold;">
+              <div class="box light item box-w25perc border-bottom pull-left">
+                <div class="content" id="box-8">
+                  <div class="content-sup-text">
+                    <span id="box-8-name"></span>
+                  </div>
+                  <div class="content-main-text">
+                    <span class="content-accent" id="box-8-count"></span>
+                    <span class="content-suffix" id="box-8-total"></span>
+                  </div>
+                  <div class="content-sub-text">
+                    <span id="box-8-term"></span>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div> <!-- container-fluid -->
+      </div> <!-- site-wrapper-inner -->
+    </div>  <!-- site-wrapper -->
+    <div id="footer">
+      <code>Build: @ix.BuildInfo.TIME (commit: <a href="https://spotlite.nih.gov/ncats/pharos/tree/@ix.BuildInfo.COMMIT">@ix.BuildInfo.COMMIT</a><span id="uptime"></span>)</code>
+    </div>
   </body>  
 </html>
 
@@ -308,18 +364,18 @@ function reload () {
 
      $.get('@ix.idg.controllers.routes.IDGApp.sampleTermValues(8)', function(d) {
          for (var i = 1; i <= 8; ++i) {
-	    var j = i-1;
-		$("#box-"+i+"-href").attr("href", d[j].url);
+        var j = i-1;
+        $("#box-"+i+"-href").attr("href", d[j].url);
 
-	    $('#box-'+i+'-name').html(d[j].name);
-	    $('#box-'+i+'-count').html(d[j].count+'<span class="content-accent-helper"></span>');
-	    $('#box-'+i+'-total').html(d[j].total);
+        $('#box-'+i+'-name').html(d[j].name);
+        $('#box-'+i+'-count').html(d[j].count+'<span class="content-accent-helper"></span>');
+        $('#box-'+i+'-total').html(d[j].total);
             if (d[j].term.length > 20) {
-	       $('#box-'+i+'-term').html(d[j].field+':<br><span data-toggle="tooltip" data-trigger="hover" data-title="'+d[j].term+'">'+d[j].term.substring(0,20)+'...</span>');
+           $('#box-'+i+'-term').html(d[j].field+':<br><span data-toggle="tooltip" data-trigger="hover" data-title="'+d[j].term+'">'+d[j].term.substring(0,20)+'...</span>');
             } else {
-	       $('#box-'+i+'-term').html(d[j].field+':<br>'+d[j].term);
+           $('#box-'+i+'-term').html(d[j].field+':<br>'+d[j].term);
             }
-	 }
+     }
          $('[data-toggle="tooltip"]').tooltip();
      });
 }
@@ -342,6 +398,51 @@ $(document).ready(function () {
      gradient: 'radial-gradient(45% center, circle, rgb(39, 184, 196) 40%, rgb(178,194,140))',
      // ripping this image from https://commonfund.nih.gov/sites/default/files/101388260.jpg
      background: 'url(@routes.Assets.versioned("images/101388260.jpg"))'
-  });
+    });
+
+    
+    var firestore = firebase.firestore();
+    firestore.settings({
+            timestampsInSnapshots: true
+        });
+
+    var template = Handlebars.compile($('#item-template').text());
+    var inner = Handlebars.compile($('#inner-template').text());
+    
+    firestore.collection('public')
+        .orderBy('index')
+        .onSnapshot(function(snapshot) {
+            snapshot.docChanges.forEach(function (change) {
+                if (change.type === 'added') {
+                    var d = change.doc.data();
+                    d['id'] = change.doc.id;
+                    var t = template(d);
+                    console.log('++ added: '+change.doc.id+' => '+t);
+                    $('#wallmessages').prepend(t);
+                }
+                else if (change.type === 'modified') {
+                    console.log('++ modified: '+change.doc.id);
+                    var d = change.doc.data();
+                    d['id'] = change.doc.id;                    
+                    $('#'+change.doc.id).html(inner(d));
+                }
+                else if (change.type === 'removed') {
+                    console.log('++ removed: '+change.doc.id);
+                    $('#'+change.doc.id).remove();
+                }
+            });
+        });
+
+    /*
+    firestore.collection('public').add({
+        foo: '???',
+        bar: 'adfasdfsaf',
+        why: 123424
+    }).then(function(ref) {
+        console.log('doc added: '+doc.id);
+    }).catch(function(err) {
+        console.error('error: ',err);
+    });
+    */
 });
 </script>

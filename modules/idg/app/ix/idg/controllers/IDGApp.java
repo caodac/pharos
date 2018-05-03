@@ -357,7 +357,11 @@ public class IDGApp extends App implements Commons {
         @Override
         public String name () {
             String name = super.name();
+            if (name.startsWith("Compartment")) // sign, don't replace string
+                return name;
+            
             return name.replaceAll("IDG", "")
+                .replaceAll("Term", "Phenotype")
                 .replaceAll("Consensus", "IDG").trim();
         }
 

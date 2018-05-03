@@ -1,3 +1,4 @@
+
 import play._
 import sbt.Keys._
 import sbt._
@@ -59,16 +60,15 @@ object ApplicationBuild extends Build {
       ,"org.webjars" % "html2canvas" % "0.4.1"
       ,"org.reflections" % "reflections" % "0.9.8" notTransitive ()
       ,"colt" % "colt" % "1.2.0"
-      //,"net.sf.jni-inchi" % "jni-inchi" % "0.8"
       ,"org.freehep" % "freehep-graphicsbase" % "2.4"
       ,"org.freehep" % "freehep-vectorgraphics" % "2.4"
       ,"org.freehep" % "freehep-graphicsio" % "2.4"
       ,"org.freehep" % "freehep-graphicsio-svg" % "2.4"
       ,"org.freehep" % "freehep-graphics2d" % "2.4"
-      //,"ws.securesocial" %% "securesocial" % "master-SNAPSHOT"
 //      ,"com.sleepycat" % "je" % "5.0.73"
       ,"org.webjars" % "store.js" % "1.3.17-1"
       ,"org.webjars" % "swagger-ui" % "3.0.10"
+      ,"com.google.firebase" % "firebase-admin" % "5.11.0"
   )
 
   val scalaBuildOptions = Seq(
