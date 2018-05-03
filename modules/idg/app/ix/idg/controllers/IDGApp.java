@@ -817,15 +817,23 @@ public class IDGApp extends App implements Commons {
 
     @Cached(key="_sitemap", duration = Integer.MAX_VALUE)
     public static Result sitemap() {
-        StringBuilder sb = new StringBuilder();
-        for (Target t : TargetFactory.finder.all()) {
-            sb.append(Global.getHost()+routes.IDGApp.target(getId(t))).append("\n");
+        File file  = Play.application().getFile("conf/sitemap.txt");
+        if (file.exists()) {
+            return ok (file);
         }
-        for (Disease d : DiseaseFactory.finder.all()) {
-            if (!getId(d).equals(""))
-                sb.append(Global.getHost()+routes.IDGApp.disease(getId(d))).append("\n");
+        else {
+            StringBuilder sb = new StringBuilder();
+            for (Target t : TargetFactory.finder.all()) {
+                sb.append(Global.getHost()
+                          +routes.IDGApp.target(getId(t))).append("\n");
+            }
+            for (Disease d : DiseaseFactory.finder.all()) {
+                if (!getId(d).equals(""))
+                    sb.append(Global.getHost()
+                              +routes.IDGApp.disease(getId(d))).append("\n");
+            }
+            return(ok(sb.toString()).as("text/plain"));
         }
-        return(ok(sb.toString()).as("text/plain"));
     }
 
     @Cached(key="_discussion", duration= Integer.MAX_VALUE)
