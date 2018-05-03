@@ -170,7 +170,8 @@ public class SearchFactory extends EntityFactory {
     }
         
     public static JsonNode _search 
-        (Class kind, String q, int top, int skip, int fdim) throws Exception {
+        (final Class kind, String q, int top, int skip, int fdim)
+        throws Exception {
         final String key = Util.sha1(request());
         SearchResult result = getOrElse (key, new Callable<SearchResult> () {
                 public SearchResult call () throws Exception {
@@ -187,8 +188,8 @@ public class SearchFactory extends EntityFactory {
             if (obj != null) {
                 try {
                     ObjectNode node = (ObjectNode)mapper.valueToTree(obj);
-                    if (kind == null)
-                        node.put("kind", obj.getClass().getName());
+                    node.put("kind", kind == null
+                             ? obj.getClass().getName() : kind.getName());
                     
                     //if(added>=skip)
                     nodes.add(node);
