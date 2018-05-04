@@ -41,13 +41,13 @@ publications: List[Publication], totalPubs: Int, ctx: String)
       <div class="col-md-12">
       }
       <div 
-	 @if(total > 0) {
-	class="alert alert-success" 
-	} else {
-	class="alert alert-danger" 
-	}
-	role="alert">
-	<span><h4>Query:<code>@query</code></h4></span>
+     @if(total > 0) {
+    class="alert alert-success" 
+    } else {
+    class="alert alert-danger" 
+    }
+    role="alert">
+    <span><h4>Query:<code>@query</code></h4></span>
       </div>
       <div class="btn-group" role="group">
           @total match {
@@ -58,38 +58,38 @@ publications: List[Publication], totalPubs: Int, ctx: String)
       </div>
       <div class="panel panel-default" id="panel-targets">
           <div class="panel-heading"><h3>Targets</h3></div>
-	<div class="panel-body">
-	  <table class="table table-striped">
-	    <tr>
-	      <th>Name</th>
-	      <th>Development Level</th>
-	      <th>Target Family</th>
-	    </tr>
-	    @for(t <- targets) {
-	      @tabrow(t)
+    <div class="panel-body">
+      <table class="table table-striped">
+        <tr>
+          <th>Name</th>
+          <th>Development Level</th>
+          <th>Target Family</th>
+        </tr>
+        @for(t <- targets) {
+          @tabrow(t)
         }
       </table>
-	   @if(targets.length < totalTargets) {
-	    <span><i class="fa fa-ellipsis-h"></i></span>
-	    }
-	</div>
-	<div class="panel-footer">
-	  <a href="@{ix.idg.controllers.routes.IDGApp.targets()+"?"+App.queryString(request().queryString())}">@totalTargets target(s)</a>
-	</div>
+       @if(targets.length < totalTargets) {
+        <span><i class="fa fa-ellipsis-h"></i></span>
+        }
+    </div>
+    <div class="panel-footer">
+      <a href="@{ix.idg.controllers.routes.IDGApp.targets()+"?"+App.queryString(request().queryString())}">@totalTargets target(s)</a>
+    </div>
       </div>
 
       @if(totalLigands>0){
       <div class="panel panel-default" id='panel-ligands'>
           <div class="panel-heading"><h3>Ligands</h3></div>
-	<div class="panel-body">
-	  <table class="table table-striped">
-	    <tr>
-	      <th></th>
-	      <th>Name</th>
-	      <th>Development Level</th>
-	    </tr>
-	    @for(lig <- ligands) {
-	      <tr>
+    <div class="panel-body">
+      <table class="table table-striped">
+        <tr>
+          <th></th>
+          <th>Name</th>
+          <th>Development Level</th>
+        </tr>
+        @for(lig <- ligands) {
+          <tr>
   <td>
     @defining(IDGApp.getStructure(lig)) { struc =>
       @if(struc != null) {
@@ -99,10 +99,10 @@ publications: List[Publication], totalPubs: Int, ctx: String)
            data-placement="top"
            data-trigger="click hover focus"
            data-title="@lig.getName()"
-	   data-html="true"
+       data-html="true"
            data-content="<img src='@ix.ncats.controllers.routes.App.structure(struc.getId,"svg",150)'>">
          <img alt="Structure of @IDGApp.getId(lig)"
-   	      src='@ix.ncats.controllers.routes.App.structure(struc.getId,"svg",80)'></a>
+          src='@ix.ncats.controllers.routes.App.structure(struc.getId,"svg",80)'></a>
        }
     }
   </td>
@@ -125,16 +125,16 @@ publications: List[Publication], totalPubs: Int, ctx: String)
   }
   </td>
 **@
-	      </tr>
+          </tr>
              }
            </table>
-	   @if(ligands.length < totalLigands) {
-	    <span><i class="fa fa-ellipsis-h"></i></span>
-	    }
-	</div>
-	<div class="panel-footer">
-	  <a href="@{ix.idg.controllers.routes.IDGApp.ligands()+"?"+App.queryString(request().queryString())}">@totalLigands ligand(s)</a>
-	</div>
+       @if(ligands.length < totalLigands) {
+        <span><i class="fa fa-ellipsis-h"></i></span>
+        }
+    </div>
+    <div class="panel-footer">
+      <a href="@{ix.idg.controllers.routes.IDGApp.ligands()+"?"+App.queryString(request().queryString())}">@totalLigands ligand(s)</a>
+    </div>
       </div>
       }
 
@@ -172,21 +172,24 @@ publications: List[Publication], totalPubs: Int, ctx: String)
           <div class="panel-body">
               <table class="table table-striped">
                 <tr>
-		  <th>PMID <i class="fa fa-external-link"></i></th>
+                  <th></th>
+                  <th>PMID <i class="fa fa-external-link"></i></th>
                   <th>Title</th>
                 </tr>
                 @for(p <- publications) {
-	          <tr>
-		    @if(p.pmid != null) {	    
-                     <td align="right"><a href='http://www.ncbi.nlm.nih.gov/pubmed/@p.pmid'>@p.pmid</a>
-                     </td>
-		    <td><a href='@{ix.idg.controllers.routes.IDGApp.targets(p.pmid.toString(), 10, 1) + "&type=pmid"}'>@p.title</td>
-		    } else {
-		    <td></td>
-		    <td>@p.title</td>
-		    }
-                   </tr>
+                <tr>
+                  @if(p.pmid != null) {
+                  <td><span class="__dimensions_badge_embed__" data-pmid="@p.pmid" data-style="small_rectangle"></span></td>
+                  <td align="right"><a href='http://www.ncbi.nlm.nih.gov/pubmed/@p.pmid'>@p.pmid</a>
+                  </td>
+                  <td><a href='@{ix.idg.controllers.routes.IDGApp.targets(p.pmid.toString(), 10, 1) + "&type=pmid"}'>@p.title</td>
+                  } else {
+                    <td></td>
+                    <td></td>
+                    <td>@p.title</td>
                   }
+                </tr>
+                }
               </table>
           </div>
       </div>

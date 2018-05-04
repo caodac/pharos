@@ -672,6 +672,18 @@ public class IDGApp extends App implements Commons {
         "PathwayCommons: smpdb Pathway",
         "PathwayCommons: transfac Pathway",
 
+        DTO_PROTEIN_CLASS+" (0)",
+        DTO_PROTEIN_CLASS+" (1)",
+        DTO_PROTEIN_CLASS+" (2)",
+        DTO_PROTEIN_CLASS+" (3)",
+        DTO_PROTEIN_CLASS+" (4)",
+        DTO_PROTEIN_CLASS+" (5)",
+
+        PANTHER_PROTEIN_CLASS+" (0)",
+        PANTHER_PROTEIN_CLASS+" (1)",
+        PANTHER_PROTEIN_CLASS+" (2)",
+        PANTHER_PROTEIN_CLASS+" (3)",
+        
         "Log Novelty",
         "Log PubTator",
         //"R01 Grant Count",
@@ -815,25 +827,29 @@ public class IDGApp extends App implements Commons {
         return m;
     }
 
-    @Cached(key="_sitemap", duration = Integer.MAX_VALUE)
-    public static Result sitemap() {
+    public static Result sitemap () {
         File file  = Play.application().getFile("conf/sitemap.txt");
         if (file.exists()) {
             return ok (file);
         }
         else {
-            StringBuilder sb = new StringBuilder();
-            for (Target t : TargetFactory.finder.all()) {
-                sb.append(Global.getHost()
-                          +routes.IDGApp.target(getId(t))).append("\n");
-            }
-            for (Disease d : DiseaseFactory.finder.all()) {
-                if (!getId(d).equals(""))
-                    sb.append(Global.getHost()
-                              +routes.IDGApp.disease(getId(d))).append("\n");
-            }
-            return(ok(sb.toString()).as("text/plain"));
+            return ok (sitemapFromDb ()).as("text/plain");
         }
+    }
+
+    @Cached(key="_sitemap", duration = Integer.MAX_VALUE)
+    public static String sitemapFromDb () {
+        StringBuilder sb = new StringBuilder();
+        for (Target t : TargetFactory.finder.all()) {
+            sb.append(Global.getHost()
+                      +routes.IDGApp.target(getId(t))).append("\n");
+        }
+        for (Disease d : DiseaseFactory.finder.all()) {
+            if (!getId(d).equals(""))
+                sb.append(Global.getHost()
+                          +routes.IDGApp.disease(getId(d))).append("\n");
+        }
+        return sb.toString();
     }
 
     @Cached(key="_discussion", duration= Integer.MAX_VALUE)

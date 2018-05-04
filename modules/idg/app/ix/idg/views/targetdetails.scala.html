@@ -174,7 +174,7 @@
         }
     </td>
     <td>@{"%1$.3f".format(xref.properties.filter(v => v.label == "log2foldchange").head.getValue())}</td>
-    <td>@{"%1$.3f".format(xref.properties.filter(v => v.label == "pvalue").head.getValue())}</td>
+    <td>@{"%1$.1e".format(xref.properties.filter(v => v.label == "pvalue").head.getValue())}</td>
 </tr>
 }
 
@@ -206,7 +206,7 @@
   }
   @source match {
     case "Expression Atlas" => {
-       <td>@d.conf</td>
+       <td>@{"%1$.1e".format(d.conf)}</td>
     }
     case "DrugCentral Indication"|"DisGeNET"|"UniProt Disease"|"Monarch" => {
     }
@@ -841,7 +841,7 @@
     <script src="https://code.highcharts.com/modules/exporting.js"></script>
     <script type="text/javascript" src='@routes.Assets.versioned("javascripts/viz.js")'></script>
     <!--<link type="text/css" rel="stylesheet" href="https://code.highcharts.com/css/highcharts.css"></script>-->
-    <script async src="https://badge.dimensions.ai/badge.js" charset="utf-8"></script>
+
     <style type="text/css">
 
     .carousel-image {
@@ -1603,7 +1603,8 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                         data-html="true"
                         title="<p align='left'>Total count of NCBI Gene Reference Into Function hits for target listed in parenthesis, and summary table with links to publications per PMID with the specific text in article that includes the reported target. </p>">Gene RIF (@generifs.size)</span> <a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/links(kind="+classOf[Text].getName+")"}'><i class="fa fa-code"></i></a></h3>
           </div>
-          <div class="panel-body">
+          <div class="panel-body"
+               style="max-height:400px;overflow-y:auto;">
             <div class="panel-body table-responsive">
               <table class="table table-striped">
                 <tr>
@@ -1611,37 +1612,13 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                   <th>PMID <i class="fa fa-external-link"></i></th>
                   <th>Text</th>
                 </tr>
-
-                  @defining(request().getQueryString("view")) { view =>
-                      @view match {
-                          case "full" => {
-                              @for(x <- generifs) {
-                                 <tr>
-                                      <td><span class="__dimensions_badge_embed__" data-pmid="@x.pmid" data-style="small_rectangle"></span></td>
-                                      <td><a href="http://www.ncbi.nlm.nih.gov/pubmed/@x.pmid">@x.pmid</a></td>
-                                      <td>@x.text</td>
-                                  </tr>
-                              }
-                          }
-                          case _ => {
-                              @for(i <- 0 until Math.min(10, generifs.size())) {
-                                  <tr> 
-                                      <td><span class="__dimensions_badge_embed__" data-pmid="@generifs(i).pmid" data-style="small_rectangle"></span></td>                                               <td><a href="http://www.ncbi.nlm.nih.gov/pubmed/@generifs(i).pmid">@generifs(i).pmid</a></td>
-                                      <td>@generifs(i).text</td>
-                                  </tr>
-                              }
-                              @if(generifs.size() > 10) {
-                                 <tr>
-                                      <td></td>
-                                      <td><a href="@request().uri?view=full">More...</a></td>
-                                      <td></td>
-                                  </tr>
-                              }
-                          }
-                      }
-                  }
-
-
+                @for(x <- generifs) {
+                <tr>
+                  <td><span class="__dimensions_badge_embed__" data-pmid="@x.pmid" data-style="small_rectangle"></span></td>
+                  <td><a href="http://www.ncbi.nlm.nih.gov/pubmed/@x.pmid">@x.pmid</a></td>
+                  <td>@x.text</td>
+                </tr>
+                }
               </table>
             </div>
           </div>
@@ -1664,18 +1641,18 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                      AA Sequence</span> <a title="Sequence search"
              href="#sequence-modal" data-toggle="modal">
              <i class="fa fa-search"></i></a>
-           <a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/properties(label="+UNIPROT_SEQUENCE+")"}'><i class="fa fa-code"></i></a>
-         </h3>
+                   <a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/properties(label="+UNIPROT_SEQUENCE+")"}'><i class="fa fa-code"></i></a>
+                 </h3>
                </div>
                <div class="panel-body">
-         <div id="aa-profile" style="max-height:200px; width:100%;"></div>
+                 <div id="aa-profile" style="max-height:200px; width:100%;"></div>
                  <pre class="pre-scrollable">@seq.sequence</pre>
-         <iframe sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-top-navigation allow-popups-to-escape-sandbox allow-modals"
-               src='@ix.idg.controllers.routes.IDGApp.targetpviz(IDGApp.getId(target))'
-               marginwidth="0" marginheight="0"
-               frameBorder="0"
-               style="height:450px; width:100%" scrolling="yes">
-         </iframe>
+                 <iframe sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-top-navigation allow-popups-to-escape-sandbox allow-modals"
+                         src='@ix.idg.controllers.routes.IDGApp.targetpviz(IDGApp.getId(target))'
+                         marginwidth="0" marginheight="0"
+                         frameBorder="0"
+                         style="height:450px; width:100%" scrolling="yes">
+                 </iframe>
                </div>
              </div>
            </div>
@@ -1691,75 +1668,48 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                  <div class="panel-heading">
                      <a name="tpubs" tocname="Text Mined References"></a>
                      <h3 class="panel-title">
-                     <span data-toggle="tooltip" data-html="true"
-                     title="<p align='left'>Publications associated with this target, as identified using the JensenLab text mining protocol</p>">
+                       <span data-toggle="tooltip" data-html="true"
+                             title="<p align='left'>Publications associated with this target, as identified using the JensenLab text mining protocol</p>">
                          Text Mined References</span>
-                     <span data-toggle="tooltip" data-html="true" title="<p align='left'>NCBI Gene Bibliography</p>">
+                       <span data-toggle="tooltip" data-html="true" title="<p align='left'>NCBI Gene Bibliography</p>">
                          <a href="http://www.ncbi.nlm.nih.gov/pubmed?LinkName=gene_pubmed&from_uid=@for(kw <- target.synonyms) {@if("Entrez Gene".equals(kw.label)) {@kw.term}}"><i class="fa fa-book"></i></a></span>
                          <span data-toggle="tooltip" data-html="true" title="<p align='left'>Search Pubmed with this target</p>">
                              <a href="http://www.ncbi.nlm.nih.gov/pubmed/?term=@for(kw <- target.synonyms) {@if("UniProt Gene".equals(kw.label)) {@kw.term}}"><i class="fa fa-search-plus"></i></a></span>
                          (@pubs.size) <a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/publications"}'><i class="fa fa-code"></i></a></h3>
                  </div>
-                 <div class="panel-body">
-
-                     <div>
-                         <ul class="nav nav-tabs" role="tablist">
-                             <li role="presentation" class="active"><a href="#pubwc" aria-controls="pubwc" role="tab" data-toggle="tab">Summary</a></li>
-                             <li role="presentation"><a href="#publist" aria-controls="publist" role="tab" data-toggle="tab">Details</a></li>
-                         </ul>
-                         <div class="tab-content">
-                             <div role="tabpanel" class="tab-pane active" id="pubwc">
-                                 <div id="tpub-wc"></div>
-                             </div>
-                             <div role="tabpanel" class="tab-pane" id="publist">
-
-
-                                     <table class="table table-striped">
-                                         <tr>
-                                             <th>PMID <i class="fa fa-external-link"></i></th>
-                                             <th>Year</th>
-                                             <th>Title</th>
-                                         </tr>
-                                         @defining(request().getQueryString("view")) { view =>
-                                             @view match {
-                                                 case "full" => {
-                                                     @for(pub <- pubs) {
-                                                         <tr>
-                                                             <td><a href="http://www.ncbi.nlm.nih.gov/pubmed/@pub.pmid">@pub.pmid</a></td>
-                                                             <td>@pub.year</td>
-                                                             <td>@pub.title</td>
-                                                         </tr>
-                                                     }
-
-                                                 }
-                                                 case _ => {
-                                                     @for(i <- 0 until Math.min(10, pubs.size())) {
-                                                         <tr>
-                                                             <td><a href="http://www.ncbi.nlm.nih.gov/pubmed/@pubs.get(i).pmid">@pubs.get(i).pmid</a></td>
-                                                             <td>@pubs.get(i).year</td>
-                                                             <td>@pubs.get(i).title</td>
-                                                         </tr>
-
-                                                     }
-                                                     @if(pubs.size() > 10) {
-                                                         <tr>
-                                                             <td><a href="@request().uri?view=full">More...</a></td>
-                                                             <td></td>
-                                                         </tr>
-                                                     }
-                                                 }
-                                             }
-                                         }
-                                     </table>
-
-                             </div>
-                         </div>
+                 <div class="panel-body"
+                      style="max-height:400px;overflow-y:auto;">
+                   <div>
+                     <ul class="nav nav-tabs" role="tablist">
+                       <li role="presentation" class="active"><a href="#pubwc" aria-controls="pubwc" role="tab" data-toggle="tab">Summary</a></li>
+                       <li role="presentation"><a href="#publist" aria-controls="publist" role="tab" data-toggle="tab">Details</a></li>
+                     </ul>
+                     <div class="tab-content">
+                       <div role="tabpanel" class="tab-pane active" id="pubwc">
+                         <div id="tpub-wc"></div>
+                       </div>
+                       <div role="tabpanel" class="tab-pane" id="publist">
+                         <table class="table table-striped">    
+                           <tr>
+                             <th></th>
+                             <th>PMID <i class="fa fa-external-link"></i></th>
+                             <th>Year</th>
+                             <th>Title</th>
+                           </tr>
+                           @for(pub <- pubs) {
+                              <tr>
+                                <td><span class="__dimensions_badge_embed__" data-pmid="@pub.pmid" data-style="small_rectangle"></span></td>
+                                <td><a href="http://www.ncbi.nlm.nih.gov/pubmed/@pub.pmid">@pub.pmid</a></td>
+                                <td>@pub.year</td>
+                                <td>@pub.title</td>
+                              </tr>
+                           }
+                         </table>
+                       </div>
                      </div>
-
-                        </div>
+                   </div>
+                 </div>
               </div>
-
-
            </div>
          </div>
        }
