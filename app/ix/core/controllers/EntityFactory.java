@@ -1052,7 +1052,7 @@ public class EntityFactory extends IxController {
                                 if (eval (a, pcon, pval))
                                     vals.add(a);
                             }
-                            val = vals.size()==1? vals.get(0) : vals;
+                            val = /*vals.size()==1? vals.get(0) :*/ vals;
                         }
                     }
                     else if (Collection.class.isAssignableFrom(ftype)) {
@@ -1070,7 +1070,7 @@ public class EntityFactory extends IxController {
                                     vals.add(a);
                             }
                             
-                            val = vals.size()==1 ?vals.get(0) : vals;
+                            val = /*vals.size()==1 ?vals.get(0) :*/ vals;
                         }
                     }
                 }
