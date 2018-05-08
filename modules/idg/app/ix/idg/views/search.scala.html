@@ -168,30 +168,31 @@ publications: List[Publication], totalPubs: Int, ctx: String)
 
       @if(totalPubs > 0){
       <div class="panel panel-default" id='panel-pubs'>
-          <div class="panel-heading"><h3>Publications</h3></div>
-          <div class="panel-body">
-              <table class="table table-striped">
-                <tr>
-                  <th></th>
-                  <th>PMID <i class="fa fa-external-link"></i></th>
-                  <th>Title</th>
-                </tr>
-                @for(p <- publications) {
-                <tr>
-                  @if(p.pmid != null) {
-                  <td><span class="__dimensions_badge_embed__" data-pmid="@p.pmid" data-style="small_rectangle"></span></td>
-                  <td align="right"><a href='http://www.ncbi.nlm.nih.gov/pubmed/@p.pmid'>@p.pmid</a>
-                  </td>
-                  <td><a href='@{ix.idg.controllers.routes.IDGApp.targets(p.pmid.toString(), 10, 1) + "&type=pmid"}'>@p.title</td>
-                  } else {
-                    <td></td>
-                    <td></td>
-                    <td>@p.title</td>
-                  }
-                </tr>
-                }
-              </table>
-          </div>
+        <div class="panel-heading"><h3>Publications</h3></div>
+        <div class="panel-body table-responsive"
+             style="max-height:500px; overflow-y:auto;">
+          <table class="table table-striped">
+            <tr>
+              <th></th>
+              <th>PMID <i class="fa fa-external-link"></i></th>
+              <th>Title</th>
+            </tr>
+            @for(p <- publications) {
+            <tr>
+              @if(p.pmid != null) {
+              <td><span class="__dimensions_badge_embed__" data-pmid="@p.pmid" data-style="small_rectangle"></span></td>
+              <td align="right"><a href='http://www.ncbi.nlm.nih.gov/pubmed/@p.pmid'>@p.pmid</a>
+              </td>
+              <td><a href='@{ix.idg.controllers.routes.IDGApp.targets(p.pmid.toString(), 10, 1) + "&type=pmid"}'>@p.title</td>
+              } else {
+              <td></td>
+              <td></td>
+              <td>@p.title</td>
+              }
+            </tr>
+            }
+          </table>
+        </div>
       </div>
 
 
