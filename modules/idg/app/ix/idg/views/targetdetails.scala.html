@@ -1287,6 +1287,7 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
         @ortholog(target)        
         @techdev(target)
         @property(COLLECTION)
+        @property(UNIPROT_KEYWORD, null, 0, "Occurance of target in the 10 categories of UniProt keywords.")                  
       </div>
       <div class="col-md-4">
         <a name="goterms" tocname="GO Terms"></a>
@@ -1352,7 +1353,6 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
         @property(HCA_RNA_CELL_LINE)
         @property(CSPA_CELL_LINE)
         @property("Pathway", null, 1, "Biological pathways associated with target based on KEGG PATHWAY database, with links back to KEGG.")
-        @property(UNIPROT_KEYWORD, null, 0, "Occurance of target in the 10 categories of UniProt keywords.")
 
         @defining(IDGApp.getPPI(target)) { ppi =>
           @if(!ppi.isEmpty) {
@@ -1705,7 +1705,7 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                            @for(pub <- pubs) {
                               <tr>
                                 <td><span class="__dimensions_badge_embed__" data-pmid="@pub.pmid" data-style="small_rectangle"></span></td>
-                                <td><a href="http://www.ncbi.nlm.nih.gov/pubmed/@pub.pmid">@pub.pmid</a></td>
+                                <td><a href="https://www.ncbi.nlm.nih.gov/pubmed/@pub.pmid">@pub.pmid</a></td>
                                 <td>@pub.year</td>
                                 <td>@pub.title</td>
                               </tr>

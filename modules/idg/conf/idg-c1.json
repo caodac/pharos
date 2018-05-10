@@ -1,0 +1,33 @@
+{
+    "name": "GPCR: IDG Consortium (Complete/Control)",
+    "family": "GCPR",
+    "description": "These targets will be used as controls in experiments and some of these have reagents available from the IDG pilot phase efforts.",
+    "targets": [
+        "ADGRA1",
+        "ADGRA2",
+        "ADGRA3",
+        "ADGRB1",
+        "ADGRE5",
+        "ADGRG6",
+        "ADGRL4",
+        "CHRM5",
+        "GPR132",
+        "GPR148",
+        "GPR15",
+        "GPR161",
+        "GPR17",
+        "GPR182",
+        "GPR183",
+        "GPR3",
+        "GPR35",
+        "GPR37",
+        "GPR55",
+        "GPR65",
+        "GPR83",
+        "GPR84",
+        "MAS1",
+        "MRGPRF",
+        "MRGPRX1",
+        "MTNR1B"
+    ]
+}
