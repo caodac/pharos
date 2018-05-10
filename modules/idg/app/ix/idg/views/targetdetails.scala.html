@@ -18,12 +18,15 @@
 @facet(label: String, value: String, href: String = null, max: Int = 40) = {
   @defining(App.getTermCount(classOf[Target], label, value)) { count =>
     <div>@if(max > 0 && value.length > max) {
-       <a id="keyword" class="label label-primary loader"
+       <a id="keyword" class="label label-primary loader @if(count > 5000){disabled}"
           data-toggle="tooltip"
           data-html="true"
           data-trigger="hover"
           data-placement="top"
           title="@value"
+	  @if(count > 10000){
+	  style="pointer-events:none;"
+	  }
           data-content="<p align='left'>@value</p>"
           href='@{ix.idg.controllers.routes.IDGApp.targets()+"?facet="+URLEncoder.encode(label,"utf8")+"/"}@URLEncoder.encode(value, "utf8")'>@{value.substring(0, max)}... <span class="badge">@Util.format(count)</span></a>&nbsp;
      } else {
@@ -34,7 +37,10 @@
           data-trigger="hover"
           data-placement="top"
           title="<p align='left'>@href</p>"
-    }
+	}
+	@if(count > 10000){
+	style="pointer-events:none;"
+	}
         href='@{ix.idg.controllers.routes.IDGApp.targets()+"?facet="+URLEncoder.encode(label,"utf8")+"/"}@URLEncoder.encode(value, "utf8")'>@value <span class="badge">@Util.format(count)</span></a>
      }
      @if(href != null && href.startsWith("http")) {
@@ -441,10 +447,10 @@
                            <a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/links(kind="+classOf[Ligand].getName+")"}'>
                                <i class="fa fa-code"></i>
                            </a>
-                           &nbsp;
                            <a class="pull-right" href='@{ix.idg.controllers.routes.IDGApp.targets()}/@{target.id}/ligands?group=@{group}'>
                                <i class="fa fa-download"></i>
                            </a>
+                           &nbsp;
                        </h3>
                   </div>
           <div class="panel-body" style="height:250px;">
