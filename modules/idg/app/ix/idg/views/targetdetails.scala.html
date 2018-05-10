@@ -24,7 +24,7 @@
           data-trigger="hover"
           data-placement="top"
           title="@value"
-	  @if(count > 10000){
+	  @if(count == null || count > 10000){
 	  style="pointer-events:none;"
 	  }
           data-content="<p align='left'>@value</p>"
@@ -38,10 +38,10 @@
           data-placement="top"
           title="<p align='left'>@href</p>"
 	}
-	@if(count > 10000){
+	@if(count == null || count > 10000){
 	style="pointer-events:none;"
 	}
-        href='@{ix.idg.controllers.routes.IDGApp.targets()+"?facet="+URLEncoder.encode(label,"utf8")+"/"}@URLEncoder.encode(value, "utf8")'>@value <span class="badge">@Util.format(count)</span></a>
+        href='@{ix.idg.controllers.routes.IDGApp.targets()+"?facet="+URLEncoder.encode(label,"utf8")+"/"}@URLEncoder.encode(value, "utf8")'>@value @if(count!=null){<span class="badge">@Util.format(count)</span>}</a>
      }
      @if(href != null && href.startsWith("http")) {
        <a href="@href"><i class="fa fa-external-link"></i></a>
