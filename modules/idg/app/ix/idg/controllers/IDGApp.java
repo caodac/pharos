@@ -2250,15 +2250,23 @@ public class IDGApp extends App implements Commons {
         if (ctx != null) {
             SearchResult result = getSearchContext(ctx);
             if (result != null) {
-                List<Target> targets = filter(Target.class, result.getMatches(), 999);
-                List<Disease> diseases = filter(Disease.class, result.getMatches(), 999);
-                List<Ligand> ligands = filter(Ligand.class, result.getMatches(), 999);
-                List<Publication> pubs = filter(Publication.class, result.getMatches(), 999);
+                List<Target> targets = filter
+                    (Target.class, result.getMatches(), 999);
+                List<Disease> diseases = filter
+                    (Disease.class, result.getMatches(), 999);
+                List<Ligand> ligands = filter
+                    (Ligand.class, result.getMatches(), 999);
+                List<Publication> pubs = filter
+                    (Publication.class, result.getMatches(), 999);
                 try {
-                    byte[] bytes = DownloadEntities.downloadEntities(targets, diseases, ligands, pubs);
-                    response().setHeader("Content-Disposition", "attachment;filename=search-results.zip");
+                    byte[] bytes = DownloadEntities.downloadEntities
+                        (targets, diseases, ligands, pubs);
+                    response().setHeader
+                        ("Content-Disposition",
+                         "attachment;filename=search-results.zip");
                     return ok(bytes).as("application/zip");
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     return _internalServerError(e);
                 }
             }
@@ -2396,7 +2404,8 @@ public class IDGApp extends App implements Commons {
         TextIndexer.Facet[] facets = filter (result.getFacets(), ALL_FACETS);
         final int max = Math.min(rows, Math.max(1, result.count()));
         
-        int total = 0, totalTargets = 0, totalDiseases = 0, totalLigands = 0, totalPubs = 0;
+        int total = 0, totalTargets = 0, totalDiseases = 0,
+            totalLigands = 0, totalPubs = 0;
         for (TextIndexer.Facet f : result.getFacets()) {
             if (f.getName().equals("ix.Class")) {
                 for (TextIndexer.FV fv : f.getValues()) {

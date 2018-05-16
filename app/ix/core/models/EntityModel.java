@@ -117,6 +117,10 @@ public abstract class EntityModel extends IxModel {
         return Global.getRef(this)+"?view=full";
     }
 
+    public String getKind () {
+        return getClass().getName();
+    }
+
     public Keyword addIfAbsent (Keyword syn) {
         for (Keyword kw : getSynonyms ()) {
             if (kw.label.equals(syn.label)

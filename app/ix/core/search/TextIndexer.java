@@ -1487,13 +1487,14 @@ public class TextIndexer {
                 filter = new ChainedFilter (all.toArray(new Filter[0]),
                                             ChainedFilter.AND);
             }
-            
+
+            int max = Math.max(100, options.max());            
             if (drills.isEmpty()) {
                 hits = sorter != null 
                     ? (FacetsCollector.search
-                       (searcher, query, filter, options.max(), sorter, fc))
+                       (searcher, query, filter, max, sorter, fc))
                     : (FacetsCollector.search
-                       (searcher, query, filter, options.max(), fc));
+                       (searcher, query, filter, max, fc));
                 
                 Facets facets = new FastTaxonomyFacetCounts
                     (taxon, facetsConfig, fc);
@@ -1534,17 +1535,16 @@ public class TextIndexer {
                         Logger.warn("Bogus drilldown syntax: "+dd);
                     }
                 }
-                
+
                 Facets facets;
                 if (options.sideway) {
                     DrillSideways sideway = new DrillSideways 
                         (searcher, facetsConfig, taxon);
                     DrillSideways.DrillSidewaysResult swResult = 
                         sideway.search(ddq, filter, null, 
-                                       options.max(), sorter, false, false);
+                                       max, sorter, false, false);
                     // collector
-                    FacetsCollector.search
-                        (searcher, ddq, filter, options.max(), fc);
+                    FacetsCollector.search(searcher, ddq, filter, max, fc);
                     
                     facets = swResult.facets;
                     hits = swResult.hits;
@@ -1552,9 +1552,9 @@ public class TextIndexer {
                 else { // drilldown
                     hits = sorter != null 
                         ? (FacetsCollector.search
-                           (searcher, ddq, filter, options.max(), sorter, fc))
+                           (searcher, ddq, filter, max, sorter, fc))
                         : (FacetsCollector.search
-                           (searcher, ddq, filter, options.max(), fc));
+                           (searcher, ddq, filter, max, fc));
                     
                     facets = new FastTaxonomyFacetCounts
                         (taxon, facetsConfig, fc);
@@ -1639,37 +1639,39 @@ public class TextIndexer {
                          +"..."+hits.totalHits+" hit(s) found!");
         }
 
-        try {
-            SearchResultPayload payload = new SearchResultPayload
-                (searchResult, hits, searcher);
-            if (options.fetch <= 0) {
-                payload.fetch();
-            }
-            else {
-                // we first block until we have enough result to show; simulate
-                //  with a random number of fetch
-                int fetch = 20 + new Random().nextInt(options.fetch);
-                payload.fetch(fetch);
-
-                if (hits.totalHits > fetch) {
-                    if (DEBUG (1)) {
-                        Logger.debug("## Fetching remaining "
-                                     +(hits.totalHits-fetch)
-                                     +" in the background; fetchQueue "
-                                     +"size is "+fetchQueue.size());
-                    }
-                    // now queue the payload so the remainder is fetched in
-                    // the background
-                    fetchQueue.put(payload);
-                }
-                else {
+        if (options.top > 0) {
+            try {
+                SearchResultPayload payload = new SearchResultPayload
+                    (searchResult, hits, searcher);
+                if (options.fetch <= 0) {
                     payload.fetch();
                 }
+                else {
+                    // we first block until we have enough result to show;
+                    // simulate with a random number of fetch
+                    int fetch = 20 + new Random().nextInt(options.fetch);
+                    payload.fetch(fetch);
+                    
+                    if (hits.totalHits > fetch) {
+                        if (DEBUG (1)) {
+                            Logger.debug("## Fetching remaining "
+                                         +(hits.totalHits-fetch)
+                                         +" in the background; fetchQueue "
+                                         +"size is "+fetchQueue.size());
+                        }
+                        // now queue the payload so the remainder is fetched in
+                        // the background
+                        fetchQueue.put(payload);
+                    }
+                    else {
+                        payload.fetch();
+                    }
+                }
             }
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
-            Logger.trace("Can't queue fetch results!", ex);
+            catch (Exception ex) {
+                ex.printStackTrace();
+                Logger.trace("Can't queue fetch results!", ex);
+            }
         }
         
         return searchResult;

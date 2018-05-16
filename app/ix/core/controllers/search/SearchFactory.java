@@ -115,7 +115,7 @@ public class SearchFactory extends EntityFactory {
             }
         }
         
-        if (q == null) {
+        if (q == null || "".equals(q)) {
         }
         else if (q.startsWith("etag:") || q.startsWith("ETag:")) {
             String id = q.substring(5, 21);
@@ -151,7 +151,8 @@ public class SearchFactory extends EntityFactory {
     }
 
     public static Result search (final Class kind, final String q, 
-                                 final int top, final int skip, final int fdim) {
+                                 final int top, final int skip,
+                                 final int fdim) {
         if (Global.DEBUG(1)) {
             Logger.debug("SearchFactory.search: kind="
                          +(kind != null ? kind.getName():"")+" q="
@@ -163,7 +164,7 @@ public class SearchFactory extends EntityFactory {
             return ok (json);
         }
         catch (Exception ex) {
-            Logger.trace("Can't perform search with parameters "
+            Logger.error("Can't perform search with parameters "
                          +request().uri(), ex);
             return internalServerError ("Unable to perform search!");
         }
