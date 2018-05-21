@@ -11,19 +11,23 @@ import javax.persistence.*;
 import ix.core.models.Indexable;
 import ix.core.models.Organization;
 import ix.core.models.Keyword;
+import ix.core.models.Value;
 import ix.core.models.Publication;
+import ix.core.models.XRef;
+import ix.core.models.BeanViews;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonView;
 
 /**
  * based on definition from clinicaltrials.gov
  */
 @Entity
-@Table(name="ix_ncats_clinical_trial")
+@Table(name="ix_ncats_clinicaltrial")
 public class ClinicalTrial extends Model {
-    @Id
-    public Long id;
+    @Id public Long id;
+    @Version public Long version;
 
     @Column(length=15,unique=true)
     public String nctId;
@@ -49,7 +53,9 @@ public class ClinicalTrial extends Model {
 
     @Indexable(facet=true,name="Study Type")    
     public String studyType;
-    public String studyDesign;
+    
+    @OneToOne(cascade=CascadeType.ALL)
+    public StudyDesign studyDesign;
 
     @Indexable(sortable=true,facet=true,name="Clinical Start Date")
     public Date startDate;
@@ -74,35 +80,47 @@ public class ClinicalTrial extends Model {
     public String phase;
 
     @ManyToMany(cascade=CascadeType.ALL)
-    @JoinTable(name="ix_ncats_clinical_trial_keyword")
-    public List<Keyword> keywords = new ArrayList<Keyword>();
+    @JoinTable(name="ix_ncats_ct_keyword",
+               joinColumns=@JoinColumn(name="ix_ncats_ct_keyword_id",
+                                       referencedColumnName="id")
+               )
+    public List<Keyword> keywords = new ArrayList<>();
 
     @ManyToMany(cascade=CascadeType.ALL)
-    @JoinTable(name="ix_ncats_clinical_trial_sponsor")
-    public List<Organization> sponsors = new ArrayList<Organization>();
+    @JoinTable(name="ix_ncats_ct_sponsor")
+    public List<Organization> sponsors = new ArrayList<>();
 
     @ManyToMany(cascade=CascadeType.ALL)
-    @JoinTable(name="ix_ncats_clinical_trial_intervention")
-    public List<Intervention> interventions = new ArrayList<Intervention>();
+    @JoinTable(name="ix_ncats_ct_intervention")
+    public List<Intervention> interventions = new ArrayList<>();
 
     @ManyToMany(cascade=CascadeType.ALL)
-    @JoinTable(name="ix_ncats_clinical_trial_condition")
-    public List<Condition> conditions = new ArrayList<Condition>();
+    @JoinTable(name="ix_ncats_ct_condition")
+    public List<Condition> conditions = new ArrayList<>();
 
     @ManyToMany(cascade=CascadeType.ALL)
-    @JoinTable(name="ix_ncats_clinical_trial_outcome")
-    public List<Outcome> outcomes = new ArrayList<Outcome>();
+    @JoinTable(name="ix_ncats_ct_outcome")
+    public List<Outcome> outcomes = new ArrayList<>();
 
     @OneToOne(cascade=CascadeType.ALL)
     public Eligibility eligibility;
 
     @ManyToMany(cascade=CascadeType.ALL)
-    @JoinTable(name="ix_ncats_clincial_trial_location")
-    public List<Organization> locations = new ArrayList<Organization>();
+    @JoinTable(name="ix_ncats_ct_location")
+    public List<Organization> locations = new ArrayList<>();
 
     @ManyToMany(cascade=CascadeType.ALL)
-    @JoinTable(name="ix_ncats_clincial_trial_publication")
-    public List<Publication> publications = new ArrayList<Publication>();
+    @JoinTable(name="ix_ncats_ct_publication")
+    public List<Publication> publications = new ArrayList<>();
+
+    @ManyToMany(cascade=CascadeType.ALL)
+    @JoinTable(name="ix_ncats_ct_property")
+    public List<Value> properties = new ArrayList<>();
+    
+    @ManyToMany(cascade=CascadeType.ALL)
+    @JoinTable(name="ix_ncats_ct_link")
+    public List<XRef> links = new ArrayList<>();
+
 
     public ClinicalTrial () {}
 

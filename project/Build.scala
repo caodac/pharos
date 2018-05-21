@@ -148,7 +148,14 @@ public class BuildInfo {
       javacOptions in (doc) ++= javaDocOptions,
       javacOptions in (compile) ++= javaBuildOptions
         //javaOptions in Runtime += "-Dconfig.resource=ncats.conf"
-  ).dependsOn(core).aggregate(core)
+    ).dependsOn(core).aggregate(core)
+
+  val clinical = Project("clinical", file("modules/clinical"))
+    .enablePlugins(PlayJava).settings(commonSettings:_*).settings(
+      libraryDependencies ++= commonDependencies,
+      javacOptions in (doc) ++= javaDocOptions,
+      javacOptions in (compile) ++= javaBuildOptions
+    ).dependsOn(ncats).aggregate(ncats)
 
   val idg = Project("idg", file("modules/idg"))
     .enablePlugins(PlayJava).settings(commonSettings:_*).settings(
@@ -162,7 +169,7 @@ public class BuildInfo {
       javacOptions in (compile) ++= javaBuildOptions,
       unmanagedSourceDirectories in Compile += baseDirectory.value / "src"
       //javaOptions in Runtime += "-Dconfig.resource=pharos.conf"
-  ).dependsOn(ncats).aggregate(ncats)
+  ).dependsOn(clinical).aggregate(clinical)
 
   val npc = Project("npc", file("modules/npc"))
     .enablePlugins(PlayJava).settings(commonSettings:_*).settings(

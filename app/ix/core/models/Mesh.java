@@ -12,11 +12,15 @@ public class Mesh extends Value {
     @Column(length=1024)
     public String heading;
 
-    public Mesh () {}
+    public Mesh () {
+        super ("MeSH");
+    }
     public Mesh (boolean majorTopic) {
+        super ("MeSH");
         this.majorTopic = majorTopic;
     }
     public Mesh (String heading) {
+        super ("MeSH");
         this.heading = heading;
     }
 
