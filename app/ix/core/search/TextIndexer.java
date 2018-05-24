@@ -747,7 +747,7 @@ public class TextIndexer {
             String thread = Thread.currentThread().getName();
             try {
                 int size = fetch (total);
-                if (size < total) {
+                if (size+offset < total) {
                     // FIXME: make this configurable
                     if (true || requeued < 20) {
                         // requeue this payload
