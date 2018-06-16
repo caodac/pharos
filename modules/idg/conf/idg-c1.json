@@ -3,7 +3,6 @@
     "family": "GCPR",
     "description": "These targets will be used as controls in experiments and some of these have reagents available from the IDG pilot phase efforts.",
     "targets": [
-        "ADGRA1",
         "ADGRA2",
         "ADGRA3",
         "ADGRB1",

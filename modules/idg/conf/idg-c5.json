@@ -1,6 +1,7 @@
 {
     "name": "Ion Channel: IDG Consortium (Targets)",
     "family" : "IC",
+    "description": "Ion channel targets selected by the IDG Consortium for the implementation phase.",
     "targets": [
         "ASIC4",
             "BEST4",

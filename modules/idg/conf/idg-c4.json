@@ -1,6 +1,7 @@
 {
     "name": "Kinase: IDG Consortium (Targets)",
     "family": "Kinase",
+    "description": "Kinase targets selected by the IDG Consortium for the implementation phase.",
     "targets": [
             "ADCK1",
             "COQ8A",

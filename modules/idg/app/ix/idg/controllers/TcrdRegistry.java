@@ -178,7 +178,7 @@ public class TcrdRegistry extends Controller implements Commons {
         PreparedStatement pstm, pstm2, pstm3, pstm4,
             pstm5, pstm6, pstm7, pstm8, pstm9, pstm10,
             pstm11, pstm12, pstm13, pstm14, pstm15,
-            pstm16, pstm17, pstm18, pstm19, pstm20,
+            pstm16, pstm17, pstm18, pstm19, pstm20, pstm20b,
             pstm21, pstm22, pstm23, pstm24, pstm25,
             pstm26, pstm27, pstm28, pstm29, pstm30,
             pstm31, pstm32;
@@ -297,6 +297,14 @@ public class TcrdRegistry extends Controller implements Commons {
 
             pstm20 = con.prepareStatement
                 ("select * from disease where target_id = ? ");
+            pstm20b = con.prepareStatement
+                ("select distinct a.name \n"
+                 +"from disease a, t2tc b, drug_activity c\n"
+                 +"where dtype='DrugCentral Indication'\n"
+                 +"and a.target_id = ?\n"
+                 +"and a.target_id = b.target_id\n"
+                 +"and a.target_id = c.target_id\n"
+                 +"and a.drug_name = c.drug and c.has_moa = 1");
 
             pstm21 = con.prepareStatement
                 ("select * from mlp_assay_info where protein_id = ? order by aid");
@@ -455,6 +463,7 @@ public class TcrdRegistry extends Controller implements Commons {
             pstm18.close();
             pstm19.close();
             pstm20.close();
+            pstm20b.close();
             pstm21.close();
             pstm22.close();
             pstm23.close();
@@ -2092,6 +2101,18 @@ public class TcrdRegistry extends Controller implements Commons {
                     (SOURCE, type, "http://www.disease-ontology.org");
                 datasources.put(type, ds);
             }
+
+            /*
+            Set<String> indications = new HashSet<>();
+            pstm20b.setLong(1, tid);
+            try (ResultSet rset = pstm20b.executeQuery()) {
+                while (rset.next()) {
+                    indications.add(rset.getString(1));
+                }
+                Logger.debug("Target "+target.id+" has "+indications.size()
+                             +" indcations!");
+            }
+            */
             
             pstm20.setLong(1, tid);
             try (ResultSet rset = pstm20.executeQuery()) {
@@ -2100,6 +2121,15 @@ public class TcrdRegistry extends Controller implements Commons {
                     final String name = rset.getString("name");
 
                     String dtype = rset.getString("dtype");
+                    /*
+                    if ("DrugCentral Indication".equals(dtype)
+                        && !indications.contains(name)) {
+                        // make sure it's an indication and nothing else
+                        Logger.warn("Not an indication \""+name+"\"...");
+                        continue;
+                    }
+                    */
+                    
                     Keyword source = datasources.get(dtype);
                     if (source == null) {
                         String url = null;
@@ -2119,6 +2149,13 @@ public class TcrdRegistry extends Controller implements Commons {
                             url = "http://www.disgenet.org";
                         else if ("Expression Atlas".equalsIgnoreCase(dtype))
                             url = "https://www.ebi.ac.uk/gxa/";
+                        else if ("DrugCentral Indication"
+                                 .equalsIgnoreCase(dtype)) {
+                            url = "http://drugcentral.org/";
+                        }
+                        else if ("CTD".equalsIgnoreCase(dtype)) {
+                            url = "https://ctdbase.org/";
+                        }
 
                         source = KeywordFactory.registerIfAbsent
                             (SOURCE, dtype, url);
@@ -2708,7 +2745,7 @@ public class TcrdRegistry extends Controller implements Commons {
             if (rset.next()) {
                 source = KeywordFactory.registerIfAbsent
                     (SOURCE, "TCRDv"+rset.getString("data_ver"),
-                     "http://targetcentral.ws");
+                     "https://druggablegenome.net");
             }
             rset.close();
 
@@ -2720,7 +2757,7 @@ public class TcrdRegistry extends Controller implements Commons {
                  +"left join tinx_novelty d\n"
                  +"    on d.protein_id = a.protein_id \n"
                  //+"where c.id in (18204,862,74,6571)\n"
-                 //+"where a.target_id in (15902,13829)\n"
+                 //+"where a.target_id in (875)\n"
                  //+"where c.uniprot = 'Q9H3Y6'\n"
                  //+"where b.tdl in ('Tclin','Tchem')\n"
                  //+"where b.idgfam = 'kinase'\n"
