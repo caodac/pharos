@@ -196,6 +196,7 @@ public class EntityPersistAdapter extends BeanPersistAdapter {
             return;
         }
 
+	/*
         for (Field f : cls.getFields()) {
             if (f.getAnnotation(Id.class) != null) {
                 try {
@@ -217,7 +218,8 @@ public class EntityPersistAdapter extends BeanPersistAdapter {
                 }
             }
         }
-        
+        */
+
         if (debug (2)) {
             Logger.debug(">> Old: "+mapper.valueToTree(request.getOldValues())
                          +"\n>> New: "+mapper.valueToTree(bean));

@@ -2611,7 +2611,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 addPatent (target, t.protein);
                 addPubTator (target, t.protein);
                 addPMScore (target, t.protein);
-                addGrant (target, t.id);
+                //addGrant (target, t.id);
                 addDrugs (target, t.id, t.source);
                 addAssay (target, t.protein);
                 addChembl (target, t.id, t.source);
