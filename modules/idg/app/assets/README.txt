@@ -116,8 +116,6 @@ ChemblClass - target class from ChEMBL
 Novelty - novelty score
 Target Family - target family (e.g., kinase, GPCR)
 Function -
-GrantCount - number of grants referring to this target
-R01Count - number of R01's referring to this target
 PatentCount - number of patents referring to this target
 AntibodyCount - number of antibodies available for this target
 PubmedCount - number of articles associated with the target (obtained via text mining)

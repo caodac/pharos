@@ -13,43 +13,43 @@ facets: Array[FacetDecorator], targets: List[Target], ctx: String )
     <tr id="row-@IDGApp.getId(t)">
         <td><input type="checkbox" class="cb-table-row" id="cb-@IDGApp.getId(t)" /></td>
         <td><a class="loader"
-	   href="@ix.idg.controllers.routes.IDGApp.target(IDGApp.getId(t))">@t.name</a></td>
-	<td>@defining(t.getSynonym(UNIPROT_GENE)) { gene =>
-	  @if(gene != null && gene.term != null) {
-	     <a class="loader" href="@ix.idg.controllers.routes.IDGApp.target(gene.term)">@gene.term</a>
-	  } else {
-	     N/A
-	  }
-	}</td>
+       href="@ix.idg.controllers.routes.IDGApp.target(IDGApp.getId(t))">@t.name</a></td>
+    <td>@defining(t.getSynonym(UNIPROT_GENE)) { gene =>
+      @if(gene != null && gene.term != null) {
+         <a class="loader" href="@ix.idg.controllers.routes.IDGApp.target(gene.term)">@gene.term</a>
+      } else {
+         N/A
+      }
+    }</td>
         <td><span class="label label-@t.idgTDL.label" data-toggle="tooltip" data-html="true" title="<p align='left'>@t.idgTDL.desc</p>">@t.idgTDL.name</span></td>
-	@if("unknown".equalsIgnoreCase(t.idgFamily)) {
-	<td>Non-IDG</td>
-	} else {
+    @if("unknown".equalsIgnoreCase(t.idgFamily)) {
+    <td>Non-IDG</td>
+    } else {
         <td>@t.idgFamily</td>
-	}
+    }
         <td>@IDGApp.format(t.novelty)</td>
         <td>@IDGApp.format(t.jensenScore)</td>
 @*        <td>@t.grantCount</td>*@
         <td>@t.antibodyCount</td>
-	<!--
+    <!--
         <td>@t.patentCount@**<span class="inlinesparkline">@IDGApp.getPatentSparkline(t)</span>**@</td>
-	-->
+    -->
         @*<td><div style="display: inline;" id="radar-@IDGApp.getId(t)" class="radar-div"></div></td>*@
         <td><div id="radar-@IDGApp.getId(t)"
-		 class="radar-div" genesym="@IDGApp.getGeneSymbol(t)"
+         class="radar-div" genesym="@IDGApp.getGeneSymbol(t)"
                  tdlLabel="@t.idgTDL.label" tdl="@t.idgTDL" tname="@t.name"></div></td>
     </tr>
     @if(ctx != null) {
        @defining(IDGApp.getSeqAlignment(ctx, t)) { aln =>
          @if(aln != null) {
          <tr class="default">
-	    <td colspan="10">
-	      <pre class="pre-scrollable" style="max-width:600px;overflow-x:auto;">@{"identity = %.3f".format(aln.alignments(0).iden)} @{"score = %d".format(aln.alignments(0).score)}
+        <td colspan="10">
+          <pre class="pre-scrollable" style="max-width:600px;overflow-x:auto;">@{"identity = %.3f".format(aln.alignments(0).iden)} @{"score = %d".format(aln.alignments(0).score)}
 @aln.alignments(0).alignment
 </pre>
-	    </td>
-	 </tr>
-	 }
+        </td>
+     </tr>
+     }
        }
     }
 }
@@ -79,19 +79,19 @@ facets: Array[FacetDecorator], targets: List[Target], ctx: String )
                             <li><a class="loader" href="@a.href">@a.term</a></li>
                         }
                         <li class="active">@f.substring(f.indexOf('/') + 1)</li>
-		    }
-		    @if(f.startsWith(PANTHER_PROTEIN_CLASS)) {
+            }
+            @if(f.startsWith(PANTHER_PROTEIN_CLASS)) {
                         @for(a <- IDGApp.getAncestry(f, PANTHER_PROTEIN_ANCESTRY)) {
                             <li><a class="loader" href="@a.href">@a.term</a></li>
                         }
                         <li class="active">@f.substring(f.indexOf('/') + 1)</li>
-		    }
-		    @if(f.startsWith(ChEMBL_PROTEIN_CLASS)) {
+            }
+            @if(f.startsWith(ChEMBL_PROTEIN_CLASS)) {
                         @for(a <- IDGApp.getAncestry(f, ChEMBL_PROTEIN_ANCESTRY)) {
                             <li><a class="loader" href="@a.href">@a.term</a></li>
                         }
                         <li class="active">@f.substring(f.indexOf('/') + 1)</li>
-		    }
+            }
                 }
             } else {
                 <li class="active">Targets</li>
@@ -104,21 +104,21 @@ facets: Array[FacetDecorator], targets: List[Target], ctx: String )
       <table id="target-table" class="table table-striped">
         <tr>
           <th><button id="cb-addall" alt="Toggle check all"
-	  	      style="padding: 3px"
-	  	      class="btn btn-default" type="button">
-	      <i class="fa fa-check fa-fw"></i></button></th>
+              style="padding: 3px"
+              class="btn btn-default" type="button">
+          <i class="fa fa-check fa-fw"></i></button></th>
             <th>Name</th>
-	    <th>Gene</th>
+        <th>Gene</th>
             <th>Development Level</th>
             <th>Target Family</th>
-	    @HtmlFormat.raw(IDGApp.getTargetTableHeader("Log Novelty", "novelty"))
+        @HtmlFormat.raw(IDGApp.getTargetTableHeader("Log Novelty", "novelty"))
             @HtmlFormat.raw(IDGApp.getTargetTableHeader("Pubmed Score", "jensenScore"))
-@**	    @HtmlFormat.raw(IDGApp.getTargetTableHeader("Grant Count", "grantCount")) **@
-	    @HtmlFormat.raw(IDGApp.getTargetTableHeader("Antibody Count", "antibodyCount"))
-	    <!--
-	    @HtmlFormat.raw(IDGApp.getTargetTableHeader("Patent", "patentCount"))
-	    -->
-	    @*HtmlFormat.raw(IDGApp.getTargetTableHeader("Monoclonal Antibody Count", "monoclonalCount"))*@
+@**     @HtmlFormat.raw(IDGApp.getTargetTableHeader("Grant Count", "grantCount")) **@
+        @HtmlFormat.raw(IDGApp.getTargetTableHeader("Antibody Count", "antibodyCount"))
+        <!--
+        @HtmlFormat.raw(IDGApp.getTargetTableHeader("Patent", "patentCount"))
+        -->
+        @*HtmlFormat.raw(IDGApp.getTargetTableHeader("Monoclonal Antibody Count", "monoclonalCount"))*@
             @HtmlFormat.raw(IDGApp.getTargetTableHeader("Knowledge Availability", "knowledgeAvailability"))
         </tr>
         @for(t <- targets) {
@@ -130,24 +130,28 @@ facets: Array[FacetDecorator], targets: List[Target], ctx: String )
 } {  @* viz *@
 @**
    <button class="btn btn-default" type="button"
-	      id="carousel-toggle"
-	      data-toggle="collapse"
-	      data-target="#carousel-highlight"
-	      aria-expanded="true"
-	      aria-controls="carousel-highlight"
-	      style="margin-right:1px">
+          id="carousel-toggle"
+          data-toggle="collapse"
+          data-target="#carousel-highlight"
+          aria-expanded="true"
+          aria-controls="carousel-highlight"
+          style="margin-right:1px">
      <i class="fa fa-dashboard"
-	data-toggle="tooltip"
-	title="Toggle visualization carousel"></i></button>
+    data-toggle="tooltip"
+    title="Toggle visualization carousel"></i></button>
 **@
 
    <select id="set-rows" name="rows" class="selectpicker pull-left"
-   	   data-width="fit"
-   	   data-toggle="tooltip" title="Rows per page"
-	   style="margin-right:1px">
+       data-width="fit"
+       data-toggle="tooltip" title="Rows per page"
+       style="margin-right:1px">
      @for(i <- 10 to 100 by 10) {
        <option @if(i==rows){selected='selected'} value="@i">@i</option>
-     }
+       }
+     <option value="150">150</option>
+     <option value="200">200</option>
+     <option value="300">300</option>
+     <option value="500">500</option>
    </select>
 
     <a id="compare-selected" class="btn btn-default" href="#"
@@ -157,21 +161,21 @@ facets: Array[FacetDecorator], targets: List[Target], ctx: String )
 
     <button type="button" class="btn btn-default"
             data-toggle="tooltip" title="Download data"
-    	    id="download-all"
-	    style="margin-right:1px; margin-left:1px;">
+            id="download-all"
+        style="margin-right:1px; margin-left:1px;">
         <i class="fa fa-download fa-lg "></i>
     </button>
 
     <div class="dropdown pull-right" data-toggle="tooltip" title="Dossier">
       <button type="button" class="btn btn-default dropdown-toggle"
-	      data-toggle="dropdown"  style="margin-right:1px">
+          data-toggle="dropdown"  style="margin-right:1px">
         <i class="fa fa-shopping-cart" ></i>&nbsp;<span id="sc-count"></span>
       </button>
       <ul class="dropdown-menu pull-left">
         <li><a href="#" id="sc-add-selected">Add Selected</a></li>
         <li><a href="#" id="sc-add-all">Add All</a></li>
         <li><a href="@ix.idg.controllers.routes.DossierApp.view(null)" id="sc-view">View Collections</a></li>
-	<li><a href="#" id="sc-empty">Empty Collection</a></li>
+    <li><a href="#" id="sc-empty">Empty Collection</a></li>
       </ul>
     </div>
     <div class="dropdown pull-right" data-toggle="tooltip" title="Visualization tools">
@@ -183,9 +187,9 @@ facets: Array[FacetDecorator], targets: List[Target], ctx: String )
         <ul class="dropdown-menu pull-left">
             <li><a href="@ix.idg.controllers.routes.DTOHier.dto(null)"><i class="fa fa-sitemap"></i> DTO Hierarchy</a></li>
             <li><a href="#modal-kinome" data-toggle="modal" ><i class="fa fa-pagelines"></i>&nbsp;Kinome Tree</a></li>
-	    @if(total < 1000){
+        @if(total < 1000){
             <li><a href="#hgramModal" data-toggle="modal"><i class="fa fa-cubes"></i>&nbsp;Harmonogram</a></li>
-	    }
+        }
         </ul>
     </div>
 } {
@@ -275,8 +279,8 @@ role="dialog" aria-labelledby="modalLabelFolder" aria-hidden="true">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close"
-		data-dismiss="modal" aria-label="Close">
-	  <span aria-hidden="true">&times;</span></button>
+        data-dismiss="modal" aria-label="Close">
+      <span aria-hidden="true">&times;</span></button>
         <h4 class="modal-title" id="hgramModalLabel">Harmonogram</h4>
       </div>
       <div class="modal-body">
@@ -312,7 +316,7 @@ role="dialog" aria-labelledby="modalLabelFolder" aria-hidden="true">
                 </div>
             </div>
 
-        	</div>
+            </div>
       </div>
     </div>
   </div>
@@ -409,31 +413,31 @@ function download () {
          url: url,
          success: function(data) {
            if (delay == 0) {
-	      window.clearInterval(timer);
-	      delay = 1000;
-	      timer = window.setInterval(check, delay);
-	   }
+          window.clearInterval(timer);
+          delay = 1000;
+          timer = window.setInterval(check, delay);
+       }
 
-	   status = data.status;
-	   console.log('download...'+data.count+'/'+data.total);
-	   //$('#download-console-body').html("downloading..."+data.count);
+       status = data.status;
+       console.log('download...'+data.count+'/'+data.total);
+       //$('#download-console-body').html("downloading..."+data.count);
            if (data.url && timer != null) {
-	      $('#download-iframe').attr('src', data.url);
-      	      window.clearInterval(timer);
-	      //$('#download-modal-header').html('Downloading...done!');
-	      $('#download-console-body').html("Download complete; please turn off popup blocking if you do not see the download!");
-     	      $('#download-modal-download-btn').removeAttr('disabled')
-		.html('Close');
+          $('#download-iframe').attr('src', data.url);
+              window.clearInterval(timer);
+          //$('#download-modal-header').html('Downloading...done!');
+          $('#download-console-body').html("Download complete; please turn off popup blocking if you do not see the download!");
+              $('#download-modal-download-btn').removeAttr('disabled')
+        .html('Close');
               // open the url in a separate window for the download to begin!
               window.open(data.url, '_blank');
               timer = null;
-	   }
+       }
         },
         error: function (){
-      	  window.clearInterval(timer);
-	  $('#download-console-body').html('<code>'+status+'</done>');
-     	  $('#download-modal-download-btn').removeAttr('disabled')
-		.html('Close');
+          window.clearInterval(timer);
+      $('#download-console-body').html('<code>'+status+'</done>');
+          $('#download-modal-download-btn').removeAttr('disabled')
+        .html('Close');
         }
       });
    };
@@ -494,8 +498,8 @@ $(document).ready(function () {
        var p = $(this).attr("id").indexOf('-');
        if (p > 0) {
           var facet = $(this).attr("id").substring(p+1);
-	  html = '<a href="@ix.idg.controllers.routes.IDGApp.targetdescriptor("")'+facet+'"><i class="fa fa-bar-chart"></i></a>&nbsp;'+html;
-	  //console.log('facet header => '+html);
+      html = '<a href="@ix.idg.controllers.routes.IDGApp.targetdescriptor("")'+facet+'"><i class="fa fa-bar-chart"></i></a>&nbsp;'+html;
+      //console.log('facet header => '+html);
        }
        return html;
    });
@@ -517,7 +521,7 @@ $(document).ready(function () {
     var folderNames = ['Default'];
     @for(f <- ix.idg.controllers.DossierApp.getFolderNames()) {
          @if( !f.equals("")) {
-	     folderNames.push('@f');
+         folderNames.push('@f');
         }
     }
 
@@ -652,7 +656,7 @@ $(document).ready(function () {
                 $(window).on("show.bs.modal", function(e){
                     var divid = $(e.target).attr("id");
                     if (divid == "modal-radar") {
-		       //console.log("rendering radar..."+JSON.stringify(data));
+               //console.log("rendering radar..."+JSON.stringify(data));
                        renderChart(data, "radar-attr_type", 'modal-radardiv');
                     }
                 });
@@ -703,7 +707,7 @@ $(document).ready(function () {
 
     $("#compare-selected" ).click(function(e) {
        var ents = _.map(selectEntities("#target-table  input:checked"),
-	      function(x) {return(x);});
+          function(x) {return(x);});
        if (ents.length > 1) {
           window.location.href = "@ix.idg.controllers.routes.IDGApp.compareTargets2()?q="+ents.join();
        }
@@ -714,9 +718,9 @@ $(document).ready(function () {
 
     $("#sc-empty").click(function (e) {
         $.get('@ix.idg.controllers.routes.DossierApp.emptyCart', function (d) {
-    	    console.log(d);
-    	    $("#sc-count" ).html('');
-    	});
+            console.log(d);
+            $("#sc-count" ).html('');
+        });
     });
 
      $('.inlinesparkline').sparkline('html', {width:'50px'});

@@ -77,6 +77,8 @@ public class TcrdRegistry extends Controller implements Commons {
                         
                         XRef xref = new XRef (struc);
                         xref.properties.add(source);
+                        for (Value v : struc.properties)
+                            xref.properties.add(v);
                         xref.save();
                         ligand.links.add(xref);
                         ligand.update();
@@ -1676,6 +1678,9 @@ public class TcrdRegistry extends Controller implements Commons {
                                 (smiles, null, false);
                             struc.save();
                             XRef xref = new XRef (struc);
+                            for (Value v : struc.properties)
+                                xref.properties.add(v);
+                            xref.save();
                             ligand.links.add(xref);
                             MOLIDX.add(null, struc.id.toString(), struc.molfile);
                         }
@@ -1866,6 +1871,9 @@ public class TcrdRegistry extends Controller implements Commons {
                                 (smiles, null, false);
                             struc.save();
                             XRef xref = new XRef (struc);
+                            for (Value v : struc.properties)
+                                xref.properties.add(v);
+                            xref.save();
                             ligand.links.add(xref);
                             // now index the structure for searching
 
@@ -2761,7 +2769,7 @@ public class TcrdRegistry extends Controller implements Commons {
                  //+"where c.uniprot = 'Q9H3Y6'\n"
                  //+"where b.tdl in ('Tclin','Tchem')\n"
                  //+"where b.idgfam = 'kinase'\n"
-                 //+" where c.uniprot in ('Q12809','P00742','Q8N972')\n"
+                 +" where c.uniprot in ('P10275')\n"
                  //+"where b.idg2=1\n"
                  +"order by d.score desc, c.id\n"
                  +(rows > 0 ? ("limit "+rows) : "")

@@ -990,6 +990,27 @@ public class EntityFactory extends IxController {
         int i = 0;
         Field f = null;
         Object obj = inst;
+
+        int top = 0, skip = 0;
+        { String p = request().getQueryString("top");
+            if (p != null) {
+                try {
+                    top = Integer.parseInt(p);
+                }
+                catch (NumberFormatException ex) {
+                    Logger.warn("Bogus top: "+p);
+                }
+            }
+            p = request().getQueryString("skip");
+            if (p != null) {
+                try {
+                    skip = Integer.parseInt(p);
+                }
+                catch (NumberFormatException e) {
+                    Logger.warn("Bogus skip: "+p);
+                }
+            }
+        }
         
         for (; i < paths.length && obj != null; ++i) {
             String pname = paths[i]; // field name
@@ -1020,26 +1041,6 @@ public class EntityFactory extends IxController {
             if (pname.charAt(0) == '$')
                 pname = pname.substring(1);
 
-            int top = 0, skip = 0;
-            { String p = request().getQueryString("top");
-                if (p != null) {
-                    try {
-                        top = Integer.parseInt(p);
-                    }
-                    catch (NumberFormatException ex) {
-                        Logger.warn("Bogus top: "+p);
-                    }
-                }
-                p = request().getQueryString("skip");
-                if (p != null) {
-                    try {
-                        skip = Integer.parseInt(p);
-                    }
-                    catch (NumberFormatException e) {
-                        Logger.warn("Bogus skip: "+p);
-                    }
-                }
-            }
             Logger.debug("obj="+obj+"["+obj.getClass()
                          +"] pname="+pname+" pindex="+pindex
                          +" pcon="+pcon+" pval="+pval+" top="

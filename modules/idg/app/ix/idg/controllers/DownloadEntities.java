@@ -10,6 +10,7 @@ import ix.idg.models.Target;
 import play.Play;
 import play.Logger;
 import play.mvc.Controller;
+import play.mvc.Http;
 import play.mvc.Result;
 
 import java.io.*;
@@ -57,13 +58,15 @@ public class DownloadEntities extends Controller {
 
     static class DownloadWorker implements Runnable {
         public final DownloadStatus status;
+        public final Http.Request request;
         final SearchResult result;
 
-        DownloadWorker (String query, SearchResult result) {
+        DownloadWorker (Http.Request request, SearchResult result) {
             this.result = result;
+            this.request = request;
             status = new DownloadStatus ();
             status.key = result.getKey();
-            status.query = query;
+            status.query = request.uri();
             status.status = "PENDING";
         }
 
@@ -83,7 +86,7 @@ public class DownloadEntities extends Controller {
                     Logger.debug("Preparing to generate file "+file+" for "
                                  +targets.size()+" target(s)...");
                     FileOutputStream fos = new FileOutputStream (file);
-                    downloadTargets (fos, targets);
+                    downloadTargets (request, fos, targets);
                     fos.close();
                     Logger.debug("File complete!");
                 }
@@ -336,7 +339,7 @@ public class DownloadEntities extends Controller {
         return sb2.toString();
     }
 
-    static String csvFromTarget(Target t) {
+    static String csvFromTarget(Http.Request request, Target t) {
         Object function = "";
 
         StringBuilder sb2 = new StringBuilder();
@@ -367,27 +370,28 @@ public class DownloadEntities extends Controller {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append(routes.IDGApp.target(csvQuote(IDGApp.getId(t)))).append(",").
-                append(csvQuote(IDGApp.getId(t))).append(",").
-                append(csvQuote(IDGApp.getGeneSymbol(t))).append(",").
-                append(csvQuote(t.getName())).append(",").
-                append(csvQuote(t.getDescription())).append(",").
-                append(csvQuote(t.idgTDL.toString())).append(",").
-                append(csvQuote(dtoClass)).append(",").
-                append(csvQuote(pantherClass)).append(",").
-                append(csvQuote(chemblClass)).append(",").
-                append(csvQuote(t.novelty)).append(",").
-                append(csvQuote(t.idgFamily)).append(",").
-                append(csvQuote(function.toString())).append(",").
-                append(csvQuote(String.valueOf(t.grantCount))).append(",").
-                append(csvQuote(String.valueOf(t.r01Count))).append(",").
-                append(csvQuote(String.valueOf(t.patentCount))).append(",").
-                append(csvQuote(String.valueOf(t.antibodyCount))).append(",").
-                append(csvQuote(String.valueOf(t.pubmedCount))).append(",").
-                append(csvQuote(String.valueOf(t.knowledgeAvailability))).append(",").
-                append(csvQuote(String.valueOf(t.jensenScore))).append(",").
-                append(csvQuote(String.valueOf(t.pubTatorScore))).append(",").
-                append(csvQuote(sb2.toString()));
+        sb.append(csvQuote(Global.getHost(request)
+                           +routes.IDGApp.target(t.accession))).append(",").
+            append(csvQuote(IDGApp.getId(t))).append(",").
+            append(csvQuote(IDGApp.getGeneSymbol(t))).append(",").
+            append(csvQuote(t.getName())).append(",").
+            append(csvQuote(t.getDescription())).append(",").
+            append(csvQuote(t.idgTDL.toString())).append(",").
+            append(csvQuote(dtoClass)).append(",").
+            append(csvQuote(pantherClass)).append(",").
+            append(csvQuote(chemblClass)).append(",").
+            append(csvQuote(t.novelty)).append(",").
+            append(csvQuote(t.idgFamily)).append(",").
+            append(csvQuote(function.toString())).append(",").
+            //append(csvQuote(String.valueOf(t.grantCount))).append(",").
+            //append(csvQuote(String.valueOf(t.r01Count))).append(",").
+            append(csvQuote(String.valueOf(t.patentCount))).append(",").
+            append(csvQuote(String.valueOf(t.antibodyCount))).append(",").
+            append(csvQuote(String.valueOf(t.pubmedCount))).append(",").
+            append(csvQuote(String.valueOf(t.knowledgeAvailability))).append(",").
+            append(csvQuote(String.valueOf(t.jensenScore))).append(",").
+            append(csvQuote(String.valueOf(t.pubTatorScore))).append(",").
+            append(csvQuote(sb2.toString()));
 
         return sb.toString();
     }
@@ -423,7 +427,8 @@ public class DownloadEntities extends Controller {
         else return s;
     }
 
-    static byte[] getREADME() throws IOException {
+    static byte[] getREADME (Http.Request request) throws IOException {
+        /*
         BufferedReader reader;
         if (Play.isProd()) {
             reader = new BufferedReader(new InputStreamReader(Play.application().resourceAsStream("public/README.txt")));
@@ -436,28 +441,31 @@ public class DownloadEntities extends Controller {
             readme.append(line).append("\n");
         reader.close();
         return readme.toString().getBytes();
+        */
+        return ix.idg.views.txt.exportreadme.render
+            (Global.getHost(request)+request.uri()).body().getBytes();
     }
 
-    static byte[] downloadTargets(List<Target> targets) throws Exception {
+    static byte[] downloadTargets(Http.Request request, List<Target> targets)
+        throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        downloadTargets (baos, targets);
+        downloadTargets (request, baos, targets);
         return baos.toByteArray();
     }
 
-    static void downloadTargets(OutputStream os, List<Target> targets)
-        throws Exception {
-
+    static void downloadTargets (Http.Request request, OutputStream os,
+                                 List<Target> targets) throws Exception {
         StringBuilder sb = new StringBuilder();
 
         Logger.debug("generating target info...");
         // basic target info
         String tmp = "URL,Uniprot ID,GeneSymbol,Name,Description,Development Level,DTOClass,PantherClass,ChemblClass,Novelty,Target Family,Function," +
-                "GrantCount,R01Count,PatentCount,AntibodyCount,PubmedCount,JensenPubmedScore,PubtatorScore,PMIDs";
+            "PatentCount,AntibodyCount,PubmedCount,JensenPubmedScore,PubtatorScore,PMIDs";
         tmp = tmp.replace(",", "\",\"");
         tmp = "\"" + tmp + "\"\n";
         sb.append(tmp);
         for (Target t : targets) {
-            sb.append(csvFromTarget(t)).append("\n");
+            sb.append(csvFromTarget(request, t)).append("\n");
         }
         byte[] targetFile = sb.toString().getBytes();
 
@@ -622,7 +630,7 @@ public class DownloadEntities extends Controller {
 
         entry = new ZipEntry("README.txt");
         zip.putNextEntry(entry);
-        zip.write(getREADME());
+        zip.write(getREADME(request));
         zip.closeEntry();
 
         zip.finish();
@@ -713,7 +721,7 @@ public class DownloadEntities extends Controller {
         if (entities.size() == 0) return new byte[]{};
         Class eclass = entities.get(0).getClass();
         if (Target.class.isAssignableFrom(eclass))
-            return downloadTargets((List<Target>) entities);
+            return downloadTargets(request(), (List<Target>) entities);
         else if (Ligand.class.isAssignableFrom(eclass))
             return downloadLigands((List<Ligand>) entities);
         else if (Disease.class.isAssignableFrom(eclass))
@@ -738,7 +746,7 @@ public class DownloadEntities extends Controller {
                         public DownloadWorker call () throws Exception {
                             Logger.debug("Downloading '"+result.getKey()+"'...");
                             DownloadWorker worker = new DownloadWorker
-                            (request().uri(), result);
+                            (request(), result);
                             _pool.submit(worker);
                             return worker;
                         }
