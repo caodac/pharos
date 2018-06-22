@@ -24,9 +24,9 @@
           data-trigger="hover"
           data-placement="top"
           title="@value"
-	  @if(count == null || count > 10000){
-	  style="pointer-events:none;"
-	  }
+      @if(count == null || count > 10000){
+      style="pointer-events:none;"
+      }
           data-content="<p align='left'>@value</p>"
           href='@{ix.idg.controllers.routes.IDGApp.targets()+"?facet="+URLEncoder.encode(label,"utf8")+"/"}@URLEncoder.encode(value, "utf8")'>@{value.substring(0, max)}... <span class="badge">@Util.format(count)</span></a>&nbsp;
      } else {
@@ -37,10 +37,10 @@
           data-trigger="hover"
           data-placement="top"
           title="<p align='left'>@href</p>"
-	}
-	@if(count == null || count > 10000){
-	style="pointer-events:none;"
-	}
+    }
+    @if(count == null || count > 10000){
+    style="pointer-events:none;"
+    }
         href='@{ix.idg.controllers.routes.IDGApp.targets()+"?facet="+URLEncoder.encode(label,"utf8")+"/"}@URLEncoder.encode(value, "utf8")'>@value @if(count!=null){<span class="badge">@Util.format(count)</span>}</a>
      }
      @if(href != null && href.startsWith("http")) {
@@ -444,7 +444,7 @@
                        <h3 class="panel-title"><a class="loader" href='@{ix.idg.controllers.routes.IDGApp.ligands() + "?facet=" + IDG_TARGET+"/"+target.getSynonym(UNIPROT_GENE).term}'>
                            <span data-toggle="tooltip" title="Carousel allowing for horizontal scrolling of ligand lists and drug lists.  The order is based on reported pKd or pKi.">
                            @title</span> (@Util.format(ligands.size))</a>
-                           <a href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/links(kind="+classOf[Ligand].getName+")"}'>
+                           <a href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/links(kind="+classOf[Ligand].getName+")"}?skip=0&top=10'>
                                <i class="fa fa-code pull-right"></i>
                            </a>
                            <a href='@{ix.idg.controllers.routes.IDGApp.targets()}/@{target.id}/ligands?group=@{group}'>
@@ -835,6 +835,11 @@
     <script type="text/javascript" src='@routes.Assets.versioned("javascripts/jquery.sparkline.js")'></script>
     <script type="text/javascript" src='@routes.Assets.versioned("javascripts/flickity.pkgd.min.js")'></script>
     <script type="text/javascript" src='@routes.Assets.versioned("javascripts/stupidtable.min.js")'></script>
+    <script src='@routes.WebJarAssets.at(WebJarAssets.locate("jquery.dataTables.min.js"))'></script>
+    <script src='@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap/2/dataTables.bootstrap.min.js"))'></script>
+
+    <link rel="stylesheet" href='@routes.WebJarAssets.at(WebJarAssets.locate("jquery.dataTables.min.css"))'>
+    <link rel="stylesheet" href='@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap/2/dataTables.bootstrap.css"))'>    
     <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/d3-tip.css")' />
     <link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/radar-chart.css")' />
     <link type="text/css" rel="stylesheet" href='@routes.WebJarAssets.at(WebJarAssets.locate("morris.css"))' />
@@ -947,7 +952,7 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
             <h3 class="panel-title">TINX Plot
                   @defining(IDGApp.getDTOId(target)){ dto =>
                     @if(dto != null) {
-                       <a href="http://dev.newdrugtargets.org/?target=@dto.replace("_","")">
+                       <a href="http://newdrugtargets.org/?target=@dto.replace("_","")">
                        <span class="fa fa-external-link pull-right" aria-hidden="true"></span></a>
                     }
                   }
@@ -1245,10 +1250,10 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
           <div class="panel-heading">
             <h3 class="panel-title">
                 <span data-toggle="tooltip" title="Approved gene symbol with link to HUGO Gene Nomenclature Committee.">Gene</span>
-		<a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/synonyms(label="+UNIPROT_GENE+")"}'>
-		  <i class="fa fa-code"></i>
-		</a>
-	    </h3>
+        <a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/synonyms(label="+UNIPROT_GENE+")"}'>
+          <i class="fa fa-code"></i>
+        </a>
+        </h3>
           </div>
           <div class="panel-body">
             @for(kw <- target.synonyms) {
@@ -1273,10 +1278,10 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                           <h3 class="panel-title">PDB
                             <a href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/synonyms(label="+PDB_ID+")"}'>
                               <span class="fa fa-code pull-right"></span></a>
-			    <a href="http://www.rcsb.org/pdb/protein/@IDGApp.getId(target)">
+                <a href="http://www.rcsb.org/pdb/protein/@IDGApp.getId(target)">
                               <span class="fa fa-external-link pull-right"></span>
                             </a>
-			  </h3>
+              </h3>
                       </div>
                       <div class="panel-body">
                           @for(aval <- pdbids){
@@ -1609,11 +1614,12 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
           <div class="panel-heading">
             <h3 class="panel-title"><span data-toggle="tooltip"
                         data-html="true"
-                        title="<p align='left'>Total count of NCBI Gene Reference Into Function hits for target listed in parenthesis, and summary table with links to publications per PMID with the specific text in article that includes the reported target. </p>">Gene RIF (@generifs.size)</span> <a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/links(kind="+classOf[Text].getName+")"}'><i class="fa fa-code"></i></a></h3>
+                        title="<p align='left'>Total count of NCBI Gene Reference Into Function hits for target listed in parenthesis, and summary table with links to publications per PMID with the specific text in article that includes the reported target. </p>">Gene RIF (@generifs.size)</span> <a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/links(kind="+classOf[Text].getName+")"}?skip=0&top=10'><i class="fa fa-code"></i></a></h3>
           </div>
           <div class="panel-body"
-               style="max-height:400px;overflow-y:auto;">
+               style="max-height:600px;overflow-y:auto;">
             <div class="panel-body table-responsive">
+              @**
               <table class="table table-striped">
                 <tr>
                   <th></th>
@@ -1627,6 +1633,9 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                   <td>@x.text</td>
                 </tr>
                 }
+              </table>
+              **@
+              <table class="table table-striped" id="grifTable">
               </table>
             </div>
           </div>
@@ -1683,10 +1692,10 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                          <a href="http://www.ncbi.nlm.nih.gov/pubmed?LinkName=gene_pubmed&from_uid=@for(kw <- target.synonyms) {@if("Entrez Gene".equals(kw.label)) {@kw.term}}"><i class="fa fa-book"></i></a></span>
                          <span data-toggle="tooltip" data-html="true" title="<p align='left'>Search Pubmed with this target</p>">
                              <a href="http://www.ncbi.nlm.nih.gov/pubmed/?term=@for(kw <- target.synonyms) {@if("UniProt Gene".equals(kw.label)) {@kw.term}}"><i class="fa fa-search-plus"></i></a></span>
-                         (@pubs.size) <a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/publications"}'><i class="fa fa-code"></i></a></h3>
+                         (@pubs.size) <a class="pull-right" href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/publications"}?skip=0&top=10'><i class="fa fa-code"></i></a></h3>
                  </div>
                  <div class="panel-body"
-                      style="max-height:400px;overflow-y:auto;">
+                      style="max-height:600px;overflow-y:auto;">
                    <div>
                      <ul class="nav nav-tabs" role="tablist">
                        <li role="presentation" class="active"><a href="#pubwc" aria-controls="pubwc" role="tab" data-toggle="tab">Summary</a></li>
@@ -1697,6 +1706,7 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                          <div id="tpub-wc"></div>
                        </div>
                        <div role="tabpanel" class="tab-pane" id="publist">
+                         @**
                          <table class="table table-striped">    
                            <tr>
                              <th></th>
@@ -1712,6 +1722,17 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                                 <td>@pub.title</td>
                               </tr>
                            }
+                         </table>
+                         **@
+                         <table class="table table-striped" id="pubTable">
+                           <thead>
+                             <tr>
+                               <th></th>
+                               <th>PMID <i class="fa fa-external-link"></i></th>
+                               <th>Year</th>
+                               <th>Title</th>
+                             </tr>
+                           </thead>
                          </table>
                        </div>
                      </div>
@@ -2249,9 +2270,87 @@ $('.tree').treegrid({
       Highcharts.chart('pubmedscore-plot', jensenPlotConfig);
    }
 
-   $('#pmscore-sparkline').sparkline('html', {width:'100px'});
-   tinx_target_plot("#tinx-plot", "@IDGApp.getId(target)");
+    $('#pmscore-sparkline').sparkline('html', {width:'100px'});
+    tinx_target_plot("#tinx-plot", "@IDGApp.getId(target)");
+    loadPubTable ();
+    loadGeneRIFTable ();
 });
+
+function loadGeneRIFTable () {
+    var grifdata = [
+        @defining(IDGApp.getGeneRIFs(target)) { generifs =>
+           @for(x <- generifs) {
+           { 'pmid': @x.pmid, 'text': '@x.text'},
+           }
+        }
+    ];
+    var griftab = $('#grifTable').dataTable({
+        dom: "pit",
+        data: grifdata,
+        order: [[1, 'desc']],
+        columnDefs: [{
+            targets: 0,
+            orderable: false,
+            render: function(data, type,full,meta) {
+                return '<span class="__dimensions_badge_embed__" data-pmid="'+data+'" data-style="small_rectangle"></span>';
+            }
+        },{
+            targets: 1,
+            render: function(data,type,full,meta) {
+                return '<a href="https://www.ncbi.nlm.nih.gov/pubmed/'+data+'">'+data+'</a>';
+            }
+        }],
+        columns: [
+            {title: 'Citation', data: 'pmid', orderable: false},
+            {title: 'PMID', data: 'pmid'},
+            {title: 'Text', data: 'text'}
+        ]
+    });
+    griftab.on('draw.dt', function () {
+        window.__dimensions_embed.addBadges();
+    });
+    window.__dimensions_embed.addBadges();    
+}
+    
+function loadPubTable () {
+    var pubdata = [
+        @defining(target.getPublications) { pubs =>
+          @for(pub <- pubs) {
+              { 'pmid': @pub.pmid,
+                'year': @if(pub.year!=null){@pub.year}else{""},
+                'title': "@pub.title"},
+          }
+        }
+    ];
+    var pubtab = $('#pubTable').dataTable({
+        dom: "pit",
+        data: pubdata,
+        order: [[2,'desc'], [1, 'desc']],
+        columnDefs: [{
+            targets: 0,
+            orderable: false,
+            render: function(data, type,full,meta) {
+                return '<span class="__dimensions_badge_embed__" data-pmid="'+data+'" data-style="small_rectangle"></span>';
+            }
+        },{
+            targets: 1,
+            render: function(data,type,full,meta) {
+                return '<a href="https://www.ncbi.nlm.nih.gov/pubmed/'+data+'">'+data+'</a>';
+            }
+        }],
+        columns: [
+            {title: 'Citation', data: 'pmid', orderable: false},
+            {title: 'PMID', data: 'pmid'},
+            {title: 'Year', data: 'year'},
+            {title: 'Title', data: 'title'}
+        ]
+    });
+    pubtab.on('draw.dt', function () {
+        window.__dimensions_embed.addBadges();
+        console.log('table redrawn!');
+    });
+    window.__dimensions_embed.addBadges();
+}
 
 function plotAAProfile(container) {
     var config = {

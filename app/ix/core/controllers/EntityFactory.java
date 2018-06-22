@@ -1020,9 +1020,30 @@ public class EntityFactory extends IxController {
             if (pname.charAt(0) == '$')
                 pname = pname.substring(1);
 
+            int top = 0, skip = 0;
+            { String p = request().getQueryString("top");
+                if (p != null) {
+                    try {
+                        top = Integer.parseInt(p);
+                    }
+                    catch (NumberFormatException ex) {
+                        Logger.warn("Bogus top: "+p);
+                    }
+                }
+                p = request().getQueryString("skip");
+                if (p != null) {
+                    try {
+                        skip = Integer.parseInt(p);
+                    }
+                    catch (NumberFormatException e) {
+                        Logger.warn("Bogus skip: "+p);
+                    }
+                }
+            }
             Logger.debug("obj="+obj+"["+obj.getClass()
                          +"] pname="+pname+" pindex="+pindex
-                         +" pcon="+pcon+" pval="+pval);
+                         +" pcon="+pcon+" pval="+pval+" top="
+                         +top+" skip="+skip);
             
             try {
                 uri.append("/"+paths[i]);
@@ -1047,12 +1068,16 @@ public class EntityFactory extends IxController {
                         }
                         else if (pcon != null && pval != null) {
                             List vals = new ArrayList ();
-                            for (int k = 0; k < Array.getLength(val); ++k) {
+                            int len = Array.getLength(val);
+                            if (top > 0) {
+                                len = Math.min(skip+top, len);
+                            }
+                            for (int k = Math.max(0, skip); k < len; ++k) {
                                 Object a = Array.get(val, k);
                                 if (eval (a, pcon, pval))
                                     vals.add(a);
                             }
-                            val = /*vals.size()==1? vals.get(0) :*/ vals;
+                            val = vals;
                         }
                     }
                     else if (Collection.class.isAssignableFrom(ftype)) {
@@ -1064,13 +1089,45 @@ public class EntityFactory extends IxController {
                             val = ((Collection)val).toArray()[pindex];
                         }
                         else if (pcon != null && pval != null) {
-                            List vals = new ArrayList ();
-                            for (Object a : (Collection)val) {
+                            List vals = new ArrayList (); // filtered values
+                            Collection col = (Collection)val;
+                            for (Object a : col) {
                                 if (eval (a, pcon, pval))
                                     vals.add(a);
                             }
+
+                            if (top > 0) {
+                                int len = Math.min(Math.max(skip,0)+top,
+                                                   vals.size());
+                                col = new ArrayList ();
+                                for (int k = Math.max(skip, 0); k < len; ++k) {
+                                    col.add(vals.get(k));
+                                }
+                                val = col;
+                            }
+                            else
+                                val = vals;
+                        }
+                        else if (top > 0) { //
+                            Object[] vals = new Object[top];
+                            Collection col = (Collection)val;
+                            int len = col.size();
+                            if (top > 0) {
+                                len = Math.min(Math.max(skip,0)+top, len);
+                            }
+
+                            int k = 0, q = 0;
+                            for (Object a : col) {
+                                if (k >= skip) {
+                                    vals[q++] = a;
+                                }
+                                if (++k >= len)
+                                    break;
+                            }
                             
-                            val = /*vals.size()==1 ?vals.get(0) :*/ vals;
+                            if (q == 0)
+                                vals = new Object[0];
+                            val = vals;
                         }
                     }
                 }
