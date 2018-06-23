@@ -148,10 +148,10 @@ facets: Array[FacetDecorator], targets: List[Target], ctx: String )
      @for(i <- 10 to 100 by 10) {
        <option @if(i==rows){selected='selected'} value="@i">@i</option>
        }
-     <option value="150">150</option>
-     <option value="200">200</option>
-     <option value="300">300</option>
-     <option value="500">500</option>
+     <option @if(rows==150){selected='selected'} value="150">150</option>
+     <option @if(rows==200){selected='selected'} value="200">200</option>
+     <option @if(rows==300){selected='selected'} value="300">300</option>
+     <option @if(rows==500){selected='selected'} value="500">500</option>
    </select>
 
     <a id="compare-selected" class="btn btn-default" href="#"
