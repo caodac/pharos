@@ -1679,7 +1679,7 @@ public class TcrdRegistry extends Controller implements Commons {
                             struc.save();
                             XRef xref = new XRef (struc);
                             for (Value v : struc.properties)
-                                xref.properties.add(v);
+                                ligand.addIfAbsent(v);
                             xref.save();
                             ligand.links.add(xref);
                             MOLIDX.add(null, struc.id.toString(), struc.molfile);
@@ -1766,6 +1766,10 @@ public class TcrdRegistry extends Controller implements Commons {
                     XRef lref = target.addIfAbsent(new XRef (ligand));
                     lref.addIfAbsent((Value)getKeyword
                                      (IDG_LIGAND, ligand.getName()));
+                    // transfer lychies over
+                    for (Value v : ligand.properties)
+                        if (v.getLabel().startsWith("LyChI"))
+                            lref.addIfAbsent(v);
 
                     String actType = rset.getString("act_type");
                     if (actType != null) {
@@ -2767,9 +2771,9 @@ public class TcrdRegistry extends Controller implements Commons {
                  //+"where c.id in (18204,862,74,6571)\n"
                  //+"where a.target_id in (875)\n"
                  //+"where c.uniprot = 'Q9H3Y6'\n"
-                 //+"where b.tdl in ('Tclin','Tchem')\n"
+                 +"where b.tdl in ('Tclin','Tchem')\n"
                  //+"where b.idgfam = 'kinase'\n"
-                 +" where c.uniprot in ('P10275')\n"
+                 //+" where c.uniprot in ('P10275')\n"
                  //+"where b.idg2=1\n"
                  +"order by d.score desc, c.id\n"
                  +(rows > 0 ? ("limit "+rows) : "")

@@ -1351,6 +1351,48 @@ public class TextIndexer {
         }
         return new TermVectorsCollector(kind, field, terms).termVectors();
     }
+
+    Facet toFacet (final TermVectors tvs, final boolean desc, int topK)
+        throws IOException {
+        Facet facet = new Facet (tvs.getField());
+        Map<String, Integer> terms = new TreeMap<>((t1, t2) -> {
+                Integer n1 = tvs.getTermCount(t1);
+                Integer n2 = tvs.getTermCount(t2);
+                if (n1 != null && n2 != null) {
+                    if (n1 != n2)
+                        return desc ? n2 - n1 : n1 - n2;
+                }
+                return desc ? t2.compareTo(t1) : t1.compareTo(t2);
+            });
+        // sort the terms
+        for (Map.Entry<String, Map> me : tvs.getTerms().entrySet()) {
+            terms.put(me.getKey(), (Integer)me.getValue().get("nDocs"));
+        }
+        
+        if (topK < 1)
+            topK = terms.size();
+        
+        int k = 0;
+        for (Map.Entry<String, Integer> me : terms.entrySet()) {
+            if (k++ < topK)
+                facet.values.add(new FV (me.getKey(), me.getValue()));
+        }
+        return facet;
+    }
+
+    public Facet getFacet (Class kind, String field) throws IOException {
+        return getFacet (kind, field, true, 100);
+    }
+    
+    public Facet getFacet (Class kind, String field, boolean desc, int topK)
+        throws IOException {
+        TermVectors tvs = getTermVectors (kind, field);
+        Facet facet = null;
+        if (tvs != null) {
+            facet = toFacet (tvs, desc, topK);
+        }
+        return facet;
+    }
     
     public SearchResult range (SearchOptions options, String field,
                                Long min, Long max) throws IOException {

@@ -543,6 +543,32 @@ public class IDGApp extends App implements Commons {
         }
     }
 
+    static class LigandTargetSelectivityFacetDecorator extends FacetDecorator {
+        LigandTargetSelectivityFacetDecorator () throws IOException {
+            super (_textIndexer.getFacet
+                   (Ligand.class, IDG_TARGET, false, 100), true, 100);
+        }
+
+        @Override
+        public String name () {
+            return "Selectivity";
+        }
+
+        @Override
+        public String label (int i) {
+            final String label = super.label(i);
+            try {
+                return "<a class='loader' href=\""
+                    +routes.IDGApp.target(label)+"\">"+label+"</a>";
+            }
+            catch (Exception ex) {
+                Logger.error("Can't utf encode label: "+label, ex);
+                return "<a class='loader' href='"
+                    +routes.IDGApp.target(label)+"'>"+label+"</a>";
+            }
+        }
+    }
+
     static class TargetCacheWarmer implements Runnable {
         final AtomicLong start = new AtomicLong ();
         final AtomicLong stop = new AtomicLong ();
@@ -726,10 +752,10 @@ public class IDGApp extends App implements Commons {
         //IDG_DRUG,
         IDG_DEVELOPMENT,
         IDG_FAMILY,
+        IDG_TARGET,    
         PHARMALOGICAL_ACTION,
-        LIGAND_SOURCE,
-        LIGAND_ACTIVITY,
-        IDG_TARGET
+        LIGAND_ACTIVITY,        
+        LIGAND_SOURCE
     };
 
     public static final String[] ALL_FACETS = {
@@ -1856,7 +1882,7 @@ public class IDGApp extends App implements Commons {
 
         return ix.idg.views.html.ligandsgallery.render
             (page, rows, result.count(),
-             pages, decorate (facets), ligands, null);
+             pages, decorate (Ligand.class, facets), ligands, null);
     }
 
     static Result createDiseaseResult
@@ -2531,9 +2557,14 @@ public class IDGApp extends App implements Commons {
                     for (int i = 0; i < result.count(); i++) {
                         ligands.add((Ligand) result.getMatches().get(i));
                     }
-                    byte[] contents = DownloadEntities.downloadEntities(ligands);
-                    response().setHeader("Content-Disposition", "attachment;filename=export-ligand.csv");
-                    return ok(contents).as(DownloadEntities.getDownloadMimeType(Ligand.class));
+                    
+                    byte[] contents =
+                        DownloadEntities.downloadEntities(ligands);
+                    response().setHeader
+                        ("Content-Disposition",
+                         "attachment;filename=export-ligand.csv");
+                    return ok(contents).as(DownloadEntities
+                                           .getDownloadMimeType(Ligand.class));
                 }
             }
 
@@ -2542,7 +2573,7 @@ public class IDGApp extends App implements Commons {
         else {
             return getOrElse (key, new Callable<Result> () {
                     public Result call () throws Exception {
-                        TextIndexer.Facet[] facets =
+                        Facet[] facets =
                             filter (getFacets (Ligand.class, FACET_DIM),
                                     LIGAND_FACETS);
             
@@ -2551,10 +2582,23 @@ public class IDGApp extends App implements Commons {
             
                         List<Ligand> ligands = LigandFactory.getLigands
                             (_rows, (page-1)*_rows, null);
-            
+                        
+                        List<FacetDecorator> decorators = new ArrayList<>();
+                        for (FacetDecorator deco : decorate (facets))
+                            decorators.add(deco);
+                        try {
+                            decorators.add
+                                (3, // insert after IDG_TARGET
+                                 new LigandTargetSelectivityFacetDecorator ());
+                        }
+                        catch (IOException ex) {
+                            Logger.error
+                                ("Can't create Target Selectivity facet!", ex);
+                        }
                         return ok (ix.idg.views.html.ligandsgallery.render
                                    (page, _rows, total, pages,
-                                    decorate (facets), ligands, null));
+                                    decorators.toArray(new FacetDecorator[0]),
+                                    ligands, null));
                     }
                 });
         }
