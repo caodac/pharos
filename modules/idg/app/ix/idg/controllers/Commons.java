@@ -35,7 +35,7 @@ public interface Commons {
     public static final String LIGAND_SOURCE = "Ligand Source";
     public static final String LIGAND_ACTIVITY = "Ligand Activity";
     public static final String LIGAND_DRUG = "Ligand Drug";
-    public static final String LIGAND_ACTIVITY_COUNT = "Ligand Activity Count";
+    public static final String LIGAND_COUNT = "Ligand Count";
     
     public static final String GRANT_FUNDING_IC = "Grant Funding IC";
     public static final String GRANT_ACTIVITY = "Grant Activity";

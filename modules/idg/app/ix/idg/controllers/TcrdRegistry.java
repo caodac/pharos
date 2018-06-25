@@ -178,7 +178,7 @@ public class TcrdRegistry extends Controller implements Commons {
         final Http.Context ctx;
         final Collection<TcrdTarget> targets;
         PreparedStatement pstm, pstm2, pstm3, pstm4,
-            pstm5, pstm6, pstm7, pstm8, pstm9, pstm10,
+            pstm5, pstm6, pstm7, pstm8, pstm9, pstm10, pstm10b,
             pstm11, pstm12, pstm13, pstm14, pstm15,
             pstm16, pstm17, pstm18, pstm19, pstm20, pstm20b,
             pstm21, pstm22, pstm23, pstm24, pstm25,
@@ -274,6 +274,8 @@ public class TcrdRegistry extends Controller implements Commons {
             pstm10 = con.prepareStatement
                 ("select * from panther_class a, p2pc b "
                  +"where a.id = b.panther_class_id and b.protein_id = ?");
+            pstm10b = con.prepareStatement
+                ("select * from panther_class where pcid = ?");
             pstm11 = con.prepareStatement
                 ("select * from pathway where protein_id = ? or target_id = ?");
             pstm12 = con.prepareStatement
@@ -455,6 +457,7 @@ public class TcrdRegistry extends Controller implements Commons {
             pstm8.close();
             pstm9.close();
             pstm10.close();
+            pstm10b.close();
             pstm11.close();
             pstm12.close();
             pstm13.close();
@@ -1440,16 +1443,54 @@ public class TcrdRegistry extends Controller implements Commons {
                     String pcid = rset.getString("pcid");
                     String name = rset.getString("name");
                     String ancestor = rset.getString("parent_pcids");
-                    for (String p : ancestor.split("\\|")) 
+                    for (String p : ancestor.split("\\|")) {
                         if (!"PC00000".equals(p)) {
                             String old = parents.put(pcid, p);
                             if (old != null && !old.equals(p)) {
-                                Logger.warn("Target "+target.id
+                                Logger.warn("Target "+target.accession
                                             +" has two Panther parents: "
                                             +p+" and "+old+"; keeping "+p+"!");
                             }
                         }
+                    }
                     panther.put(pcid, name);
+                }
+
+                if (panther.size() == 1) {
+                    // sigh.. tcrd didn't explicitly specify the parent chain
+                    // so we have to manually
+                    String pcid = panther.keySet().iterator().next();
+                    while (!"PC00000".equals(pcid)) {
+                        pstm10b.setString(1, pcid);
+                        try (ResultSet rs = pstm10b.executeQuery()) {
+                            if (rs.next()) {
+                                pcid = rs.getString("pcid");
+                                String name = rs.getString("name");
+                                String ancestor =
+                                    rs.getString("parent_pcids");
+                                for (String p : ancestor.split("\\|")) {
+                                    if (!"PC00000".equals(p)) {
+                                        String old = parents.put(pcid, p);
+                                        if (old != null && !old.equals(p)) {
+                                            Logger.warn
+                                                ("Target "+target.accession
+                                                 +" has two Panther parents: "
+                                                 +p+" and "+old+"; keeping "
+                                                 +p+"!");
+                                        }
+                                    }
+                                }
+                                panther.put(pcid, name);
+                                pcid = parents.get(pcid);
+                            }
+                            else {
+                                Logger.warn("Something's rotten in new "
+                                            +"mexico; no data for panther "
+                                            +"class "+pcid+"!");
+                                break;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -2636,7 +2677,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 count += addChembl (target, t.id, t.source);
                 if (count > 0) {
                     target.properties.add
-                        (new VInt (LIGAND_ACTIVITY_COUNT, count));
+                        (new VInt (LIGAND_COUNT, count));
                 }
                 else {
                     switch (target.idgTDL) {
@@ -2793,9 +2834,9 @@ public class TcrdRegistry extends Controller implements Commons {
                  //+"where c.id in (18204,862,74,6571)\n"
                  //+"where a.target_id in (875)\n"
                  //+"where c.uniprot = 'Q9H3Y6'\n"
-                 +"where b.tdl in ('Tclin','Tchem')\n"
+                 //+"where b.tdl in ('Tclin','Tchem')\n"
                  //+"where b.idgfam = 'kinase'\n"
-                 //+" where c.uniprot in ('P10275')\n"
+                 //+" where c.uniprot in ('Q96K76','Q6PEY2')\n"
                  //+"where b.idg2=1\n"
                  +"order by d.score desc, c.id\n"
                  +(rows > 0 ? ("limit "+rows) : "")
@@ -2957,9 +2998,9 @@ public class TcrdRegistry extends Controller implements Commons {
     }
     
     static int updatePPI (DataSource ds) throws Exception {
-        Connection con = ds.getConnection();
         int cnt = 0;    
-        try (PreparedStatement pstm = con.prepareStatement
+        try (Connection con = ds.getConnection();
+             PreparedStatement pstm = con.prepareStatement
              ("select * from ppi where protein1_id = ?")) {
             for (Target t : TargetFactory.finder.all()) {
                 Keyword kw = t.getSynonym(IDG_TARGET);
@@ -2992,11 +3033,8 @@ public class TcrdRegistry extends Controller implements Commons {
                 }
             }
             Logger.debug(cnt+" targets with PPI updated!");
-            return cnt;
         }
-        finally {
-            con.close();
-        }
+        return cnt;
     }
 
     public static Result ppi () {
