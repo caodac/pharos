@@ -1054,6 +1054,8 @@ public class App extends Authentication {
                         final String field = m.group(1);
                         final String min = m.group(2);
                         final String max = m.group(3);
+                        Logger.debug("### range search: "
+                                     +field+" min="+min+" max="+max);
                         return getOrElse_ (sha1, new Callable<SearchResult> () {
                                 public SearchResult call () throws Exception {
                                     SearchOptions options =

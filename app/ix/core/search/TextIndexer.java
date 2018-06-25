@@ -64,6 +64,7 @@ import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.NumericRangeQuery;
+import org.apache.lucene.search.NumericRangeFilter;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.SearcherManager;
@@ -83,6 +84,7 @@ import org.apache.lucene.store.NoLockFactory;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.NumericUtils;
 import org.reflections.Reflections;
 import play.Logger;
 
@@ -166,6 +168,8 @@ public class TextIndexer {
     static final String SUGGEST_CONFIG_FILE = "suggest_conf.json";
     static final String SORTER_CONFIG_FILE = "sorter_conf.json";
     static final String DIM_CLASS = "ix.Class";
+
+    static final int DEFAULT_RANGE_BINS = 50;
 
     static final DateFormat YEAR_DATE_FORMAT = new SimpleDateFormat ("yyyy");
     static final Object POISON_PILL = new Object ();
@@ -436,6 +440,189 @@ public class TextIndexer {
         }
     }
 
+    static public abstract class AbstractRangeField<T extends Number> {
+        T min, max;
+        final String field;
+        final Class kind;
+        final int nbins;
+        int[] counts;
+        
+        AbstractRangeField (TextIndexer indexer, Class kind,
+                            String field, int nbins) throws IOException {
+            for (AtomicReaderContext arc : indexer.indexReader.leaves()) {
+                Terms terms = arc.reader().terms(field);
+                if (terms != null) {
+                    T mi = getMin (terms);
+                    T ma = getMax (terms);
+                    if (min == null || compare (min, mi) > 0)
+                        min = mi;
+                    if (max == null || compare (max, ma) < 0)
+                        max = ma;
+                }
+            }
+
+            if (min == null || max == null)
+                throw new IllegalArgumentException
+                    ("Field \""+field+"\" is not a numeric field!");
+            this.kind = kind;
+            this.field = field;
+            this.nbins = nbins;
+            Logger.debug("Numeric field \""+field+"\": min="+min+" max="+max);
+        }
+
+        public String getField () { return field; }
+        public int[] getCounts () { return counts; }
+        public int getCount (int bin) { return counts[bin]; }
+        abstract public T getStart (int bin);
+        abstract public T getEnd (int bin);
+        abstract Query getQuery (int bin);
+        abstract Filter getFilter (int bin);
+        abstract <T extends Number> T getMin (Terms terms) throws IOException;
+        abstract <T extends Number> T getMax (Terms terms) throws IOException;
+        abstract int compare (T a, T b);
+    }
+
+    public static class LongRangeField extends AbstractRangeField<Long> {
+        final long gap;
+        LongRangeField (TextIndexer indexer, Class kind, String field)
+            throws IOException {
+            this (indexer, kind, field, DEFAULT_RANGE_BINS);
+        }
+        LongRangeField (TextIndexer indexer, Class kind, String field,
+                        int nbins) throws IOException {
+            super (indexer, kind, field, nbins);
+            gap = Math.max((long)((double)(max - min)/nbins+0.5), 1);
+            int[] counts = new int[nbins];
+            
+            IndexSearcher searcher = indexer.getSearcher();
+            Filter filter = null;
+            if (kind != null)
+                filter = new TermFilter(new Term (FIELD_KIND, kind.getName()));
+
+            int i = 0;
+            for (long s = min, e; s < max; ++i) {
+                e = i+1 >= nbins ? max : s+gap;
+                NumericRangeQuery<Long> rq =
+                    NumericRangeQuery.newLongRange(field, s, e, true, e >= max);
+                TopDocs hits = searcher.search(rq, filter, max.intValue());
+                counts[i] = hits.totalHits;
+                s = e;
+            }
+            
+            this.counts = new int[i];
+            for (int j = 0; j < i; ++j)
+                this.counts[j] = counts[j];
+        }
+
+        Long getMin (Terms terms) throws IOException {
+            return NumericUtils.getMinLong(terms);
+        }
+        Long getMax (Terms terms) throws IOException {
+            return NumericUtils.getMaxLong(terms);
+        }
+        int compare (Long n1, Long n2) {
+            return n1.compareTo(n2);
+        }
+
+        public Long getStart (int bin) {
+            return min + bin*gap;
+        }
+        
+        public Long getEnd (int bin) {
+            return Math.min(max, getStart(bin) + gap);
+        }
+
+        Query getQuery (int bin) {
+            if (bin < 0 || bin >= counts.length)
+                throw new IllegalArgumentException
+                    ("Invalid bin "+bin+" for LongRangeField");
+            
+            return NumericRangeQuery.newLongRange
+                (field, getStart (bin), getEnd (bin),
+                 true, bin+1 >= counts.length);
+        }
+        
+        Filter getFilter (int bin) {
+            if (bin < 0 || bin >= counts.length)
+                throw new IllegalArgumentException
+                    ("Invalid bin "+bin+" for LongRangeField");
+            
+            return NumericRangeFilter.newLongRange
+                (field, getStart (bin), getEnd (bin),
+                 true, bin+1 >= counts.length);            
+        }
+    }
+
+    public static class IntRangeField extends AbstractRangeField<Integer> {
+        final int gap;
+        IntRangeField (TextIndexer indexer, Class kind, String field)
+            throws IOException {
+            this (indexer, kind, field, DEFAULT_RANGE_BINS);
+        }
+        IntRangeField (TextIndexer indexer, Class kind, String field,
+                       int nbins) throws IOException {
+            super (indexer, kind, field, nbins);
+            gap = Math.max((int)((double)(max - min)/nbins+0.5), 1);
+            int[] counts = new int[nbins];
+            
+            IndexSearcher searcher = indexer.getSearcher();
+            Filter filter = new TermFilter
+                (new Term (FIELD_KIND, kind.getName()));
+
+            int i = 0;
+            for (int s = min, e; s < max; ++i) {
+                e = i+1 >= nbins ? max : s+gap;
+                NumericRangeQuery<Integer> rq =
+                    NumericRangeQuery.newIntRange(field, s, e, true, e >= max);
+                TopDocs hits = searcher.search(rq, filter, max.intValue());
+                counts[i] = hits.totalHits;
+                s = e;
+            }
+            
+            this.counts = new int[i];
+            for (int j = 0; j < i; ++j)
+                this.counts[j] = counts[j];
+        }
+
+        Integer getMin (Terms terms) throws IOException {
+            return NumericUtils.getMinInt(terms);
+        }
+        Integer getMax (Terms terms) throws IOException {
+            return NumericUtils.getMaxInt(terms);
+        }
+        int compare (Integer n1, Integer n2) {
+            return n1.compareTo(n2);
+        }
+
+        public Integer getStart (int bin) {
+            return min + bin*gap;
+        }
+        
+        public Integer getEnd (int bin) {
+            return Math.min(max, getStart(bin) + gap);
+        }
+
+        Query getQuery (int bin) {
+            if (bin < 0 || bin >= counts.length)
+                throw new IllegalArgumentException
+                    ("Invalid bin "+bin+" for LongRangeField");
+            
+            return NumericRangeQuery.newIntRange
+                (field, getStart (bin), getEnd (bin),
+                 true, bin+1 >= counts.length);
+        }
+        
+        Filter getFilter (int bin) {
+            if (bin < 0 || bin >= counts.length)
+                throw new IllegalArgumentException
+                    ("Invalid bin "+bin+" for LongRangeField");
+            
+            return NumericRangeFilter.newIntRange
+                (field, getStart (bin), getEnd (bin),
+                 true, bin+1 >= counts.length);            
+        }
+    }
+    
     public static class SearchResult /*implements java.io.Serializable*/ {
 
         String key;
@@ -1070,7 +1257,7 @@ public class TextIndexer {
             (new FetchCleaner (), FETCH_TIMEOUT,
              FETCH_TIMEOUT/2, TimeUnit.SECONDS);
     }
-
+    
     public void setFetchWorkers (int n) {
         if (n < 1)
             throw new IllegalArgumentException
@@ -1159,7 +1346,8 @@ public class TextIndexer {
         return config (indexer);
     }
 
-    public Map<String,Integer> getFacetLabelCounts(String facetName) throws IOException {
+    public Map<String,Integer> getFacetLabelCounts(String facetName)
+        throws IOException {
         IndexSearcher searcher = new IndexSearcher(indexReader);
         TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxonDir);
         FacetsCollector fc = new FacetsCollector();
@@ -1210,6 +1398,17 @@ public class TextIndexer {
         }
         
         return lookup.suggest(key, max);
+    }
+
+    public LongRangeField getLongRangeField (Class kind, String field)
+        throws IOException {
+        // should allow the number of bins specified!
+        return new LongRangeField (this, kind, field);
+    }
+
+    public IntRangeField getIntRangeField (Class kind, String field)
+        throws IOException {
+        return new IntRangeField (this, kind, field);
     }
 
     public Collection<String> getSuggestFields () {
@@ -1397,7 +1596,7 @@ public class TextIndexer {
     public SearchResult range (SearchOptions options, String field,
                                Long min, Long max) throws IOException {
         Query query = NumericRangeQuery.newLongRange
-            (field, min, max, true /* minInclusive?*/, true/*maxInclusive?*/);
+            (field, min, max, true /* minInclusive?*/, false/*maxInclusive?*/);
         
         Filter filter = null;
         if (options.kind != null) {
@@ -1497,17 +1696,62 @@ public class TextIndexer {
                     String facet = f.substring(0, pos);
                     String value = f.substring(pos+1);
                     Logger.warn("facet="+facet+" value="+value);
-                    for (SearchOptions.FacetRange fr : options.rangeFacets) {
-                        if (facet.equals(fr.field)) {
-                            List<Filter> fl = new ArrayList<>();
-                            createRangeFilters (fr, value, fl);
-                            if (!fl.isEmpty()) {
-                                List<Filter> old = filters.get(facet);
-                                if (old != null)
-                                    old.addAll(fl);
-                                else
-                                    filters.put(facet, fl);
-                                remove.add(f);
+                    if (facet.charAt(0) == '@') {
+                        // numeric range via syntax @field/INDEX; currently
+                        // only handle Long range
+                        // should really cache this !
+                        AbstractRangeField arf = null;
+                        try {
+                            arf = new LongRangeField
+                                (this, options.kind, facet.substring(1));
+                        }
+                        catch (NumberFormatException ex) {
+                            try {
+                                arf = new IntRangeField
+                                    (this, options.kind, facet.substring(1));
+                            }
+                            catch (NumberFormatException exx) {
+                                //
+                                Logger.error("Can't identify field \""
+                                             +facet+"\" type!", ex);
+                            }
+                        }
+
+                        if (arf != null) {
+                            List<Filter> fl = filters.get(arf.getField());
+                            if (fl == null) {
+                                filters.put(arf.getField(),
+                                            fl = new ArrayList<>());
+                            }
+                            
+                            try {
+                                int bin = Integer.parseInt(value);
+                                fl.add(arf.getFilter(bin));
+                                Logger.debug("Range filter \""+arf.getField()
+                                             +"\": ["+arf.getStart(bin)+","
+                                             +arf.getEnd(bin)+") = "
+                                             +arf.getCount(bin));
+                            }
+                            catch (NumberFormatException ex) {
+                                Logger.error("Bogus bin index: "+value, ex);
+                            }
+                        }
+                        remove.add(f);
+                    }
+                    else {
+                        for (SearchOptions.FacetRange fr
+                                 : options.rangeFacets) {
+                            if (facet.equals(fr.field)) {
+                                List<Filter> fl = new ArrayList<>();
+                                createRangeFilters (fr, value, fl);
+                                if (!fl.isEmpty()) {
+                                    List<Filter> old = filters.get(facet);
+                                    if (old != null)
+                                        old.addAll(fl);
+                                    else
+                                        filters.put(facet, fl);
+                                    remove.add(f);
+                                }
                             }
                         }
                     }

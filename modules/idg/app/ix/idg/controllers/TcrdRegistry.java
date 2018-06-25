@@ -1460,7 +1460,9 @@ public class TcrdRegistry extends Controller implements Commons {
                     p = parents.get(p);
                 //Logger.debug("PANTHER "+me.getKey()+" "+d);
 
-                if (path[d] != null) {
+                if (d >= path.length) {
+                }
+                else if (path[d] != null) {
                     // ignore this lineage!
                 }
                 else {
@@ -1626,11 +1628,11 @@ public class TcrdRegistry extends Controller implements Commons {
             }
         }
 
-        void addDrugs (Target target, long tid, Keyword tcrd)
+        int addDrugs (Target target, long tid, Keyword tcrd)
             throws Exception {
+            int count = 0;            
             pstm17.setLong(1, tid);
             try (ResultSet rset = pstm17.executeQuery()) {
-                int count = 0;
                 while (rset.next()) {
                     String chemblId = rset.getString("cmpd_chemblid");
                     String drug = rset.getString("drug");
@@ -1803,6 +1805,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 Logger.debug("Target " + target.id + " has "
                              + count +" drug(s)!");
             }
+            return count;
         }
 
         void addTINX(Target target, long tid) throws Exception {
@@ -1826,7 +1829,7 @@ public class TcrdRegistry extends Controller implements Commons {
             }
         }
         
-        void addChembl (Target target, long tid, Keyword tcrd)
+        int addChembl (Target target, long tid, Keyword tcrd)
             throws Exception {
             Keyword source = datasources.get(ChEMBL);
             if (source == null) {
@@ -1835,9 +1838,9 @@ public class TcrdRegistry extends Controller implements Commons {
                 datasources.put(ChEMBL, source);
             }
             
+            int count = 0;            
             pstm16.setLong(1, tid);
             try (ResultSet rset = pstm16.executeQuery()) {
-                int count = 0;
                 Set<String> seen = new HashSet<String>();
                 long start = System.currentTimeMillis();        
                 while (rset.next()) {
@@ -1876,7 +1879,7 @@ public class TcrdRegistry extends Controller implements Commons {
                             struc.save();
                             XRef xref = new XRef (struc);
                             for (Value v : struc.properties)
-                                xref.properties.add(v);
+                                ligand.addIfAbsent(v);
                             xref.save();
                             ligand.links.add(xref);
                             // now index the structure for searching
@@ -1963,6 +1966,10 @@ public class TcrdRegistry extends Controller implements Commons {
                     XRef lref = target.addIfAbsent(new XRef (ligand));
                     lref.addIfAbsent(getKeyword (IDG_LIGAND, ligand.getName()));
                     lref.addIfAbsent(endpoint);
+                    // transfer lychies over
+                    for (Value v : ligand.properties)
+                        if (v.getLabel().startsWith("LyChI"))
+                            lref.addIfAbsent(v);                    
                 
                     tref.properties.add(act);
                     lref.properties.add(act);
@@ -1994,6 +2001,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 Logger.debug("Target "+target.id+" has "+count+" ligand(s)... "
                              +(System.currentTimeMillis()-start)+"ms!");
             }
+            return count;
         }
 
         Disease registerDiseaseIfAbsent
@@ -2624,9 +2632,23 @@ public class TcrdRegistry extends Controller implements Commons {
                 addPubTator (target, t.protein);
                 addPMScore (target, t.protein);
                 //addGrant (target, t.id);
-                addDrugs (target, t.id, t.source);
+                long count = addDrugs (target, t.id, t.source);
+                count += addChembl (target, t.id, t.source);
+                if (count > 0) {
+                    target.properties.add
+                        (new VInt (LIGAND_ACTIVITY_COUNT, count));
+                }
+                else {
+                    switch (target.idgTDL) {
+                    case Tclin:
+                    case Tchem:
+                        Logger.warn(target.idgTDL +" target ("
+                                    +target.accession
+                                    +") has not ligand activities!");
+                        break;
+                    }
+                }
                 addAssay (target, t.protein);
-                addChembl (target, t.id, t.source);
                 addDisease (target, t.id, t.source);
                 addHarmonogram (target, t.protein);
                 addGeneRIF (target, t.protein);

@@ -10,27 +10,28 @@
     @defining(App.getSpecifiedFacets(facets)) { spec =>
        @if(!spec.isEmpty) {
           @if(alert) {
- 	     <div class="alert alert-success alert-dismissible"
-	     	  style="overflow:auto;" role="alert">
-		  <button type="button" class="close" data-dismiss="alert"
-		  		onclick="dismissQuery()" aria-label="Close">
-			<span aria-hidden="true">&times;</span>
-		  </button>
-	  }
-          @for(f <- spec) {
-	      <button style="margin-top:2px;" class="btn btn-primary"
+         <div class="alert alert-success alert-dismissible"
+              style="overflow:auto;" role="alert">
+          <button type="button" class="close" data-dismiss="alert"
+                onclick="dismissQuery()" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+         }
+         @for(f <- spec) {
+             @defining(Math.max(0,f.indexOf('/'))) { pos => 
+              <button style="margin-top:2px;" class="btn btn-primary"
                       data-toggle="tooltip"
-		      data-html="true"
-		      data-title='Remove filter <strong>@f.substring(0,f.indexOf('/'))</strong><p><em>@f.substring(f.indexOf('/')+1)</em>'
-	      	      onclick="removeFacet('@f')">
-	         @f.substring(0,f.indexOf('/'))&nbsp;
-		 <span class="badge">@f.substring(f.indexOf('/')+1)</span>
-	         <span class="fa fa-remove" aria-hidden="true"></span>
-	      </button>
-	  }
-	  @if(alert) {
-	    </div>
-	  }
+                      data-html="true"
+                      data-title='Remove filter <strong>@f.substring(0,pos)</strong><p><em>@f.substring(pos+1)</em>'
+                  onclick="removeFacet('@f')">@f.substring(0, pos)&nbsp;
+                <span class="badge">@f.substring(pos+1)</span>
+                <span class="fa fa-remove" aria-hidden="true"></span>
+              </button>
+              }
+         }
+         @if(alert) {
+           </div>
+         }
        }
     }
 }
@@ -75,122 +76,122 @@
       } else {
       <div class="col-md-12">
       }
-      @if(total > 0) {	
+      @if(total > 0) {  
          @carousel
       }
       
       @defining(App.getUnspecifiedFacets(facets)) { unspecf =>
          @if(request().getQueryString("q") != null || !unspecf.isEmpty()) {
-	  <div style="overflow:auto;"
-	    @if(total > 0) {
-	      class="alert alert-success alert-dismissible"
-	    } else {
-	      class="alert alert-danger alert-dismissible"
-	    }
-	  role="alert">
+      <div style="overflow:auto;"
+        @if(total > 0) {
+          class="alert alert-success alert-dismissible"
+        } else {
+          class="alert alert-danger alert-dismissible"
+        }
+      role="alert">
           <button type="button" class="close" data-dismiss="alert"
-		onclick="dismissQuery()"
-		aria-label="Close">
-	  <span aria-hidden="true">&times;</span>
-	</button>
-	@request().getQueryString("type") match {
+        onclick="dismissQuery()"
+        aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+    @request().getQueryString("type") match {
            case "sequence" => {
-	       @defining(request.getQueryString("q")) { q =>
- 	          <button style="margin-top:2px;" class="btn btn-danger"
-		        data-toggle="tooltip"
-			data-animation="true"
-           		data-trigger="click hover focus"
-           		data-title="Remove sequence query"
-	   		data-html="true"
-	      	        onclick="removeParams('q','type','identity')">
-		     Sequence Query <span class="badge">@ix.ncats.controllers.App.getSequence(q, 50) &ge; @request.getQueryString("identity")<div id="searching"></div></span> <span class="fa fa-remove" aria-hidden="true"></span>
-	          </button>
-		  @facetsummary(false)
+           @defining(request.getQueryString("q")) { q =>
+              <button style="margin-top:2px;" class="btn btn-danger"
+                data-toggle="tooltip"
+            data-animation="true"
+                data-trigger="click hover focus"
+                data-title="Remove sequence query"
+            data-html="true"
+                    onclick="removeParams('q','type','identity')">
+             Sequence Query <span class="badge">@ix.ncats.controllers.App.getSequence(q, 50) &ge; @request.getQueryString("identity")<div id="searching"></div></span> <span class="fa fa-remove" aria-hidden="true"></span>
+              </button>
+          @facetsummary(false)
                }
-	   }
+       }
            case "batch" => {
-	      <span><h4>Batch Query:&nbsp;
-		  <code>@ix.ncats.controllers.App.getPayload(request().getQueryString("q"), 50)</code></h4></span> <div id="searching"></div>
-	    }
-  	   case "substructure" => {
-	       @defining(request.getQueryString("q")) { q =>
- 	          <button style="margin-top:2px;" class="btn btn-danger"
-		        data-toggle="popover"
-			data-animation="true"
-           		data-placement="bottom"
-           		data-trigger="click hover focus"
-           		data-title=""
-	   		data-html="true"
-           		data-content="<img src='@ix.ncats.controllers.routes.App.render(q,150)'>"
-	      	      onclick="removeParams('q','type')">
-		     Substructure Query <span class="badge">@q <div id="searching"></div></span> <span class="fa fa-remove" aria-hidden="true"></span>
-	          </button>
-		  @facetsummary(false)
+          <span><h4>Batch Query:&nbsp;
+          <code>@ix.ncats.controllers.App.getPayload(request().getQueryString("q"), 50)</code></h4></span> <div id="searching"></div>
+        }
+       case "substructure" => {
+           @defining(request.getQueryString("q")) { q =>
+              <button style="margin-top:2px;" class="btn btn-danger"
+                data-toggle="popover"
+            data-animation="true"
+                data-placement="bottom"
+                data-trigger="click hover focus"
+                data-title=""
+            data-html="true"
+                data-content="<img src='@ix.ncats.controllers.routes.App.render(q,150)'>"
+                  onclick="removeParams('q','type')">
+             Substructure Query <span class="badge">@q <div id="searching"></div></span> <span class="fa fa-remove" aria-hidden="true"></span>
+              </button>
+          @facetsummary(false)
                }
-	   }
+       }
            case "similarity" => {
-	      @defining(request.getQueryString("q")) { q =>
- 	          <button style="margin-top:2px;" class="btn btn-danger"
-		        data-toggle="popover"
-			data-animation="true"
-           		data-placement="bottom"
-           		data-trigger="click hover focus"
-           		data-title=""
-	   		data-html="true"
-           		data-content="<img src='@ix.ncats.controllers.routes.App.render(q,150)'>"
-	      	      onclick="removeParams('q','type','cutoff')">
-		     Similarity Query <span class="badge">@q &ge; @request.getQueryString("cutoff") <div id="searching"></div></span> <span class="fa fa-remove" aria-hidden="true"></span>
-	          </button>
-		  @facetsummary(false)
-	      }
-	   }
+          @defining(request.getQueryString("q")) { q =>
+              <button style="margin-top:2px;" class="btn btn-danger"
+                data-toggle="popover"
+            data-animation="true"
+                data-placement="bottom"
+                data-trigger="click hover focus"
+                data-title=""
+            data-html="true"
+                data-content="<img src='@ix.ncats.controllers.routes.App.render(q,150)'>"
+                  onclick="removeParams('q','type','cutoff')">
+             Similarity Query <span class="badge">@q &ge; @request.getQueryString("cutoff") <div id="searching"></div></span> <span class="fa fa-remove" aria-hidden="true"></span>
+              </button>
+          @facetsummary(false)
+          }
+       }
            case _ => {
-	     @defining(request.getQueryString("q")){ q =>
-	        @if(q != null) {
-   	          <button style="margin-top:2px;" class="btn btn-danger"
+         @defining(request.getQueryString("q")){ q =>
+            @if(q != null) {
+              <button style="margin-top:2px;" class="btn btn-danger"
                       data-toggle="tooltip"
-		      data-html="true"
-		      data-title="Remove query <em>@q</em>"
-	      	      onclick="removeParams('q')">
-		     Query <span class="badge">@q</span>
-	             <span class="fa fa-remove" aria-hidden="true"></span>
-	          </button>
-	      
+              data-html="true"
+              data-title="Remove query <em>@q</em>"
+                  onclick="removeParams('q')">
+             Query <span class="badge">@q</span>
+                 <span class="fa fa-remove" aria-hidden="true"></span>
+              </button>
+          
                   @if(total == 0) {
                       <span  class="text-center" style="color: #000000;"><h4>Didn't find what you're looking for?
                          <a href="mailto:pharos@@mail.nih.gov?subject=Empty result for query '@request().uri'" class="alert-link">Contact us</a></h4></span>
                   } else {
-	              @facetsummary(false)
-	          }
-               } else {
-	         @for(f <- unspecf) {
-	              <span><h4>@f.substring(0,f.indexOf('/')):&nbsp;<code>@f.substring(f.indexOf('/')+1)</code></h4></span>
-	         }
-	      }
-	    }
-          }
-	}
+                  @facetsummary(false)
+                  }
+             } else {
+                @for(f <- unspecf) {
+                  <span><h4>@f.substring(0,Math.max(0,f.indexOf('/'))):&nbsp;<code>@f.substring(f.indexOf('/')+1)</code></h4></span>
+                }
+             }
+           }
+        }
+    }
         </div>
         } else {
-	  @facetsummary(true) 
+      @facetsummary(true) 
         }
       }
 
       @if(total > 0) {
           @pagination(current, rows, total, pages) {
-	    <h3>
-	      @trailer
-	    </h3>
-	  }
+        <h3>
+          @trailer
+        </h3>
+      }
       }
 
       <div class="panel panel-default"
-		 style="border:0; box-shadow:none;">
-	  @content
+         style="border:0; box-shadow:none;">
+      @content
       </div>
-	@if(pages.length > 1) {
-	  @pagination(current, rows, total, pages)(HtmlFormat.empty)
-	}
+    @if(pages.length > 1) {
+      @pagination(current, rows, total, pages)(HtmlFormat.empty)
+    }
       </div>
    </div>
 </div>
@@ -198,8 +199,8 @@
    <div class="modal-dialog">
      <div class="modal-content">
          <div class="modal-body">
-   	    <div id="loading-progress"></div>
-	 </div>
+        <div id="loading-progress"></div>
+     </div>
      </div>
    </div>
 </div>
@@ -218,14 +219,14 @@ function removeParams () {
     var q = [];
     location.search.substr(1).split("&").forEach(function(item) {
         var p = decodeURIComponent(item.split("=")[0]);
-	console.log('..'+p);
-	if (p in args) {
-	   console.log('removing '+item);
-	}
-	else {
-	   //console.log('keeping '+item);
-	   q.push(item);
-	}
+    console.log('..'+p);
+    if (p in args) {
+       console.log('removing '+item);
+    }
+    else {
+       //console.log('keeping '+item);
+       q.push(item);
+    }
     });
     var url = location.href.split("?")[0];
     if (q.length > 0) {
@@ -244,20 +245,20 @@ function removeFacet (facet) {
     var q = [];
     location.search.substr(1).split("&").forEach(function(item) {
         var s = item.split("="),
-	    sk = decodeURIComponent(s[0]),
-	    sv = decodeURIComponent(s[1]).replace(/\+/g,' ');
-	//console.log('sk='+sk+' sv='+sv);
-	if (sk == 'facet' && sv.startsWith(k)) {
+        sk = decodeURIComponent(s[0]),
+        sv = decodeURIComponent(s[1]).replace(/\+/g,' ');
+    //console.log('sk='+sk+' sv='+sv);
+    if (sk == 'facet' && sv.startsWith(k)) {
            if (v == sv.split("/")[1]) {
-	      // remove
-	   }
-	   else {
-	      q.push(item);
-	   }
+          // remove
+       }
+       else {
+          q.push(item);
+       }
         }
-	else {
+    else {
            q.push(item);
-	}
+    }
     });
     var url = location.href.split("?")[0];
     if (q.length > 0) {
@@ -274,59 +275,59 @@ $(document).ready(function () {
     @defining(App.checkStatus(kind)) { status =>
       @if(status != null) {
          $('#searching')
-		.html('<i class="fa fa-spinner fa-spin"></i> searching...');
+        .html('<i class="fa fa-spinner fa-spin"></i> searching...');
 
          var delay = 0;
          var checkStatus;
-	 var timer;
+     var timer;
 
          $('#loading').on('hidden.bs.modal', function (e) {
-	     console.log('closing load dialog');
- 	     window.clearInterval(timer);
-	     location.reload(true);
+         console.log('closing load dialog');
+         window.clearInterval(timer);
+         location.reload(true);
          });
 
-	 
-	 checkStatus = function () {
-	     if (delay == 0) {
-	        console.log('Starting timer...');
-		window.clearInterval(timer);
-		delay = 2000;
-	        timer = window.setInterval(checkStatus, delay);
-	     }
+     
+     checkStatus = function () {
+         if (delay == 0) {
+            console.log('Starting timer...');
+        window.clearInterval(timer);
+        delay = 2000;
+            timer = window.setInterval(checkStatus, delay);
+         }
 
-	     var url = '@status'+'@App.queryString("cutoff")';
-	     console.log(url);
-      	     $.ajax({
+         var url = '@status'+'@App.queryString("cutoff")';
+         console.log(url);
+             $.ajax({
                url: url,
                success: function(data) {
-	         if (data.status == 'Done' || data.status == 'Failed') {
-		    window.clearInterval(timer);
+             if (data.status == 'Done' || data.status == 'Failed') {
+            window.clearInterval(timer);
                     $('#searching').html('');
-       	            $('#loading-progress').html('');
+                    $('#loading-progress').html('');
                     if(data.count >= @total) {
                         //location.reload(true);
-	                $('#loading').modal('hide');
-		    }
-		 } else {
-	            //console.log('status '+data.count);
-		    $('#searching').html('<i class="fa fa-spinner fa-spin"></i> searching... '+data.count+' matches');
-		     if (@Math.min(current*rows,total) > data.count) {
-  	                $('#loading').modal('show');
-		     }
-		     if (data.total) {
-	  	        var pct = Math.floor(100.0*data.count / data.total+0.5);
-		        $('#loading-progress').html('<p align="right">('+data.count+'/'+data.total+')</p><div class="progress"><div class="progress-bar" role="progressbar" aria-valuenow="'+pct+'" aria-valuemin="0" aria-valuemax="100" style="width: '+pct+'%;">'+pct+'%</div></div>');
-		     }
-		 }
-	       },
+                    $('#loading').modal('hide');
+            }
+         } else {
+                //console.log('status '+data.count);
+            $('#searching').html('<i class="fa fa-spinner fa-spin"></i> searching... '+data.count+' matches');
+             if (@Math.min(current*rows,total) > data.count) {
+                    $('#loading').modal('show');
+             }
+             if (data.total) {
+                var pct = Math.floor(100.0*data.count / data.total+0.5);
+                $('#loading-progress').html('<p align="right">('+data.count+'/'+data.total+')</p><div class="progress"><div class="progress-bar" role="progressbar" aria-valuenow="'+pct+'" aria-valuemin="0" aria-valuemax="100" style="width: '+pct+'%;">'+pct+'%</div></div>');
+             }
+         }
+           },
                error: function () {
-	         window.clearInterval(timer);
-	       }
+             window.clearInterval(timer);
+           }
              });
          };
 
-	 timer = window.setInterval(checkStatus, delay);
+     timer = window.setInterval(checkStatus, delay);
       }
    }
 });
