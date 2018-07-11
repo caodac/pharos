@@ -133,18 +133,20 @@ Description - description from Uniprot
 Development Level - target development level (e.g., Tdark)
 DTOClass - Drug Target Ontology assigned to the target
 PantherClass - Panther Ontology assigned to the target
-ChemblClass - target class from ChEMBL
 Novelty - novelty score
 Target Family - target family (e.g., kinase, GPCR)
-Function -
 PatentCount - number of patents referring to this target
 AntibodyCount - number of antibodies available for this target
 PubmedCount - number of articles associated with the target (obtained
 via text mining)
-JensenPubmedScore - derived from text mining a set of Pubmed
+Knowledge Availability - an indicator of the total knowledge known
+about the specific target
+PubmedScore - derived from text mining a set of Pubmed
 abstracts. See https://pharos.nih.gov/idg/pmscore for more details
-PubtatorScore - a score characterizing the occurence of the target in biomedical literature. See https://www.ncbi.nlm.nih.gov/CBBresearch/Lu/Demo/PubTator/
-for more details
+PubtatorScore - a score characterizing the occurence of the target in
+biomedical literature. See
+https://www.ncbi.nlm.nih.gov/CBBresearch/Lu/Demo/PubTator/ for more
+details
 PMIDS - comma separated list of Pubmed IDs for the associated articles
 
 uniprot-keywords.csv

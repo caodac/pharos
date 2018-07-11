@@ -86,7 +86,8 @@ public class DownloadEntities extends Controller {
                     Logger.debug("Preparing to generate file "+file+" for "
                                  +targets.size()+" target(s)...");
                     FileOutputStream fos = new FileOutputStream (file);
-                    downloadTargets (request, fos, targets);
+                    downloadTargets (request, "export-target-"+status.key,
+                                     fos, targets);
                     fos.close();
                     Logger.debug("File complete!");
                 }
@@ -151,15 +152,18 @@ public class DownloadEntities extends Controller {
         return sb.toString();
     }
 
-    static String diseaseFromTarget(Target t) throws Exception {
+    static String diseaseFromTarget(Http.Request request, Target t)
+        throws Exception {
         StringBuilder sb2 = new StringBuilder();
-        String turl = routes.IDGApp.target(csvQuote(IDGApp.getId(t))).toString();
+        String turl = Global.getHost(request)
+            + routes.IDGApp.target(csvQuote(IDGApp.getId(t)));
         String uniprot = csvQuote(IDGApp.getId(t));
 
         Map<String, List<IDGApp.DiseaseRelevance>> diseases = 
             IDGApp.getDiseases(t);
-        for (List<IDGApp.DiseaseRelevance> values : diseases.values()) {
-            for (IDGApp.DiseaseRelevance dr: values) {
+        for (Map.Entry<String, List<IDGApp.DiseaseRelevance>> me
+                 : diseases.entrySet()) {
+            for (IDGApp.DiseaseRelevance dr: me.getValue()) {
                 sb2.append(turl).append(",").
                     append(uniprot).append(",").
                     append(IDGApp.getId(dr.disease)).append(",").
@@ -167,19 +171,23 @@ public class DownloadEntities extends Controller {
                     append(csvQuote(dr.disease.getDescription())).append(",").
                     append(csvQuote(dr.zscore)).append(",").
                     append(dr.conf).append(",").
-                    append("http://diseases.jensenlab.org/Entity?documents=10&type1=9606&id2=" + IDGApp.getId(dr.disease) + "&id1=" + t.getSynonym(Commons.STRING_ID).term).
+                    append(csvQuote(me.getKey())).
                     append("\n");
             }
         }
         return sb2.toString();
     }
 
-    static String exprFromTarget(Target t) {
+    static String exprFromTarget(Http.Request request, Target t) {
         StringBuilder sb2 = new StringBuilder();
-        String turl = routes.IDGApp.target(csvQuote(IDGApp.getId(t))).toString();
+        String turl = Global.getHost(request)
+            + routes.IDGApp.target(csvQuote(IDGApp.getId(t)));
         String uniprot = csvQuote(IDGApp.getId(t));
 
-        String[] exprSources = new String[]{Commons.IDG_EXPR, Commons.GTEx_EXPR, Commons.HPM_EXPR, Commons.HPA_RNA_EXPR};
+        String[] exprSources = new String[]{Commons.IDG_EXPR,
+                                            Commons.GTEx_EXPR,
+                                            Commons.HPM_EXPR,
+                                            Commons.HPA_RNA_EXPR};
         for (String source : exprSources) {
             List<Expression> exprs = ExpressionApp.getLinkedExpr(t, source);
             for (Expression expr : exprs) {
@@ -200,26 +208,29 @@ public class DownloadEntities extends Controller {
     static String csvFromPublication(Publication pub) {
         return String.valueOf(pub.pmid) + "," + pub.pmcid + "," + pub.doi + "," + csvQuote(pub.title) + "," + csvQuote(pub.abstractText);
     }
-    static String pubsFromTarget(Target t) throws Exception {
+    static String pubsFromTarget(Http.Request request, Target t)
+        throws Exception {
         StringBuilder sb2 = new StringBuilder();
-        String turl = routes.IDGApp.target(csvQuote(IDGApp.getId(t))).toString();
+        String turl = Global.getHost(request)
+            +routes.IDGApp.target(csvQuote(IDGApp.getId(t)));
         String uniprot = csvQuote(IDGApp.getId(t));
 
         List<Publication> pubs = IDGApp.getPublications(t);
         for (Publication p : pubs) {
             sb2.append(turl).append(",").
-                    append(uniprot).append(",").
-                    append(p.pmid).append(",").
-                    append(csvQuote(p.title)).append(",").
-                    append(csvQuote(p.abstractText)).append(",").
-                    append("\n");
+                append(uniprot).append(",").
+                append(p.pmid).append(",").
+                append(csvQuote(p.title)).append(",").
+                append(csvQuote(p.abstractText)).append(",").
+                append("\n");
         }
         return sb2.toString();
     }
 
-    static String generifFromTarget(Target t) {
+    static String generifFromTarget(Http.Request request, Target t) {
         StringBuilder sb2 = new StringBuilder();
-        String turl = routes.IDGApp.target(csvQuote(IDGApp.getId(t))).toString();
+        String turl = Global.getHost(request)
+            +routes.IDGApp.target(csvQuote(IDGApp.getId(t)));
         String uniprot = csvQuote(IDGApp.getId(t));
 
         List<IDGApp.GeneRIF> rifs = IDGApp.getGeneRIFs(t);
@@ -264,25 +275,27 @@ public class DownloadEntities extends Controller {
         return sb2.toString();
     }
 
-    static String upkwdFromTarget(Target t) {
+    static String upkwdFromTarget(Http.Request request, Target t) {
         StringBuilder sb2 = new StringBuilder();
-        String turl = routes.IDGApp.target(csvQuote(IDGApp.getId(t))).toString();
+        String turl = Global.getHost(request)
+            + routes.IDGApp.target(csvQuote(IDGApp.getId(t)));
         String uniprot = csvQuote(IDGApp.getId(t));
 
         List<Value> props = IDGApp.getProperties(t, Commons.UNIPROT_KEYWORD);
         for (Value prop : props) {
             Keyword kw = (Keyword) prop;
             sb2.append(turl).append(",").
-                    append(uniprot).append(",").
-                    append(csvQuote(kw.getValue())).append(",").
-                    append(kw.href).append("\n");
+                append(uniprot).append(",").
+                append(csvQuote(kw.getValue())).append(",").
+                append(kw.href).append("\n");
         }
         return sb2.toString();
     }
 
-    static String pathwayFromTarget(Target t) {
+    static String pathwayFromTarget(Http.Request request, Target t) {
         StringBuilder sb2 = new StringBuilder();
-        String turl = routes.IDGApp.target(csvQuote(IDGApp.getId(t))).toString();
+        String turl = Global.getHost(request)
+            +routes.IDGApp.target(csvQuote(IDGApp.getId(t)));
         String uniprot = csvQuote(IDGApp.getId(t));
 
         List<Value> props = IDGApp.getProperties(t, "Pathway", 1);
@@ -297,9 +310,10 @@ public class DownloadEntities extends Controller {
         return sb2.toString();
     }
 
-    static String harmonizomeFromTarget(Target t) {
+    static String harmonizomeFromTarget(Http.Request request, Target t) {
         StringBuilder sb2 = new StringBuilder();
-        String turl = routes.IDGApp.target(csvQuote(IDGApp.getId(t))).toString();
+        String turl = Global.getHost(request)
+            +routes.IDGApp.target(csvQuote(IDGApp.getId(t)));
         String uniprot = csvQuote(IDGApp.getId(t));
 
         List<HarmonogramCDF> hg = HarmonogramFactory.finder
@@ -310,30 +324,33 @@ public class DownloadEntities extends Controller {
 
         for (HarmonogramCDF cdf : hg) {
             sb2.append(csvQuote(turl)).append(",").
-                    append(csvQuote(uniprot)).append(",").
-                    append(csvQuote(cdf.getDataSource())).append(",").
-                    append(csvQuote(cdf.getDataSourceUrl())).append(",").
-                    append(csvQuote(cdf.getDataType())).append(",").
-                    append(csvQuote(cdf.getAttrGroup())).append(",").
-                    append(csvQuote(cdf.getAttrType())).append(",").
-                    append(cdf.getCdf()).append("\n");
+                append(csvQuote(uniprot)).append(",").
+                append(csvQuote(cdf.getDataSource())).append(",").
+                append(csvQuote(cdf.getDataSourceUrl())).append(",").
+                append(csvQuote(cdf.getDataType())).append(",").
+                append(csvQuote(cdf.getAttrGroup())).append(",").
+                append(csvQuote(cdf.getAttrType())).append(",").
+                append(cdf.getCdf()).append("\n");
         }
         return sb2.toString();
   }
 
-    static String goFromTarget(Target t) {
+    static String goFromTarget (Http.Request request, Target t) {
         StringBuilder sb2 = new StringBuilder();
-        String turl = routes.IDGApp.target(csvQuote(IDGApp.getId(t))).toString();
+        String turl = Global.getHost(request)
+            +routes.IDGApp.target(csvQuote(IDGApp.getId(t)));
         String uniprot = csvQuote(IDGApp.getId(t));
 
-        String[] go = new String[]{Commons.GO_COMPONENT, Commons.GO_FUNCTION, Commons.GO_PROCESS};
+        String[] go = new String[]{Commons.GO_COMPONENT,
+                                   Commons.GO_FUNCTION,
+                                   Commons.GO_PROCESS};
         for (String goclass : go) {
             List<Value> props = IDGApp.getProperties(t, goclass);
             for (Value prop : props) {
                 sb2.append(turl).append(",").
-                        append(uniprot).append(",").
-                        append(csvQuote(prop.getValue().toString())).append(",").
-                        append(goclass).append("\n");
+                    append(uniprot).append(",").
+                    append(csvQuote(prop.getValue().toString())).append(",").
+                    append(goclass).append("\n");
             }
         }
         return sb2.toString();
@@ -359,6 +376,7 @@ public class DownloadEntities extends Controller {
         String chemblClass = "";
         String dtoClass = "";
         String pantherClass = "";
+        Long pubmedCount = null;        
         for (Value v : t.properties) {
             if (v.label == null) continue;
             if (v.label.startsWith(Commons.DTO_PROTEIN_CLASS))
@@ -367,6 +385,8 @@ public class DownloadEntities extends Controller {
                 pantherClass = ((Keyword) v).getValue();
             else if (v.label.startsWith(Commons.ChEMBL_PROTEIN_CLASS))
                 chemblClass = ((Keyword) v).getValue();
+            else if ("NCBI Gene PubMed Count".equals(v.label))
+                pubmedCount = (Long)v.getValue();
         }
 
         StringBuilder sb = new StringBuilder();
@@ -379,18 +399,21 @@ public class DownloadEntities extends Controller {
             append(csvQuote(t.idgTDL.toString())).append(",").
             append(csvQuote(dtoClass)).append(",").
             append(csvQuote(pantherClass)).append(",").
-            append(csvQuote(chemblClass)).append(",").
             append(csvQuote(t.novelty)).append(",").
             append(csvQuote(t.idgFamily)).append(",").
-            append(csvQuote(function.toString())).append(",").
-            //append(csvQuote(String.valueOf(t.grantCount))).append(",").
-            //append(csvQuote(String.valueOf(t.r01Count))).append(",").
             append(csvQuote(String.valueOf(t.patentCount))).append(",").
             append(csvQuote(String.valueOf(t.antibodyCount))).append(",").
-            append(csvQuote(String.valueOf(t.pubmedCount))).append(",").
-            append(csvQuote(String.valueOf(t.knowledgeAvailability))).append(",").
-            append(csvQuote(String.valueOf(t.jensenScore))).append(",").
-            append(csvQuote(String.valueOf(t.pubTatorScore))).append(",").
+            append(csvQuote(String.valueOf(pubmedCount))).append(",").
+            append(csvQuote(t.knowledgeAvailability != null
+                            ? String.format("%1$.2f",t.knowledgeAvailability)
+                            : "")).append(",").
+            append(csvQuote(t.jensenScore != null
+                            ? String.format("%1$.2f",t.jensenScore)
+                            : "")).append(",").
+            append(csvQuote(t.pubTatorScore != null
+                            ? String.format("%1$.2f",
+                                            Math.pow(10, t.pubTatorScore))
+                            : "")).append(",").
             append(csvQuote(sb2.toString()));
 
         return sb.toString();
@@ -453,14 +476,23 @@ public class DownloadEntities extends Controller {
         return baos.toByteArray();
     }
 
-    static void downloadTargets (Http.Request request, OutputStream os,
-                                 List<Target> targets) throws Exception {
+    static void downloadTargets (Http.Request request,
+                                 OutputStream os, List<Target> targets)
+        throws Exception {
+        downloadTargets (request, null, os, targets);
+    }
+    
+    static void downloadTargets (Http.Request request, String folder,
+                                 OutputStream os, List<Target> targets)
+        throws Exception {
         StringBuilder sb = new StringBuilder();
 
         Logger.debug("generating target info...");
         // basic target info
-        String tmp = "URL,Uniprot ID,GeneSymbol,Name,Description,Development Level,DTOClass,PantherClass,ChemblClass,Novelty,Target Family,Function," +
-            "PatentCount,AntibodyCount,PubmedCount,JensenPubmedScore,PubtatorScore,PMIDs";
+        String tmp = "URL,Uniprot ID,GeneSymbol,Name,Description,"+
+            "Development Level,DTOClass,PantherClass,Novelty,Target Family," +
+            "PatentCount,AntibodyCount,PubmedCount,"+
+            "Knowledge Availability,PubmedScore,PubtatorScore,PMIDs";
         tmp = tmp.replace(",", "\",\"");
         tmp = "\"" + tmp + "\"\n";
         sb.append(tmp);
@@ -477,7 +509,7 @@ public class DownloadEntities extends Controller {
         tmp = "\"" + tmp + "\"\n";
         sb.append(tmp);
         for (Target t : targets) {
-            sb.append(goFromTarget(t));
+            sb.append(goFromTarget(request, t));
         }
         byte[] goFile = sb.toString().getBytes();
 
@@ -489,7 +521,7 @@ public class DownloadEntities extends Controller {
         tmp = "\"" + tmp + "\"\n";
         sb.append(tmp);
         for (Target t : targets) {
-            sb.append(pathwayFromTarget(t));
+            sb.append(pathwayFromTarget(request, t));
         }
         byte[] pathwayFile = sb.toString().getBytes();
 
@@ -500,7 +532,7 @@ public class DownloadEntities extends Controller {
         tmp = "\"" + tmp + "\"\n";
         sb.append(tmp);
         for (Target t : targets) {
-            sb.append(upkwdFromTarget(t));
+            sb.append(upkwdFromTarget(request, t));
         }
         byte[] upkwdFile = sb.toString().getBytes();
 
@@ -524,7 +556,7 @@ public class DownloadEntities extends Controller {
         tmp = "\"" + tmp + "\"\n";
         sb.append(tmp);
         for (Target t : targets) {
-            sb.append(generifFromTarget(t));
+            sb.append(generifFromTarget(request, t));
         }
         byte[] generifFile = sb.toString().getBytes();
 
@@ -536,7 +568,7 @@ public class DownloadEntities extends Controller {
         tmp = "\"" + tmp + "\"\n";
         sb.append(tmp);
         for (Target t : targets) {
-            sb.append(pubsFromTarget(t));
+            sb.append(pubsFromTarget(request, t));
         }
         byte[] pubsFile = sb.toString().getBytes();
 
@@ -548,19 +580,19 @@ public class DownloadEntities extends Controller {
         tmp = "\"" + tmp + "\"\n";
         sb.append(tmp);
         for (Target t : targets) {
-            sb.append(exprFromTarget(t));
+            sb.append(exprFromTarget(request, t));
         }
         byte[] exprFile = sb.toString().getBytes();
 
         Logger.debug("generating diseases...");
         // Diseases
         sb = new StringBuilder();
-        tmp = "URL,Uniprot ID,DOID,Name,Description,ZScore,Confidence,Link";
+        tmp = "URL,Uniprot ID,DOID,Name,Description,ZScore,Confidence,Source";
         tmp = tmp.replace(",", "\",\"");
         tmp = "\"" + tmp + "\"\n";
         sb.append(tmp);
         for (Target t : targets) {
-            sb.append(diseaseFromTarget(t));
+            sb.append(diseaseFromTarget(request, t));
         }
         byte[] diseaseFile = sb.toString().getBytes();
 
@@ -572,63 +604,69 @@ public class DownloadEntities extends Controller {
         tmp = "\"" + tmp + "\"\n";
         sb.append(tmp);
         for (Target t : targets) {
-            sb.append(harmonizomeFromTarget(t));
+            sb.append(harmonizomeFromTarget(request, t));
         }
         byte[] harmonizomeFile = sb.toString().getBytes();
 
         // Generate zip file with the components
+        if (folder == null)
+            folder = "";
+        else if (folder.charAt(folder.length()-1) != '/')
+            folder += '/';
         ZipOutputStream zip = new ZipOutputStream(os);
-        ZipEntry entry = new ZipEntry("targets.csv");
+        ZipEntry entry = new ZipEntry(folder+"targets.csv");
         zip.putNextEntry(entry);
         zip.write(targetFile);
         zip.closeEntry();
 
-        entry = new ZipEntry("goterms.csv");
+        entry = new ZipEntry(folder+"goterms.csv");
         zip.putNextEntry(entry);
         zip.write(goFile);
         zip.closeEntry();
 
-        entry = new ZipEntry("pathways.csv");
+        entry = new ZipEntry(folder+"pathways.csv");
         zip.putNextEntry(entry);
         zip.write(pathwayFile);
         zip.closeEntry();
 
-        entry = new ZipEntry("uniprot-keywords.csv");
+        entry = new ZipEntry(folder+"uniprot-keywords.csv");
         zip.putNextEntry(entry);
         zip.write(upkwdFile);
         zip.closeEntry();
 
-        entry = new ZipEntry("ligands.csv");
+        /*
+        entry = new ZipEntry(folder+"ligands.csv");
         zip.putNextEntry(entry);
         zip.write(ligandFile);
         zip.closeEntry();
+        */
 
-        entry = new ZipEntry("generifs.csv");
+        entry = new ZipEntry(folder+"generifs.csv");
         zip.putNextEntry(entry);
         zip.write(generifFile);
         zip.closeEntry();
 
-        entry = new ZipEntry("publications.csv");
+        entry = new ZipEntry(folder+"publications.csv");
         zip.putNextEntry(entry);
         zip.write(pubsFile);
         zip.closeEntry();
 
-        entry = new ZipEntry("expression.csv");
+        entry = new ZipEntry(folder+"expression.csv");
         zip.putNextEntry(entry);
         zip.write(exprFile);
         zip.closeEntry();
 
-        entry = new ZipEntry("diseases.csv");
+        entry = new ZipEntry(folder+"diseases.csv");
         zip.putNextEntry(entry);
         zip.write(diseaseFile);
         zip.closeEntry();
 
-        entry = new ZipEntry("harmonizome.csv");
+        entry = new ZipEntry(folder+"harmonizome.csv");
         zip.putNextEntry(entry);
         zip.write(harmonizomeFile);
         zip.closeEntry();
 
-        entry = new ZipEntry("README.txt");
+        entry = new ZipEntry(folder+"README.txt");
         zip.putNextEntry(entry);
         zip.write(getREADME(request));
         zip.closeEntry();
