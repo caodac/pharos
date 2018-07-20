@@ -21,6 +21,7 @@ import com.google.cloud.firestore.DocumentChange;
 
 import java.util.*;
 import java.io.*;
+import java.beans.*;
 
 import play.Logger;
 import play.Plugin;
@@ -30,7 +31,8 @@ public class FirebaseStore extends Plugin {
     private final Application app;
 
     Firestore db;
-
+    final PropertyChangeSupport pcs = new PropertyChangeSupport (this);
+    
     public static class Doc implements Comparable<Doc> {
         final DocumentReference ref;
         final Map<String, Object> data;
@@ -82,10 +84,18 @@ public class FirebaseStore extends Plugin {
     public static class Store implements EventListener<QuerySnapshot> {
         final CollectionReference ref;
         final ListenerRegistration listener;
+        final PropertyChangeSupport pcs;
         
-        Store (Firestore db, String name) {
+        Store (PropertyChangeSupport pcs, Firestore db, String name) {
             ref = db.collection(name);
             listener = ref.addSnapshotListener(this);
+            this.pcs = pcs;
+        }
+
+        Store (PropertyChangeSupport pcs, CollectionReference ref) {
+            this.ref = ref;
+            listener = ref.addSnapshotListener(this);
+            this.pcs = pcs;
         }
 
         protected Doc document (DocumentReference dref) throws Exception {
@@ -129,17 +139,46 @@ public class FirebaseStore extends Plugin {
                 case ADDED:
                     Logger.debug("++ Doc added: "+dc.getDocument().getId()
                                  +" "+dc.getDocument().getCreateTime());
+                    if (pcs != null && pcs.hasListeners("doc-added")) {
+                        try {
+                            Doc doc = new Doc (dc.getDocument().getReference());
+                            pcs.firePropertyChange("doc-added", null, doc);
+                        }
+                        catch (Exception exx) {
+                            Logger.error("Can't retrieve doc "
+                                         +dc.getDocument().getId(), exx);
+                        }
+                    }
                     break;
                     
                 case MODIFIED:
                     Logger.debug("++ Doc updated: "+dc.getDocument().getId()
                                  +" "+dc.getDocument().getUpdateTime());
-                    
+                    if (pcs != null && pcs.hasListeners("doc-updated")) {
+                        try {
+                            Doc doc = new Doc (dc.getDocument().getReference());
+                            pcs.firePropertyChange("doc-updated", doc, doc);
+                        }
+                        catch (Exception exx) {
+                            Logger.error("Can't retrieve doc "
+                                         +dc.getDocument().getId(), exx);
+                        }
+                    }
                     break;
                     
                 case REMOVED:
                     Logger.debug("++ Doc deleted: "+dc.getDocument().getId()
                                  +" "+dc.getDocument().getUpdateTime());
+                    if (pcs != null && pcs.hasListeners("doc-deleted")) {
+                        try {
+                            Doc doc = new Doc (dc.getDocument().getReference());
+                            pcs.firePropertyChange("doc-deleted", doc, null);
+                        }
+                        catch (Exception exx) {
+                            Logger.error("Can't retrieve doc "
+                                         +dc.getDocument().getId(), exx);
+                        }
+                    }
                     break;
                 }
             }
@@ -155,32 +194,51 @@ public class FirebaseStore extends Plugin {
     }
 
     public void onStart () {
-        String file = app.configuration().getString("ix.admin.firebase", null);
+        String file = app.configuration()
+            .getString("ix.admin.firebase.auth", null);
         Logger.info("Loading plugin "+getClass().getName()
                     +"... credentials="+file);
         if (file != null && !file.equals("")) {
             try {
-                GoogleCredentials credentials = GoogleCredentials.
-                    fromStream(new FileInputStream (app.getFile(file)));
-                FirebaseOptions options = new FirebaseOptions.Builder()
-                    .setCredentials(credentials)
-                    .build();
-                FirebaseApp.initializeApp(options);
-                db = FirestoreClient.getFirestore();
-                
+                FirebaseApp fapp = null;
+                if (FirebaseApp.getApps().isEmpty()) {
+                    GoogleCredentials credentials = GoogleCredentials.
+                        fromStream(new FileInputStream (app.getFile(file)));
+                    
+                    String uid = app.configuration()
+                        .getString("ix.admin.firebase.uid", null);
+                    Map<String, Object> auth = null;
+                    if (uid != null) {
+                        auth = new HashMap<>();
+                        auth.put("uid", uid);
+                    }
+                    
+                    FirebaseOptions options = new FirebaseOptions.Builder()
+                        .setCredentials(credentials)
+                        .setDatabaseUrl(app.configuration()
+                                        .getString("ix.admin.firebase.url",
+                                                   null))
+                        .setDatabaseAuthVariableOverride(auth)
+                        .build();
+                    
+                    fapp = FirebaseApp.initializeApp
+                        (options, FirebaseStore.class.getName());
+                }
+                else {
+                    fapp = FirebaseApp.getInstance
+                        (FirebaseStore.class.getName());
+                }
+
+                db = FirestoreClient.getFirestore(fapp);
                 Logger.debug("## firebase loaded: db="+db);
-                /*
-                new Store(db, "public").document()
-                    .put("field_1", 1)
-                    .put("field_2", 2.34)
-                    .put("field_3", "this is a string field")
-                    .put("field_4", false)
-                    .put("field_5", System.currentTimeMillis())
-                    .save();
-                */
-                List<Doc> docs = new Store(db, "public").documents();
-                for (Doc d : docs)
-                    Logger.debug("++ doc "+d.getId()+" "+d.getCreateTime());
+                for (CollectionReference ref : db.getCollections()) {
+                    Logger.debug("... collection /"+ref.getId());
+                    /*
+                    Store store = new Store (pcs, ref);
+                    store.documents();
+                    store.shutdown();
+                    */
+                }
             }
             catch (Exception ex) {
                 Logger.error("Unable to initialize Firebase!", ex);
@@ -194,7 +252,7 @@ public class FirebaseStore extends Plugin {
     public void onStop () {
         if (db != null) {
             try {
-                db.close();
+                //db.close();
             }
             catch (Exception ex) {
                 Logger.error("Unable to close firebase", ex);
@@ -207,11 +265,18 @@ public class FirebaseStore extends Plugin {
         if (db == null)
             throw new RuntimeException ("No firebase instance available!");
         try {
-            return new Store (db, name);
+            return new Store (pcs, db, name);
         }
         catch (Exception ex) {
             throw new RuntimeException (ex);
         }
     }
-}
 
+    public void addPropertyChangeListener (PropertyChangeListener l) {
+        pcs.addPropertyChangeListener(l);
+    }
+    
+    public void removePropertyChangeListener (PropertyChangeListener l) {
+        pcs.removePropertyChangeListener(l);
+    }
+}

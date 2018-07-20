@@ -4548,4 +4548,8 @@ public class IDGApp extends App implements Commons {
         }
         return ver;
     }
+
+    public static Result rfa () {
+        return ok (ix.idg.views.html.rfa.render());
+    }
 }

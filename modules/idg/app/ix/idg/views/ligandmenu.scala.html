@@ -9,6 +9,7 @@
         <li role="presentation"><a href="@ix.idg.controllers.routes.IDGApp.diseases(null, 10, 1)">Diseases</a></li>
         <li role="presentation"><a href="@ix.idg.controllers.routes.IDGApp.targets(null, 10, 1)">Targets</a></li>
         <li role="presentation" class="active"><a href="#">Ligands</a></li>
+        <li role="presentation"><a href="@ix.idg.controllers.routes.IDGApp.rfa">RFA</a></li>
         <li role="presentation"><a href="@ix.idg.controllers.routes.IDGApp.api">API</a></li>
         @helpoptions("")
     </ul>
@@ -17,8 +18,8 @@
         action="@ix.idg.controllers.routes.IDGApp.search(null)">
   <div class="form-group">      
     <input type="text" id="search-header-field" name="q"
-	   style="width:200px;"
-	   class="typeahead form-control" placeholder="Search..."/>
+       style="width:200px;"
+       class="typeahead form-control" placeholder="Search..."/>
     <input type="hidden" name="kind" value="ix.idg.models.Ligand">
 
     <div class="dropdown pull-right">
@@ -59,7 +60,7 @@
            $.get(url, function (mol) {
               //console.log(mol);
               marvinSketcherInstance.importStructure('mol', mol);
-	   });
+       });
         }
      });
   }

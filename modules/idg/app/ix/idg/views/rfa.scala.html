@@ -1,0 +1,78 @@
+
+@ix.ncats.views.html.main("IDG RFA"){
+<link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/main.css")'/>
+<script src="https://www.gstatic.com/firebasejs/4.13.0/firebase.js"></script>
+<script src="https://www.gstatic.com/firebasejs/4.13.0/firebase-firestore.js"></script>
+<script>
+        // Initialize Firebase
+        var config = {
+            apiKey: "AIzaSyAT2FJEc7Ju_yqwZ8xhEK9HBbyc010th78",
+            authDomain: "ncatsidg.firebaseapp.com",
+            databaseURL: "https://ncatsidg.firebaseio.com",
+            projectId: "ncatsidg",
+            storageBucket: "ncatsidg.appspot.com",
+            messagingSenderId: "511313064782"
+        };
+    firebase.initializeApp(config);
+</script>
+@menu("RFA")
+}(HtmlFormat.empty){
+<div class="container-fluid" style="padding-top:50px;">
+  <div class="page-header">
+    <h1>Available IDG Funding Opportunies</h1>
+  </div>
+  <div id="rfa-panel">
+  </div>
+</div>
+}
+
+<script>
+    var firestore = firebase.firestore();
+    firestore.settings({
+        timestampsInSnapshots: true
+    });
+
+    function addrfa (id, d) {
+      $('#rfa-panel').append('<div class="row" id="'+id+'">'
+           +'<div class="col-md-8">'
+           +'  <div class="panel panel-default">'
+           +'    <div class="panel-heading">'
+           +'     <h3 class="panel-title"><a href="'+d.url+'">'+d.rfaid+'</a> <span class="pull-right">'+d.date+'</span><i class="fa fa-external-link"></i></h3>'
+           +'    </div>'
+           +'    <div class="panel-body">'
+           +d.title
+           +'    </div>'
+           +'    <div class="panel-footer">'
+           +'     <a href="@ix.idg.controllers.routes.IDGApp.targets()'+'?facet=Collection/'+d.rfaid+'">'+d.count+' targets</a>'
+           +'    </div>'
+           +'  </div>'
+           +'</div></div>');
+    }
+    
+    firestore.collection('targets')
+       .orderBy('index', 'desc')
+       .onSnapshot(function (snapshot) {
+          snapshot.docChanges.forEach(function (change) {
+            if (change.type === 'added') {
+                console.log('++ added: '+change.doc.id);
+                var d = change.doc.data();
+                if (d.rfaid) {
+                   addrfa(change.doc.id, d);
+                }
+            }
+            else if (change.type === 'modified') {
+                console.log('++ modified: '+change.doc.id);
+                var d = change.doc.data();
+                $('#'+change.doc.id).remove();
+                if (d.rfaid) {
+                   addrfa(change.doc.id, d);
+                }
+            }
+            else if (change.type === 'removed') {
+                console.log('++ removed: '+change.doc.id);
+                var d = change.doc.data();
+                $('#'+change.doc.id).remove();
+            }
+        });
+    });
+</script>

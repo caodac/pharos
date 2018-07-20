@@ -9,6 +9,7 @@
         <li role="presentation" class="active"><a href="#">Diseases</a></li>
         <li role="presentation"><a href="@ix.idg.controllers.routes.IDGApp.targets(null, 10, 1)">Targets</a></li>
         <li role="presentation"><a href="@ix.idg.controllers.routes.IDGApp.ligands(null, 16, 1)">Ligands</a></li>
+        <li role="presentation"><a href="@ix.idg.controllers.routes.IDGApp.rfa">RFA</a></li>
         <li role="presentation"><a href="@ix.idg.controllers.routes.IDGApp.api">API</a></li>
         @helpoptions("")
     </ul>
@@ -16,20 +17,20 @@
       action="@ix.idg.controllers.routes.IDGApp.search(null)">
   <div class="form-group">
     <input type="text" id="search-header-field" name="q"
-	   style="width:200px;"
-	   class="typeahead form-control" placeholder="Search..."/>
+       style="width:200px;"
+       class="typeahead form-control" placeholder="Search..."/>
     <input type="hidden" name="kind" value="ix.idg.models.Disease">
     <div class="dropdown pull-right">
         <button type="submit" class="btn btn-default" style="margin-left: 2px">
          <span class="fa fa-search fa-fw" aria-hidden="true"></span>
         </button>
         <button type="button" class="btn btn-default dropdown-toggle"
-	      data-toggle="dropdown" aria-haspopup="true"
-	      aria-expanded="false">
+          data-toggle="dropdown" aria-haspopup="true"
+          aria-expanded="false">
         <span class="fa fa-navicon fa-fw"></span>
         </button>
         <ul class="dropdown-menu pull-left">
-	  <li><a href="@ix.idg.controllers.routes.IDGApp.about()">About</a></li>
+      <li><a href="@ix.idg.controllers.routes.IDGApp.about()">About</a></li>
         </ul>
     </div>
   </div>

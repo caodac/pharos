@@ -68,7 +68,7 @@ object ApplicationBuild extends Build {
 //      ,"com.sleepycat" % "je" % "5.0.73"
       ,"org.webjars" % "store.js" % "1.3.17-1"
       ,"org.webjars" % "swagger-ui" % "3.0.10"
-      ,"com.google.firebase" % "firebase-admin" % "5.11.0"
+      ,"com.google.firebase" % "firebase-admin" % "6.3.0"
   )
 
   val scalaBuildOptions = Seq(
