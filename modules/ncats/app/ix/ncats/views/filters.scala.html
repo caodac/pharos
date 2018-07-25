@@ -15,7 +15,7 @@
   <div class="panel-heading"  id='@fname'>
     <h3 class="panel-title text-capitalize" id="facetheader-@f.facet.getName" data-toggle="tooltip"
 
-	@** this shouldn't be here.. it should be in the FacetDecorator **@
+    @** this shouldn't be here.. it should be in the FacetDecorator **@
         @f.name() match {
             case "Development Level" => {
                 title='Target development level (TDL) categorizing target based on known information and potential druggability with highest ranking of Tclin for targets with known mechanism of drug action to lowest ranking of Tdark for targest with least knowledge.'
@@ -49,66 +49,66 @@
       @** move all selected filters upfront **@
       @for(i <- 0 until f.size()) {
         @if(App.hasFacet(f.facet,i)) {
-	<tr @colorbar(f.percent(i))>
-	  @defining(App.sha1(f.facet,i)) { id =>
-	     <td>
-	       <input type="checkbox" checked="true"
-		      onclick="filterToggle(this)" 
-		      label="Toggle @f.facet.getLabel(i)"
-		      id="@id"/>
-	     </td>
-	     <script>
-	        filters['@id'] = {
-	           checked: @App.hasFacet(f.facet,i),
+    <tr @colorbar(f.percent(i))>
+      @defining(App.sha1(f.facet,i)) { id =>
+         <td>
+           <input type="checkbox" checked="true"
+              onclick="filterToggle(this)" 
+              label="Toggle @f.facet.getLabel(i)"
+              id="@id"/>
+         </td>
+         <script>
+            filters['@id'] = {
+               checked: @App.hasFacet(f.facet,i),
                    name: '@App.encode(f.facet)',
-	           value: '@App.encode(f.facet, i)'
-	        };
-	     </script>
+               value: '@App.encode(f.facet, i)'
+            };
+         </script>
           }
-	 @if(f.raw) {
+     @if(f.raw) {
             <td style="width:100%;">@HtmlFormat.raw(f.label(i))</td>
          } else {
             <td style="width:100%;"class = "text-capitalize">@f.label(i)</td>
          }
-	 <td>
+     <td>
            @if(f.raw) {
              <span class="badge" style="float:right;">@HtmlFormat.raw(f.value(i))</span>
            } else {
              <span class="badge" style="float:right;">@f.value(i)</span>
            }
-	 </td>
+     </td>
         </tr>
         }
       }
       @for(i <- 0 until Math.min(f.max, f.size())) {
         @if(!App.hasFacet(f.facet,i)) {
-	<tr @colorbar(f.percent(i))>
-	  @defining(App.sha1(f.facet,i)) { id =>
-	     <td>
-	       <input type="checkbox" onclick="filterToggle(this)" 
-	       	      label = "Toggle @f.facet.getLabel(i)"
-		      id="@id"/>
-	     </td>
-	     <script>
-	        filters['@id'] = {
-	           checked: @App.hasFacet(f.facet, i),
+    <tr @colorbar(f.percent(i))>
+      @defining(App.sha1(f.facet,i)) { id =>
+         <td>
+           <input type="checkbox" onclick="filterToggle(this)" 
+                  label = "Toggle @f.facet.getLabel(i)"
+              id="@id" @if(f.count(i) > 2000){disabled}/>
+         </td>
+         <script>
+            filters['@id'] = {
+               checked: @App.hasFacet(f.facet, i),
                    name: '@App.encode(f.facet)',
-	           value: '@App.encode(f.facet, i)'
-	        };
-	     </script>
+               value: '@App.encode(f.facet, i)'
+            };
+         </script>
           }
           @if(f.raw) {
             <td style="width:100%;">@HtmlFormat.raw(f.label(i))</td>
           } else {
             <td style="width:100%;" class="text-capitalize">@f.label(i)</td>
           }
-	 <td>
+     <td>
            @if(f.raw) {
               <span class="badge" style="float:right;">@HtmlFormat.raw(f.value(i))</span>
            } else {
               <span class="badge" style="float:right;">@f.value(i)</span>
            }
-	 </td>
+     </td>
         </tr>
         }
       }
@@ -151,7 +151,7 @@ function filterToggle (el) {
   $.ajax({
      'url': url,
      success: function () {
-	  window.location.href = url;
+      window.location.href = url;
      }
   }).done(function () {
      $('#page-loader').removeClass('loader-wait');

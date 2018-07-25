@@ -15,12 +15,12 @@
       <div class="panel-heading">
         <h3 class="panel-title">
             <button id='cb-checkall-@Util.sha1(App.encode(f.facet))' alt="Toggle check all"
-            	  	      style="padding: 3px"
-            	  	      class="btn btn-xs btn-default cb-checkall" type="button">
-            	      <i class="fa fa-check"></i></button>
+                          style="padding: 3px"
+                          class="btn btn-xs btn-default cb-checkall" type="button">
+                      <i class="fa fa-check"></i></button>
             <a class="loader" href="@ix.idg.controllers.routes.IDGApp.targetdescriptor(f.facet.getName)"><i class="fa fa-bar-chart"></i></a>
           @f.name
-	  @if(f.url != null) { @HtmlFormat.raw(f.url) }
+      @if(f.url != null) { @HtmlFormat.raw(f.url) }
           @if(f.size() > 6) {  <a id="search" href="#"><i class="fa fa-caret-down" aria-hidden="true"></i></a> }
           </h3>
 
@@ -38,70 +38,70 @@
       @** first show all selected facets **@
       @for(i <- 0 until f.size) {
         @if(f.selection(i)) {
-	<tr @ix.ncats.views.html.colorbar(f.percent(i))>
-	  @defining(App.sha1(f.facet,i)) { id =>
-	     <td>
-	       <input type="checkbox"  onclick="facetToggle(this)"
-		      checked="true"
-	       	      label="Toggle @f.facet.getLabel(i)"
-		      id="@id"/>
-	     </td>
-	     <script>
-	        filters['@id'] = {
-	           checked: true,
+    <tr @ix.ncats.views.html.colorbar(f.percent(i))>
+      @defining(App.sha1(f.facet,i)) { id =>
+         <td>
+           <input type="checkbox"  onclick="facetToggle(this)"
+              checked="true"
+                  label="Toggle @f.facet.getLabel(i)"
+              id="@id"/>
+         </td>
+         <script>
+            filters['@id'] = {
+               checked: true,
                    name: '@App.encode(f.facet)',
-	           value: '@App.encode(f.facet, i)',
-		   facet: '@Util.sha1(App.encode(f.facet))'
-	        };
-	     </script>
+               value: '@App.encode(f.facet, i)',
+           facet: '@Util.sha1(App.encode(f.facet))'
+            };
+         </script>
           }
           @if(f.raw) {
             <td style="width:100%;" class="flabel">@HtmlFormat.raw(f.label(i))</td>
           } else {
             <td class = "text-capitalize flabel">@f.label(i)</td>
           }
-	 <td>
+     <td>
            @if(f.raw) {
               <span class="badge" style="float:right;">@HtmlFormat.raw(f.value(i))</span>
            } else {
               <span class="badge" style="float:right;">@f.value(i)</span>
            }
-	 </td>
+     </td>
         </tr>
         }
       }
       @for(i <- 0 until f.size) {
         @if(!f.selection(i)) {
-	<tr @ix.ncats.views.html.colorbar(f.percent(i))>
-	  @defining(App.sha1(f.facet,i)) { id =>
-	     <td>
-	       <input type="checkbox" onclick="facetToggle(this)"
-	       	      label="Toggle @f.facet.getLabel(i)"
-		      id="@id"/>
-	     </td>
-	     <script>
-	        filters['@id'] = {
-	           checked: @f.selection(i),
+    <tr @ix.ncats.views.html.colorbar(f.percent(i))>
+      @defining(App.sha1(f.facet,i)) { id =>
+         <td>
+           <input type="checkbox" onclick="facetToggle(this)"
+                  label="Toggle @f.facet.getLabel(i)"
+              id="@id" @if(f.count(i) > 2000){disabled}/>
+         </td>
+         <script>
+            filters['@id'] = {
+               checked: @f.selection(i),
                    name: '@App.encode(f.facet)',
-	           value: '@App.encode(f.facet, i)',
-		   facet: '@Util.sha1(App.encode(f.facet))'
-	        };
-	     </script>
+               value: '@App.encode(f.facet, i)',
+           facet: '@Util.sha1(App.encode(f.facet))'
+            };
+         </script>
           }
           @if(f.raw) {
             <td style="width:100%;" class="flabel">@HtmlFormat.raw(f.label(i))</td>
           } else {
             <td class = "text-capitalize flabel">@f.label(i)</td>
           }
-	 <td>
+     <td>
            @if(f.raw) {
               <span class="badge" style="float:right;">@HtmlFormat.raw(f.value(i))</span>
            } else {
               <span class="badge" style="float:right;">@f.value(i)</span>
            }
-	 </td>
+     </td>
         </tr>
-	}
+    }
       }
      </table>
     </div>
@@ -175,7 +175,7 @@ function facetToggle (el) {
   }
   /*
   console.log(filters[el.id].name+'/'+filters[el.id].value
-		+': '+el.checked +' div='+id+' '+count);
+        +': '+el.checked +' div='+id+' '+count);
   */
 }
 
@@ -190,9 +190,9 @@ function applyFilters (el) {
   for (var f in filters) {
      if (filters[f].checked) {
         if (facet.length > 0) {
-	   facet += '&';
-	}
-	facet += 'facet='+filters[f].name+'/'+filters[f].value;
+       facet += '&';
+    }
+    facet += 'facet='+filters[f].name+'/'+filters[f].value;
      }
   }
   

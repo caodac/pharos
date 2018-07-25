@@ -1,0 +1,57 @@
+@ix.ncats.views.html.main("Topic Creation"){
+<link type="text/css" rel="stylesheet" href='@routes.Assets.versioned("stylesheets/main.css")'/>
+}(HtmlFormat.empty){
+<form class="form-horizontal" role="form" method="POST"
+      enctype="multipart/form-data"
+      action="@ix.idg.controllers.routes.ChemLibraryLoader.loadSelleck">
+  <div class="container-fluid" style="padding-top:10px;">
+    <div class="jumbotron">
+      <h1>SelleckChem Library Loader</h1>
+      <p><button class="btn btn-primary btn-lg" type="submit">Load</button>
+    </div>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="input-group">
+          <div class="input-group-addon">
+            <span style="width:100px;">Name</span>
+          </div>
+          <input class="form-control" type="text"
+                 data-content="Please enter library name"
+                 data-toggle="popover"
+                 data-trigger="manual"
+                 data-placement="bottom"       
+                 placeholder="Library name"
+                 id="name" name="name" required>
+        </div>
+        <br>
+        <div class="input-group">
+          <div class="input-group-addon">
+            <span style="width:100px;">URL</span>
+          </div>
+          <input class="form-control" type="text"
+                 placeholder="External link for library"
+                 id="url" name="url">
+        </div>
+        <br>
+        <div class="input-group">
+          <div class="input-group-addon">
+            <span style="width:100px;">Molfile</span>
+          </div>
+          <input class="form-control" type="file"
+                 id="molfile" name="molfile" required></input>
+        </div>
+        <br>
+        @**
+        <label for="topic-description">Description</label>
+        <div class="input-group">
+          <textarea class="form-control" rows="6"
+                    style="font-family: monospace; width:450px;"
+                    placeholder="Library description"
+                    id="description" name="description"></textarea>
+        </div>
+        **@
+      </div>
+    </div>
+  </div>
+</form>
+}

@@ -372,6 +372,7 @@ public class App extends Authentication {
             }
             return null;
         }
+        public Integer count (int i) { return facet.getCount(i); }
     }
     /**
      * This returns links to up to 10 pages of interest.
