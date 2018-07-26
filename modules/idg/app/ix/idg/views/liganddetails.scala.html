@@ -96,6 +96,20 @@
       }
       </div>
     </div>
+    @defining(IDGApp.getLibraries(ligand)){ libs =>
+        @if(!libs.isEmpty){
+        <div class="panel panel-default">
+          <div class="panel-heading">
+            <h3 class="panel-title">Library</h3>
+          </div>
+          <div class="panel-body">
+            @for((k,v) <- libs) {
+              <a class="label label-primary" href='@{ix.idg.controllers.routes.IDGApp.ligands()+"?facet="+LIBRARY+"/"}@URLEncoder.encode(k.label,"utf8")'>@k.label <span class="badge">@v</span></a> <a href="@HtmlFormat.raw(k.href)"><i class="fa fa-external-link"></i></a>
+            }
+          </div>
+        </div>
+        }
+    }
     <div class="panel panel-default">
           <div class="panel-heading">
             <h3 class="panel-title">Synonym</h3>
@@ -131,22 +145,6 @@
       </div>
     </div>
       </div>
-      @defining(IDGApp.getLibraries(ligand)){ libs =>
-        @if(!libs.isEmpty){
-      <div class="col-md-8">
-        <div class="panel panel-default">
-          <div class="panel-heading">
-            <h3 class="panel-title">Library</h3>
-          </div>
-          <div class="panel-body">
-            @for((k,v) <- libs) {
-              <h4><a class="label label-primary" href='@{ix.idg.controllers.routes.IDGApp.ligands()+"?facet="+LIBRARY+"/"}@URLEncoder.encode(k.label,"utf8")'>@k.label <span class="badge">@v</span></a> <a href="@HtmlFormat.raw(k.href)"><i class="fa fa-external-link"></i></h4>
-            }
-          </div>
-        </div>
-      </div>
-        }
-      }
       <div class="col-md-8">
         <div class="panel panel-default">
           <div class="panel-heading">

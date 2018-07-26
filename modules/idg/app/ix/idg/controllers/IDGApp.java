@@ -2588,6 +2588,7 @@ public class IDGApp extends App implements Commons {
                         List<FacetDecorator> decorators = new ArrayList<>();
                         for (FacetDecorator deco : decorate (facets))
                             decorators.add(deco);
+                        /*
                         try {
                             decorators.add
                                 (3, // insert after IDG_TARGET
@@ -2597,6 +2598,7 @@ public class IDGApp extends App implements Commons {
                             Logger.error
                                 ("Can't create Target Selectivity facet!", ex);
                         }
+                        */
                         return ok (ix.idg.views.html.ligandsgallery.render
                                    (page, _rows, total, pages,
                                     decorators.toArray(new FacetDecorator[0]),
