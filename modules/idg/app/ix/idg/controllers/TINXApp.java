@@ -142,7 +142,7 @@ public class TINXApp extends App {
     static Result _tinx () {
         JsonNode json = tinxJson ();
         if (json == null)
-            return internalServerError ("Can't retrieve tinx aggregate data");
+            return internalServerError ("{}").as("application/json");
         return ok (json);
     }
 
@@ -155,15 +155,17 @@ public class TINXApp extends App {
                     return _tinxForTarget (acc);
                 }
             });
-        } catch (Exception e) {
-            return _internalServerError(e);
+        }
+        catch (Exception e) {
+            // return empty json
+            return ok ("{}").as("application/json");
         }
     }
     
     public static Result _tinxForTarget(final String acc) {
         JsonNode json = getTinxForTargetJson (acc);
         if (json == null)
-            return _notFound ("No TINX found for target \""+acc+"\"");
+            return notFound ("{}").as("application/json");
         return ok(json);
     }
 

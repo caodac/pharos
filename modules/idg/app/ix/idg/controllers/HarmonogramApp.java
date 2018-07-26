@@ -113,7 +113,7 @@ public class HarmonogramApp extends App {
                 }
             });
         } catch (Exception e) {
-            return _internalServerError(e);
+            return ok ("{}").as("application/json");
         }
     }
 
@@ -350,7 +350,7 @@ public class HarmonogramApp extends App {
             });
         
         return content != null ? ok (content)
-            : _notFound("No harmonogram data found for q="+ q+" type="+type);
+            : notFound("{}").as("application/json");
     }
     
     public static JsonNode _hgForRadarJson (final String q, String type)
@@ -491,7 +491,7 @@ public class HarmonogramApp extends App {
                 }
             });
         return content != null ? ok (content)
-            : _notFound("No harmonogram data found for targets");
+            : notFound("{}").as("application/json");
     }
     
     public static Content _hgForTargetsContent

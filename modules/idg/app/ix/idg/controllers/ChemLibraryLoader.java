@@ -38,12 +38,22 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.function.Function;
 
 public class ChemLibraryLoader extends Controller implements Commons {
     static CharsetEncoder asciiEncoder = 
         Charset.forName("US-ASCII").newEncoder();
     static final TextIndexer INDEXER = 
         Play.application().plugin(TextIndexerPlugin.class).getIndexer();
+
+    static abstract class MolRecord {
+        final Molecule mol;
+        MolRecord (Molecule mol) {
+            this.mol = mol;
+        }
+        abstract String getId ();
+        abstract String getUrl ();
+    }
     
     public static Result selleck () {
         if (Play.application().isDev()) {
@@ -52,9 +62,15 @@ public class ChemLibraryLoader extends Controller implements Commons {
         return redirect (routes.IDGApp.index());
     }
 
-    @BodyParser.Of(value = BodyParser.MultipartFormData.class,
-                   maxLength = 100* 1024 * 1024)    
-    public static Result loadSelleck () {
+    public static Result mipe () {
+        if (Play.application().isDev()) {
+            return ok (ix.idg.views.html.mipe.render());
+        }
+        return redirect (routes.IDGApp.index());
+    }
+    
+    static int process (Function<Molecule, MolRecord> mapfunc)
+        throws Exception {
         MultipartFormData form = request().body().asMultipartFormData();
         MultipartFormData.FilePart part = form.getFile("molfile");
         if (part != null) {
@@ -65,7 +81,7 @@ public class ChemLibraryLoader extends Controller implements Commons {
             String libdesc = params.containsKey("description")
                 ? params.get("description")[0] : null;
             
-            Logger.debug("loadSelleck => molfile="+part.getFilename()
+            Logger.debug("process => molfile="+part.getFilename()
                          +" name="+libname+" url="+liburl
                          +" description="+libdesc);
 
@@ -105,8 +121,7 @@ public class ChemLibraryLoader extends Controller implements Commons {
                 MolImporter mi = new MolImporter (pis);
                 int matches = 0, total = 0;
                 for (Molecule mol = new Molecule (); mi.read(mol); ) {
-                    String catno = mol.getProperty("Catalog Number");
-                    String url = mol.getProperty("URL");
+                    MolRecord mr = mapfunc.apply(mol);
 
                     try {
                         lychi.standardize(mol);
@@ -117,7 +132,7 @@ public class ChemLibraryLoader extends Controller implements Commons {
                             .findList();
                         if (ligands.isEmpty()) {
                             Logger.warn("No structure matching "
-                                        +catno+" L4 = "+hkeys[3]);
+                                        +mr.getId()+" L4 = "+hkeys[3]);
                         }
                         else {
                             ++matches;
@@ -125,9 +140,10 @@ public class ChemLibraryLoader extends Controller implements Commons {
                                 Logger.warn(hkeys[3]+" maps to "+ligands.size()
                                             +" ligands!");
                             for (Ligand l : ligands) {
-                                Logger.debug(catno+" => ligand "+l.id);
+                                Logger.debug(mr.getId()+" => ligand "+l.id);
+
                                 Value kw = KeywordFactory.registerIfAbsent
-                                    (libname, catno, url);
+                                    (libname, mr.getId(), mr.getUrl());
                                 int nc = 0;
                                 if (kw == l.addIfAbsent(kw)) ++nc;
                                 
@@ -142,20 +158,64 @@ public class ChemLibraryLoader extends Controller implements Commons {
                     }
                     catch (Exception ex) {
                         ex.printStackTrace();
-                        Logger.error("Can't process "+catno, ex);
+                        Logger.error("Can't process "+mr.getId(), ex);
                     }
                     ++total;
                 }
                 
-                return ok (matches+"/"+total+" structure(s) resolved!");
+                return matches;
             }
             catch (Exception ex) {
                 ex.printStackTrace();
-                return internalServerError
-                    ("Can't load selleck library: "+ex.getMessage());
             }
         }
         
-        return badRequest ("No molfile specified!");
+        return -1;
+    }
+
+    @BodyParser.Of(value = BodyParser.MultipartFormData.class,
+                   maxLength = 100* 1024 * 1024)    
+    public static Result loadSelleck () {
+        try {
+            int count = process (m -> new MolRecord (m) {
+                    public String getId () {
+                        return mol.getProperty("Catalog Number");
+                    }
+                    public String getUrl () {
+                        return mol.getProperty("URL");
+                    }
+                });
+            if (count < 0)
+                return badRequest ("No molfile specified!");
+            
+            return ok (count+" structure(s) matched!");
+        }
+        catch (Exception ex) {
+            return internalServerError
+                ("Can't load selleck library: "+ex.getMessage());
+        }
+    }
+
+    @BodyParser.Of(value = BodyParser.MultipartFormData.class,
+                   maxLength = 100* 1024 * 1024)    
+    public static Result loadMIPE () {
+        try {
+            int count = process (m -> new MolRecord (m) {
+                    public String getId () {
+                        return mol.getName();
+                    }
+                    public String getUrl () {
+                        return "https://www.ncbi.nlm.nih.gov/pcsubstance?term="+getId();
+                    }
+                });
+            if (count < 0)
+                return badRequest ("No molfile specified!");
+            
+            return ok (count+" structure(s) matched!");
+        }
+        catch (Exception ex) {
+            return internalServerError
+                ("Can't load MIPE library: "+ex.getMessage());
+        }
     }
 }

@@ -90,6 +90,8 @@ DELETE  /edit/collection/:name  ix.idg.controllers.IDGApp.delCollection(name: St
 # library loaders
 GET     /lib/selleck     ix.idg.controllers.ChemLibraryLoader.selleck
 POST    /lib/selleck     ix.idg.controllers.ChemLibraryLoader.loadSelleck
+GET     /lib/mipe     ix.idg.controllers.ChemLibraryLoader.mipe
+POST    /lib/mipe     ix.idg.controllers.ChemLibraryLoader.loadMIPE
 
 
 ->      /clinical   ix.ncats.clinical.Routes
