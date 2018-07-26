@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ChemLibraryLoader extends Controller {
+public class ChemLibraryLoader extends Controller implements Commons {
     static CharsetEncoder asciiEncoder = 
         Charset.forName("US-ASCII").newEncoder();
     static final TextIndexer INDEXER = 
@@ -70,7 +70,7 @@ public class ChemLibraryLoader extends Controller {
                          +" description="+libdesc);
 
             Value lib = KeywordFactory.registerIfAbsent
-                ("Library", libname, liburl);
+                (LIBRARY, libname, liburl);
             
             File file = part.getFile();
             try (final BufferedReader br = new BufferedReader

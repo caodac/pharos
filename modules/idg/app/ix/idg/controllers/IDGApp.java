@@ -350,7 +350,8 @@ public class IDGApp extends App implements Commons {
     static class IDGFacetDecorator extends FacetDecorator {
         IDGFacetDecorator (Facet facet) {
             super (facet, true, FACET_DIM);
-            if (COLLECTION.equals(facet.getName()))
+            if (COLLECTION.equals(facet.getName())
+                || LIBRARY.equals(facet.getName()))
                 raw = true;
         }
 
@@ -511,9 +512,9 @@ public class IDGApp extends App implements Commons {
                     return "<a href=\"http://targetcentral.ws/TechDev7\">"+label+"</a> <i class='fa fa-external-link'></i>";
                 }
             }
-            else if (name.equals(COLLECTION)) {
+            else if (name.equals(COLLECTION) || name.equals(LIBRARY)) {
                 List<Keyword> keywords = KeywordFactory.finder
-                    .where(Expr.and(Expr.eq("label", COLLECTION),
+                    .where(Expr.and(Expr.eq("label", name),
                                     Expr.eq("term", label)))
                     .findList();
                 if (keywords != null && !keywords.isEmpty()) {
@@ -750,6 +751,7 @@ public class IDGApp extends App implements Commons {
     public static final String[] LIGAND_FACETS = {
         //WHO_ATC,
         //IDG_DRUG,
+        LIBRARY,
         IDG_DEVELOPMENT,
         IDG_FAMILY,
         IDG_TARGET,    
@@ -4551,5 +4553,24 @@ public class IDGApp extends App implements Commons {
 
     public static Result rfa () {
         return ok (ix.idg.views.html.rfa.render());
+    }
+
+    public static Map<Keyword, Integer> getLibraries (Ligand lig) {
+        Set<String> names = new TreeSet<>();
+        for (Value v : lig.properties) {
+            if (LIBRARY.equals(v.label)) {
+                Keyword kw = (Keyword)v;
+                names.add(kw.term);
+            }
+        }
+
+        Map<Keyword, Integer> libs = new HashMap<>();
+        for (Value v : lig.properties) {
+            if (names.contains(v.label)) {
+                Keyword kw = (Keyword)v;
+                libs.put(kw, getTermCount (Ligand.class, LIBRARY, v.label));
+            }
+        }
+        return libs;
     }
 }
