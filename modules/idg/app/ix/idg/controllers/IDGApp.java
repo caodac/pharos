@@ -4473,7 +4473,7 @@ public class IDGApp extends App implements Commons {
                 { String facet = LIGAND_FACETS
                         [rand.nextInt(LIGAND_FACETS.length)];
                     tvs = SearchFactory.getTermVectors(Ligand.class, facet);
-                    url = Global.getHost()+routes.IDGApp.ligands(null,16,1);
+                    url = Global.getHost()+routes.IDGApp.ligands(null,20,1);
                 }
                 break;
                 

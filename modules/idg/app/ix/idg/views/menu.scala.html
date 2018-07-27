@@ -12,9 +12,9 @@
 </a>
 }{
 <ul class="nav navbar-nav navbar-left">
-  @item("Diseases", ix.idg.controllers.routes.IDGApp.diseases(null, 10, 1).url)
-  @item("Targets", ix.idg.controllers.routes.IDGApp.targets(null, 10, 1).url)
-  @item("Ligands", ix.idg.controllers.routes.IDGApp.ligands(null, 16, 1).url)
+  @item("Diseases", ix.idg.controllers.routes.IDGApp.diseases().url)
+  @item("Targets", ix.idg.controllers.routes.IDGApp.targets().url)
+  @item("Ligands", ix.idg.controllers.routes.IDGApp.ligands().url)
   @item("RFA", ix.idg.controllers.routes.IDGApp.rfa().url)
   @item("API", ix.idg.controllers.routes.IDGApp.api.url)
   @helpoptions(if(active.equalsIgnoreCase("help")){"active"}else{""})
