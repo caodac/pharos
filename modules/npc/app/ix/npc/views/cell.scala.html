@@ -18,21 +18,21 @@
      @defining(NPCApp.getStructure(e)) { struc =>
      @if(struc != null) {
      <a role="button" class="btn btn-default"
-	style="float:right;"
-	href='@ix.npc.controllers.routes.NPCApp.sketcher(struc.id.toString)'><i class="fa fa-edit" aria-hidden="true"></i></a>     
-        <a href='@ix.npc.controllers.routes.NPCApp.entity(e.getId.toString)'><img src='@ix.npc.controllers.routes.NPCApp.structure(struc.id.toString, "svg", 200, ctx)' alt="Structure for entity @e.getName"> </a>
+    style="float:right;"
+    href='@ix.npc.controllers.routes.NPCApp.sketcher(struc.id.toString)'><i class="fa fa-edit" aria-hidden="true"></i></a>     
+        <a href='@ix.npc.controllers.routes.NPCApp.entity(NPCApp.getId(e))'><img src='@ix.npc.controllers.routes.NPCApp.structure(struc.id.toString, "svg", 200, ctx)' alt="Structure for entity @e.getName"> </a>
        }
 
-	<div class="caption">
-	  <span style="font-family:monospace">@e.getName</span>
-	  @if(e.getType == Type.Scaffold) {
-	    @defining(NPCApp.getTermVectors("Entity Type", STRUCTURE_SCAFFOLD, e.getName)){ tv =>
-	      @if(tv != null) {
-	       <span class="pull-right">@tvlink(tv,e.getName,Type.Compound)</span>
-	      }
-	    }
-	  }
-	</div>
+    <div class="caption">
+      <span style="font-family:monospace"><a href='@ix.npc.controllers.routes.NPCApp.entity(NPCApp.getId(e))'>@e.getName</a></span>
+      @if(e.getType == Type.Scaffold) {
+        @defining(NPCApp.getTermVectors("Entity Type", STRUCTURE_SCAFFOLD, e.getName)){ tv =>
+          @if(tv != null) {
+           <span class="pull-right">@tvlink(tv,e.getName,Type.Compound)</span>
+          }
+        }
+      }
+    </div>
      }
    </div>
 </div>

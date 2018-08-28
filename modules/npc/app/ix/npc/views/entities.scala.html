@@ -6,7 +6,7 @@
 @(current: Int, rows: Int, total: Int, pages: Array[Int],
 facets: Array[FacetDecorator], entities: List[Entity], ctx: String)
 
-@ix.ncats.views.html.content("Entities", "ix.npc.models.Entity",
+@ix.ncats.views.html.content(NPCApp.appname, "ix.npc.models.Entity",
 ix.npc.controllers.routes.NPCApp.entities().url,
 current, rows, total, pages, facets){ @entitiesmenu("Entities") }{
 <ol class="breadcrumb" style="margin-top:60px;">
@@ -15,13 +15,13 @@ current, rows, total, pages, facets){ @entitiesmenu("Entities") }{
 }{
   @defining(NPCApp.toMatrix(3, entities)) { emat =>
      @for(i <- 0 until emat.length) {
-	  <div class="row">
-	    @for(e <- emat(i)) {
-	       @if(e != null) {
-	           @cell(e,ctx)
-	       }
-	    }
-	  </div>
+      <div class="row">
+        @for(e <- emat(i)) {
+           @if(e != null) {
+               @cell(e,ctx)
+           }
+        }
+      </div>
      }
   }
 }(HtmlFormat.empty)

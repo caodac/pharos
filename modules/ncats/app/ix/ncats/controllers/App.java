@@ -321,7 +321,7 @@ public class App extends Authentication {
         }
 
         protected Result notFound (String mesg) {
-            return notFound (mesg);
+            return App.notFound(mesg);
         }
         
         protected Result error (Exception ex) {

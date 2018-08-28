@@ -17,13 +17,13 @@
    @if(link != null) {
       @for((k,values) <- Util.groupKeywords(link.properties)) {
          @if(k.equals(kind)) {
-	       @for(v <- values) {
+           @for(v <- values) {
                  <a href='@{ix.npc.controllers.routes.NPCApp.entities()+"?facet="+URLEncoder.encode(k,"utf8")+"/"}@URLEncoder.encode(v, "utf8")'>@text</a>
-		 @defining(App.getTermCount(classOf[Entity], k, v)) { count =>
-		   <span class="badge pull-right">@Util.format(count)</span>
-		 }
-	       }
-	 }
+         @defining(App.getTermCount(classOf[Entity], k, v)) { count =>
+           <span class="badge pull-right">@Util.format(count)</span>
+         }
+           }
+     }
       }
     }
   }
@@ -37,154 +37,173 @@
     <div class="row">
       <div class="col-md-4">
         <div>
-      	   <ul class="nav nav-tabs" role="tablist">
-	      <li role="presentation" class="active"><a href="#structure"
-	      	  aria-controls="structure" role="tab"
-		  data-toggle="tab">Structure</a></li>
-	      <li role="presentation"><a href="#strucinfo"
-	      	  aria-controls="strucinfo" role="tab"
-		  data-toggle="tab">Info</a></li>	      
+           <ul class="nav nav-tabs" role="tablist">
+          <li role="presentation" class="active"><a href="#structure"
+              aria-controls="structure" role="tab"
+          data-toggle="tab">Structure</a></li>
+          <li role="presentation"><a href="#strucinfo"
+              aria-controls="strucinfo" role="tab"
+          data-toggle="tab">Info</a></li>         
            </ul>
-	   <div class="tab-content" style="margin-top:5px">
-	      <div role="tabpanel" class="tab-pane active" id="structure">
-	      	<div class="panel panel-default">
-		  <div class="panel-body">
-	    	    @defining(NPCApp.getStructure(entity)) { struc =>
-               	       @if(struc != null) {
-	       	          <a role="button" class="btn btn-default"
-			     style="float:right;"
-		  	     href='@ix.npc.controllers.routes.NPCApp.sketcher(struc.id.toString)'><i class="fa fa-edit" aria-hidden="true"></i></a>	
-	    		  <center>
-				<img alt="Structure of @entity.getName"
-		   		     src='@ix.ncats.controllers.routes.App.structure(struc.getId,"svg",300)'>
-	    		  </center>
-	               }
-	            }
-	  	 </div>
-	       </div>
-	     </div>
-	     <div role="tabpanel" class="tab-pane" id="strucinfo">
-	       <div class="panel panel-default">
-	         <div class="panel-body" style="height:330px;">
-       	           @defining(NPCApp.getStructure(entity)) { struc =>
-	       	     @if(struc != null) {
-	               <table class="table">
-		         <tr>
-		           <td>Formula</td>
-		           <td><span style="font-family:monospace;">@struc.formula</td>
-		         </tr>
-		         <tr>
-		           <td>Stereo Chemistry</td>
-		           <td>@struc.stereoChemistry</td>
-		         </tr>
-		         <tr>
-		           <td>Stereocenters</td>
-		           <td>@struc.definedStereo/@struc.stereoCenters</td>
-		         </tr>
-			 <tr>
-			   <td>E/Z</td>
-			   <td>@struc.ezCenters</td>
-			 </tr>
-			 <tr>
-			   <td>Molecular Weight</td>
-			   <td>@{"%1$.3f da".format(struc.mwt)}</td>
-			 </tr>
-		       </table>
-	             }
-	           }
-		 </div>
-	       </div>
-	     </div>
-	   </div>
-	</div>
-	<div class="panel panel-default">
-	  <div class="panel-body">
+       <div class="tab-content" style="margin-top:5px">
+          <div role="tabpanel" class="tab-pane active" id="structure">
+            <div class="panel panel-default">
+          <div class="panel-body">
+                @defining(NPCApp.getStructure(entity)) { struc =>
+                       @if(struc != null) {
+                      <a role="button" class="btn btn-default"
+                 style="float:right;"
+                 href='@ix.npc.controllers.routes.NPCApp.sketcher(struc.id.toString)'><i class="fa fa-edit" aria-hidden="true"></i></a> 
+                  <center>
+                <img alt="Structure of @entity.getName"
+                     src='@ix.ncats.controllers.routes.App.structure(struc.getId,"svg",300)'>
+                  </center>
+                   }
+                }
+         </div>
+           </div>
+         </div>
+         <div role="tabpanel" class="tab-pane" id="strucinfo">
+           <div class="panel panel-default">
+             <div class="panel-body" style="height:330px;">
+                   @defining(NPCApp.getStructure(entity)) { struc =>
+                 @if(struc != null) {
+                   <table class="table">
+                 <tr>
+                   <td>Formula</td>
+                   <td><span style="font-family:monospace;">@struc.formula</td>
+                 </tr>
+                 <tr>
+                   <td>Stereo Chemistry</td>
+                   <td>@struc.stereoChemistry</td>
+                 </tr>
+                 <tr>
+                   <td>Stereocenters</td>
+                   <td>@struc.definedStereo/@struc.stereoCenters</td>
+                 </tr>
+             <tr>
+               <td>E/Z</td>
+               <td>@struc.ezCenters</td>
+             </tr>
+             <tr>
+               <td>Molecular Weight</td>
+               <td>@{"%1$.3f da".format(struc.mwt)}</td>
+             </tr>
+               </table>
+                 }
+               }
+         </div>
+           </div>
+         </div>
+       </div>
+    </div>
+    <div class="panel panel-default">
+      <div class="panel-body">
             @struclabel("Identical structure",STRUCTURE_ORIGINAL, H_LyChI_L4)
-	    <br>@struclabel("Same structure", STRUCTURE_STANDARDIZED, H_LyChI_L4)
-	    <br>@struclabel("Stereo insensitive", STRUCTURE_STANDARDIZED, H_LyChI_L3)
-	    <br>@struclabel("Same topology", STRUCTURE_STANDARDIZED, H_LyChI_L1)
-	  </div>
-	</div>
+        <br>@struclabel("Same structure", STRUCTURE_STANDARDIZED, H_LyChI_L4)
+        <br>@struclabel("Stereo insensitive", STRUCTURE_STANDARDIZED, H_LyChI_L3)
+        <br>@struclabel("Same topology", STRUCTURE_STANDARDIZED, H_LyChI_L1)
+      </div>
+    </div>
       </div>
       <div class="col-md-8" style="max-height:600px;overflow-y:auto;">
         <div>
-	   <ul class="nav nav-tabs" role="tablist">
-	      <li role="presentation" class="active"><a href="#properties"
-	      	  aria-controls="properties" role="tab"
-		  data-toggle="tab">Properties</a></li>
-	      <li role="presentation"><a href="#scaffolds"
-	      	  aria-controls="scaffolds" role="tab"
-		  data-toggle="tab">Scaffolds</a></li>	      
-	      <li role="presentation"><a href="#original"
-	      	  aria-controls="profile" role="tab"
-		  data-toggle="tab">Original</a></li>
+       <ul class="nav nav-tabs" role="tablist">
+          <li role="presentation" class="active"><a href="#properties"
+              aria-controls="properties" role="tab"
+          data-toggle="tab">Properties</a></li>
+          <li role="presentation"><a href="#scaffolds"
+              aria-controls="scaffolds" role="tab"
+          data-toggle="tab">Scaffolds</a></li>        
+          <li role="presentation"><a href="#molfile"
+              aria-controls="profile" role="tab"
+          data-toggle="tab">Molfile</a></li>
            </ul>
-	   <div class="tab-content" style="margin-top:5px">
-	      <div role="tabpanel" class="tab-pane active" id="properties">
-  	      	 <table class="table table-striped">
-		   <tr>
-		     <th>Property</th>
-		     <th>Value</th>
-	           </tr>
-		   @defining(entity.getLinkedObject(classOf[Payload])) { py =>
-		      @if(py != null) {
-		        <tr>
-			  <td>Dataset</td>
-			  <td><a href='@{ix.npc.controllers.routes.NPCApp.entities(null,15,1)+"?facet=Dataset/"+URLEncoder.encode(py.name,"utf8")}'>@py.name</a></td>
-  	      		</tr>
+       <div class="tab-content" style="margin-top:5px">
+          <div role="tabpanel" class="tab-pane active" id="properties">
+             <table class="table table-striped">
+           <tr>
+             <th>Property</th>
+             <th>Value</th>
+               </tr>
+           @defining(entity.getLinkedObject(classOf[Payload])) { py =>
+              @if(py != null) {
+                <tr>
+              <td>Dataset</td>
+              <td><a href='@{ix.npc.controllers.routes.NPCApp.entities(null,15,1)+"?facet=Dataset/"+URLEncoder.encode(py.name,"utf8")}'>@py.name</a></td>
+                </tr>
                       }
-	           }
-		   <tr>
-		     <td>Synonyms</td>
-		     <td>
-		       @for(kw <- entity.getSynonyms) {
-			  <a href='@{ix.npc.controllers.routes.NPCApp.entities(null,15,1)+"?facet="+URLEncoder.encode(kw.label,"utf8")+"/"+URLEncoder.encode(kw.term,"utf8")}'>@kw.term</a>&nbsp;
-		       }
-		     </td>
-		   </tr>
-	           @for((k,v) <- entity.groupProperties()) {
-		      <tr>
-		        @if(!k.equals(ORIGINAL_INPUT)) {
-		          <td>@k</td>
-			  <td>
-		          @for(p <- v) {
-		             @p match {
-			       case kw: Keyword => {
-			       <a href='@{ix.npc.controllers.routes.NPCApp.entities(null,15,1)+"?facet="+kw.label+"/"+URLEncoder.encode(kw.term,"utf8")}'>@kw.term</a>                       }
-		               case _ => {
-		                  @p.getValue
-			       }
-			     }
-			   }
-			}
-			</td>
-		      </tr>
-	           }
-		 </table>
+               }
+           <tr>
+             <td>Synonyms</td>
+             <td>
+               @for(kw <- entity.getSynonyms) {
+              <a href='@{ix.npc.controllers.routes.NPCApp.entities(null,15,1)+"?facet="+URLEncoder.encode(kw.label,"utf8")+"/"+URLEncoder.encode(kw.term,"utf8")}'>@kw.term</a>&nbsp;
+               }
+             </td>
+           </tr>
+               @for((k,v) <- entity.groupProperties()) {
+              <tr>
+                @if(!k.equals(ORIGINAL_INPUT)) {
+                  <td>@k</td>
+              <td>
+                  @for(p <- v) {
+                     @p match {
+                   case kw: Keyword => {
+                   <a href='@{ix.npc.controllers.routes.NPCApp.entities(null,15,1)+"?facet="+kw.label+"/"+URLEncoder.encode(kw.term,"utf8")}'>@kw.term</a>                       }
+                       case _ => {
+                          <span class="propvalue">@p.getValue</span>
+                   }
+                 }
+               }
+            }
+            </td>
+              </tr>
+               }
+         </table>
               </div>
               <div role="tabpanel" class="tab-pane" id="scaffolds">
-		@defining(NPCApp.toMatrix(3,NPCApp.getScaffolds(entity))){ s =>
-		  @for(i <- 0 until s.length) {
-		    <div class="row">
-		      @for(e <- s(i)) {
-		         @if(e != null) {
-		            @cell(e)
-			 }
-		      }
-		    </div>
-		  }
-	        }
-	      </div>
-	      <div role="tabpanel" class="tab-pane" id="original">
-	         @defining(entity.getProperty(Properties.ORIGINAL_INPUT)) { p =>
-		    @if(p != null) {
-	              <pre class="pre-scrollable" style="max-height:400px">@p.getValue</pre>
-		    }
-		 }
-	      </div>
-	   </div>
+        @defining(NPCApp.toMatrix(3,NPCApp.getScaffolds(entity))){ s =>
+          @for(i <- 0 until s.length) {
+            <div class="row">
+              @for(e <- s(i)) {
+                 @if(e != null) {
+                    @cell(e)
+             }
+              }
+            </div>
+          }
+            }
+          </div>
+          <div role="tabpanel" class="tab-pane" id="molfile">
+             @defining(entity.getProperty(Properties.ORIGINAL_INPUT)) { p =>
+            @if(p != null) {
+                  <pre class="pre-scrollable" style="max-height:500px">@p.getValue</pre>
+            }
+         }
+          </div>
+       </div>
          </div>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  $(document).ready(function () {
+      $('.propvalue').each(function(index) {
+          var toks = $(this).text().split("\\s");
+          var html = '';
+          for (var i = 0; i < toks.length; ++i) {
+              if (toks[i].startsWith("http://")
+                  || toks[i].startsWith("https://")) {
+                  html += ' <a href="'+toks[i]+'">'+toks[i]+'</a>';
+              }
+              else {
+                  html += ' '+toks[i];
+              }
+          }
+          $(this).html(html);
+      });
+  });
+</script>

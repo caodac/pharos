@@ -171,7 +171,7 @@ public class BuildInfo {
       //javaOptions in Runtime += "-Dconfig.resource=pharos.conf"
   ).dependsOn(clinical).aggregate(clinical)
 
-  val npc = Project("npc", file("modules/npc"))
+  val chemprobe = Project("chemprobe", file("modules/npc"))
     .enablePlugins(PlayJava).settings(commonSettings:_*).settings(
       libraryDependencies ++= commonDependencies,
       javacOptions in (doc) ++= javaDocOptions,

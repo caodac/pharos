@@ -9,25 +9,25 @@
   <div class="panel panel-default" style="border:0; box-shadow:none;">
     <div class="panel-body">
       <table class="table table-striped">
-	<tr>
-	  <th></th>
-	  <th>Name</th>
-	  <th>Update</th>
-	  <th>Status</th>
-	  <th>Processed</th>
-	  <th>Failed</th>
-	</tr>
-	@for(job <- JobFactory.finder.all()) {    
-	  <tr>
-	    <td><input type="checkbox" id="ds-@job.id"
-	    	       value="@job.payload.id" name="@job.payload.name"></td>
-	    <td>@job.payload.name</td>
-	    <td>@job.lastUpdate</td>
-	    <td>@job.status</td>
-	    <td>@job.processed</td>
-	    <td>@job.failed</td>
-	  </tr>
-	}
+    <tr>
+      <th></th>
+      <th>Name</th>
+      <th>Update</th>
+      <th>Status</th>
+      <th>Processed</th>
+      <th>Failed</th>
+    </tr>
+    @for(job <- JobFactory.finder.all()) {    
+      <tr>
+        <td><input type="checkbox" id="ds-@job.id"
+                   value="@job.payload.id" name="@job.payload.name"></td>
+        <td>@job.payload.name</td>
+        <td>@job.lastUpdate</td>
+        <td>@job.status</td>
+        <td>@job.processed</td>
+        <td>@job.failed</td>
+      </tr>
+    }
       </table>
       <button class="btn btn-default" onclick="deleteDatasets()">Delete</button>
     </div>
@@ -39,28 +39,28 @@
 <div class="container-fluid" style="margin-top:60px;">
   <div class="col-md-12">
     <div class="page-header">
-      <h1>NPC Administration
+      <h1>Administration
           <button type="button" class="btn btn-danger pull-right"
-	  	  id="clear-cache-btn">Clear Cache</button>
+          id="clear-cache-btn">Clear Cache</button>
       </h1>
     </div>
     <div class="row">
       <div class="col-md-12">
-	<ul class="nav nav-tabs" role="tablist">
-	  <li role="presentation" class="active">
-	    <a href="#datasets" aria-controls="properties" role="tab"
-		  data-toggle="tab">Datasets</a></li>
-	  <li role="presentation">
-	    <a href="#facets" aria-controls="profile" role="tab"
-	       data-toggle="tab">Facets</a></li>
+    <ul class="nav nav-tabs" role="tablist">
+      <li role="presentation" class="active">
+        <a href="#datasets" aria-controls="properties" role="tab"
+          data-toggle="tab">Datasets</a></li>
+      <li role="presentation">
+        <a href="#facets" aria-controls="profile" role="tab"
+           data-toggle="tab">Facets</a></li>
         </ul>
-	<div class="tab-content">
-	  <div role="tabpanel" class="tab-pane active" id="datasets">
-	    @datasets	    
-	  </div>
-	  <div role="tabpanel" class="tab-pane active" id="facets">
-	  </div>
-	</div>
+    <div class="tab-content">
+      <div role="tabpanel" class="tab-pane active" id="datasets">
+        @datasets       
+      </div>
+      <div role="tabpanel" class="tab-pane active" id="facets">
+      </div>
+    </div>
       </div>
     </div>
   </div>
@@ -74,14 +74,14 @@
       <div class="modal-body">
          <div class="alert alert-danger">
            <h3>Delete dataset <b><span id="delete-ds-name"></span></b>?</h3>
-	 </div>
-	 <br><em><span id="delete-modal-mesg"></span></em>
+     </div>
+     <br><em><span id="delete-modal-mesg"></span></em>
       </div>
       <div class="modal-footer">
-	<button type="button" class="btn btn-primary"
-		id="delete-modal-btn">Delete</button>
-	<button type="button" class="btn btn-primary"
-		id="cancel-modal-btn" data-dismiss="modal">Cancel</button>
+    <button type="button" class="btn btn-primary"
+        id="delete-modal-btn">Delete</button>
+    <button type="button" class="btn btn-primary"
+        id="cancel-modal-btn" data-dismiss="modal">Cancel</button>
       </div>
     </div>
   </div>
@@ -95,13 +95,13 @@ $(function () {
   $('#clear-cache-btn').on('click', function () {
       $.ajax({
          url: '@ix.ncats.controllers.routes.App.cacheClear',
-	 method: 'DELETE',
-	 success: function () {
-	    console.log('Cache cleared!');
-	 },
-	 error: function (xhr, status, err) {
-	    console.log(status+': '+err);
-	 }
+     method: 'DELETE',
+     success: function () {
+        console.log('Cache cleared!');
+     },
+     error: function (xhr, status, err) {
+        console.log(status+': '+err);
+     }
       });
   });
   
@@ -110,36 +110,36 @@ $(function () {
      var name = $(this).data('name');
      
      $(this).attr('disabled','true')
-	.html('<i class="fa fa-lg fa-spinner fa-spin"></i>');
+    .html('<i class="fa fa-lg fa-spinner fa-spin"></i>');
      $('#cancel-modal-btn').attr('disabled', 'true');
      console.log('deleting dataset...'+ds);
      
      $.ajax({
         url: '@ix.npc.controllers.routes.Registration.deleteDataset("")'+ds,
-	method: 'DELETE',
-	success: function (d) {
-	   console.log('delete mesage: '+d);
+    method: 'DELETE',
+    success: function (d) {
+       console.log('delete mesage: '+d);
            $('#delete-modal-mesg')
-	       .html('Successfully delete dataset "'+name+'"!');
-	   $('#cancel-modal-btn').on('click', function () {
-	       window.location = '@ix.npc.controllers.routes.Registration.admin';
-	   });
-	   $.ajax({
-	      url: '@ix.ncats.controllers.routes.App.cacheClear',
-	      method: 'DELETE',
-	      success: function () {
-	         console.log('Cache cleared!');
-	      }
-	   });
-	},
-	error: function () {
-	   console.log("can't delete dataset "+ds);
+           .html('Successfully delete dataset "'+name+'"!');
+       $('#cancel-modal-btn').on('click', function () {
+           window.location = '@ix.npc.controllers.routes.Registration.admin';
+       });
+       $.ajax({
+          url: '@ix.ncats.controllers.routes.App.cacheClear',
+          method: 'DELETE',
+          success: function () {
+             console.log('Cache cleared!');
+          }
+       });
+    },
+    error: function () {
+       console.log("can't delete dataset "+ds);
            $('#delete-modal-mesg')
-	       .html('Unabled to delete dataset "'+name+'"!');	   
-	}
+           .html('Unabled to delete dataset "'+name+'"!');     
+    }
      })
      .always(function () {
-	$('#delete-modal-btn').remove();     
+    $('#delete-modal-btn').remove();     
         $('#cancel-modal-btn').removeAttr('disabled').html('Close');   
      });
   });
@@ -149,10 +149,10 @@ function deleteDatasets () {
    $("td input:checkbox").each(function () {
       if ($(this).is(":checked")) {
          var ds = $(this).attr("value");
-	 var name = $(this).attr('name');
-	 $('#delete-ds-name').html(name);
-	 $('#delete-modal-btn').data('ds', ds).data('name', name);
-	 $('#delete-modal').modal({backdrop: 'static', show: true});
+     var name = $(this).attr('name');
+     $('#delete-ds-name').html(name);
+     $('#delete-modal-btn').data('ds', ds).data('name', name);
+     $('#delete-modal').modal({backdrop: 'static', show: true});
       }
    })
 }

@@ -193,6 +193,10 @@ public class NPCApp extends App implements ix.npc.models.Properties {
         return decors.toArray(new FacetDecorator[0]);
     }
 
+    public static String appname () {
+        return _app.configuration().getString("ix.app");
+    }
+    
     public static Result index () {
         return redirect (routes.NPCApp.entities(null, 15, 1));
     }
@@ -275,6 +279,10 @@ public class NPCApp extends App implements ix.npc.models.Properties {
             public Content getContent (List<Entity> entities) throws Exception {
                 return getEntityContent (entities);
             }
+            @Override
+            protected Result notFound (String mesg) {
+                return ok (ix.npc.views.html.error.render(400, mesg));
+            }
         };
 
     static Content getEntityContent (List<Entity> entities) throws Exception {
@@ -311,6 +319,11 @@ public class NPCApp extends App implements ix.npc.models.Properties {
         }
     }
 
+    public static String getId (Entity e) {
+        String name = e.getName();
+        return name == null || name.equals("") ? e.getId().toString() : name;
+    }
+    
     public static Result entity (String name) {
         return EntityResult.get(name);
     }
