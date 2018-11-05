@@ -59,7 +59,11 @@ public class TargetFactory extends EntityFactory implements Commons {
     }
 
     public static Result resolve (String name, String expand) {
-        return resolve (Expr.eq("synonyms.term", name), expand, finder);
+        return resolve (Expr.or(Expr.or(Expr.or(Expr.eq("synonyms.term", name),
+                                Expr.eq("name", name)),
+                Expr.eq("accession", name)),
+                Expr.eq("gene", name))
+                , expand, finder);
     }
 
     public static Result field (Long id, String path) {
