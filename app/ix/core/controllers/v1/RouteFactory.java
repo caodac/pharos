@@ -1,5 +1,6 @@
 package ix.core.controllers.v1;
 
+import com.fasterxml.jackson.core.TreeNode;
 import ix.core.NamedResource;
 import ix.core.controllers.IxController;
 import ix.core.controllers.EntityFactory;
@@ -11,13 +12,10 @@ import ix.utils.Global;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 
 import javax.persistence.Id;
 
@@ -186,12 +184,40 @@ public class RouteFactory extends IxController {
         return badRequest ("Unknown Context: \""+context+"\"");
     }
 
+    public static Result batchResolve(String context){
+        JsonNode body = request().body().asJson();
+        if(!body.isArray()){
+            return badRequest("body must be JSON array");
+        }
+        ArrayNode array = (ArrayNode) body;
+        try {
+            Method m = getMethod (context, "batchResolveFunction");
+            if (m != null) {
+                Function<String, JsonNode> function = (Function<String, JsonNode>) m.invoke(null);
+
+                LinkedHashMap<String, JsonNode> map = new LinkedHashMap<>();
+                for(JsonNode a : array){
+                    String key = a.asText();
+                    map.computeIfAbsent(key, k-> function.apply(k));
+                }
+
+                ObjectMapper mapper = new ObjectMapper();
+                return new CachableContent((JsonNode)mapper.valueToTree(map)).ok();
+            }
+        }
+        catch (Exception ex) {
+            Logger.trace("["+context+"]", ex);
+            return internalServerError (context);
+        }
+        Logger.warn("Context {} has no method batchResolveFunction()",context);
+        return badRequest ("Unknown Context: \""+context+"\"");
+    }
     public static Result resolve (String context, String name, String expand) {
         try {
-            Method m = getMethod (context, "resolve", 
-                                  String.class, String.class);
-            if (m != null)
-                return (Result)m.invoke(null, name, expand);
+            Method m = getResolveMethodFor(context);
+            if (m != null) {
+                return (Result) m.invoke(null, name, expand);
+            }
         }
         catch (Exception ex) {
             Logger.trace("["+context+"]", ex);
@@ -199,6 +225,11 @@ public class RouteFactory extends IxController {
         }
         Logger.warn("Context {} has no method resolve(String,String)",context);
         return badRequest ("Unknown Context: \""+context+"\"");
+    }
+
+    private static Method getResolveMethodFor(String context) {
+        return getMethod (context, "resolve",
+                                      String.class, String.class);
     }
 
     public static Result doc (String context, Long id) {

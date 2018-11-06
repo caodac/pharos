@@ -39,6 +39,10 @@ GET     /$context<[a-z0-9_]+>/  ix.core.controllers.v1.RouteFactory.page(context
 POST    /$context<[a-z0-9_]+>  ix.core.controllers.v1.RouteFactory.create(context: String)
 PUT     /$context<[a-z0-9_]+>/$id<[0-9]+>/*field       ix.core.controllers.v1.RouteFactory.update(context: String, id:Long, field: String)
 PUT     /$context<[a-z0-9_]+>($id<[0-9]+>)/*field       ix.core.controllers.v1.RouteFactory.update(context: String, id:Long, field: String)
+
+POST    /$context<[a-z0-9_]+>/resolve           ix.core.controllers.v1.RouteFactory.batchResolve(context: String)
+
+
 ##
 ## UUID version if available
 ##
