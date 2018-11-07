@@ -727,6 +727,7 @@ public class IDGApp extends App implements Commons {
         "Is Transcription Factor",
         PDB_ID,
         "DrugBank",
+        LIGAND_ACTIVITY_SOURCE,
         LIGAND_ACTIVITY,
         MLP_ASSAY_TYPE,
         UNIPROT_KEYWORD,
@@ -756,7 +757,8 @@ public class IDGApp extends App implements Commons {
         IDG_FAMILY,
         IDG_TARGET,    
         PHARMALOGICAL_ACTION,
-        LIGAND_ACTIVITY,        
+        LIGAND_ACTIVITY,
+        LIGAND_ACTIVITY_SOURCE,        
         LIGAND_SOURCE
     };
 
@@ -2715,12 +2717,33 @@ public class IDGApp extends App implements Commons {
         return LigandResult.get(name);
     }
 
+    static boolean isSimpleName (String name) {
+        boolean special = name.indexOf('<') > 0 || name.indexOf('&') > 0
+            || name.indexOf('/') > 0;
+        return !special;
+    }
+    
     /**
      * return the canonical/default ligand id
      */
     public static String getId (Ligand ligand) {
-        return ligand.getName();
+        String name = ligand.getName();
+        if (!isSimpleName (name)) {
+            for (Keyword kw : ligand.synonyms)
+                if (isSimpleName (kw.term))
+                    return kw.term;
+            return ligand.getId().toString();
+        }
+        return name;
     }
+
+    public static Keyword getPreferredSynonym (Ligand ligand, String label) {
+        for (Keyword kw : ligand.synonyms)
+            if (label.equalsIgnoreCase(kw.label))
+                return kw;
+        return ligand.synonyms.isEmpty() ? null : ligand.synonyms.get(0);
+    }
+    
     public static Structure getStructure (Ligand ligand) {
         for (XRef xref : ligand.getLinks()) {
             if (xref.kind.equals(Structure.class.getName())) {

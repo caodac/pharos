@@ -75,6 +75,8 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.suggest.DocumentDictionary;
 import org.apache.lucene.search.suggest.Lookup;
 import org.apache.lucene.search.suggest.analyzing.AnalyzingInfixSuggester;
+import org.apache.lucene.search.vectorhighlight.FastVectorHighlighter;
+import org.apache.lucene.search.vectorhighlight.FieldQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -85,6 +87,7 @@ import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.NumericUtils;
+
 import org.reflections.Reflections;
 import play.Logger;
 
@@ -138,8 +141,8 @@ import static org.apache.lucene.document.Field.Store.YES;
  * Singleton class that responsible for all entity indexing
  */
 public class TextIndexer {
-    protected static final String STOP_WORD = " THE_STOP";
-    protected static final String START_WORD = "THE_START ";
+    protected static final String STOP_WORD = ""; //" THE_STOP";
+    protected static final String START_WORD = ""; //"THE_START ";
     protected static final String GIVEN_STOP_WORD = "$";
     protected static final String GIVEN_START_WORD = "^";
 
@@ -179,13 +182,29 @@ public class TextIndexer {
         TermVectorFieldType.setIndexed(true);
         TermVectorFieldType.setTokenized(false);
         TermVectorFieldType.setStoreTermVectors(true);
-        TermVectorFieldType.setStoreTermVectorPositions(false);
         TermVectorFieldType.freeze();
     }
 
     static class TermVectorField extends org.apache.lucene.document.Field {
         TermVectorField (String field, String value) {
             super (field, value, TermVectorFieldType);
+        }
+    }
+
+    static final FieldType HighlightFieldType =
+        new FieldType (TextField.TYPE_STORED);
+    static {
+        HighlightFieldType.setIndexed(true);
+        HighlightFieldType.setStoreTermVectors(true);
+        HighlightFieldType.setStoreTermVectorPositions(true);
+        //HighlightFieldType.setStoreTermVectorPayloads(true);
+        HighlightFieldType.setStoreTermVectorOffsets(true);
+        HighlightFieldType.freeze(); 
+    }
+
+    static class HighlightField extends org.apache.lucene.document.Field {
+        HighlightField (String field, String value) {
+            super (field, value, HighlightFieldType);
         }
     }
 
@@ -917,10 +936,14 @@ public class TextIndexer {
         SearchOptions options;
         int total, offset, requeued = 0;
         final long epoch = System.currentTimeMillis();
+        FastVectorHighlighter fvh;
+        FieldQuery fq;
         
         SearchResultPayload () {}
+        
         SearchResultPayload (SearchResult result, TopDocs hits,
-                             IndexSearcher searcher) {
+                             IndexSearcher searcher,
+                             Query query) throws IOException {
             this.result = result;
             this.hits = hits;
             this.searcher = searcher;
@@ -928,6 +951,8 @@ public class TextIndexer {
             result.count = hits.totalHits; 
             total = Math.max(0, Math.min(options.max(), result.count));
             offset = Math.min(options.skip, total);
+            fvh = new FastVectorHighlighter ();
+            fq = fvh.getFieldQuery(query, searcher.getIndexReader());
         }
 
         void fetch () throws Exception {
@@ -1011,15 +1036,28 @@ public class TextIndexer {
             // queue!
             // FIXME: make this configurable!
             for (long elapsed = 0l; i < size && elapsed < 500l; ++i) {
-                Document doc = searcher.doc(hits.scoreDocs[i+offset].doc);
+                int docId = hits.scoreDocs[i+offset].doc;
+                Document doc = searcher.doc(docId);
+                
                 final IndexableField kind = doc.getField(FIELD_KIND);
                 if (kind != null) {
                     String field = kind.stringValue()+"._id";
                     final IndexableField id = doc.getField(field);
                     if (id != null) {
-                        if (DEBUG (2)) {
+                        if (true || DEBUG (2)) {
                             Logger.debug("++ matched doc "
                                          +field+"="+id.stringValue());
+                        }
+                        
+                        String[] fragments = fvh.getBestFragments
+                            (fq, searcher.getIndexReader(),
+                             docId, "text", 2000, 10);
+                        if (fragments != null) {
+                            Logger.debug("## found "+fragments.length
+                                         +" fragment(s) in document "+id+"!");
+                            for (String f : fragments) {
+                                Logger.debug(">>> "+f);
+                            }
                         }
                         
                         try {
@@ -1773,7 +1811,7 @@ public class TextIndexer {
                 filter = new ChainedFilter (all.toArray(new Filter[0]),
                                             ChainedFilter.AND);
             }
-
+            
             int max = Math.max(100, options.max());            
             if (drills.isEmpty()) {
                 hits = sorter != null 
@@ -1928,7 +1966,7 @@ public class TextIndexer {
         if (options.top > 0) {
             try {
                 SearchResultPayload payload = new SearchResultPayload
-                    (searchResult, hits, searcher);
+                    (searchResult, hits, searcher, query);
                 if (options.fetch <= 0) {
                     payload.fetch();
                 }
@@ -2194,16 +2232,29 @@ public class TextIndexer {
         instrument (new LinkedList<String>(), new HashSet (), entity, fields);
 
         Document doc = new Document ();
+        Set<String> seen = new HashSet<>();
         for (IndexableField f : fields) {
-            String text = f.stringValue();
-            if (text != null) {
-                if (DEBUG (2))
-                    Logger.debug(".."+f.name()+":"
-                                 +text+" ["+f.getClass().getName()+"]");
-                
-                doc.add(new TextField ("text", text, NO));
+            //Logger.debug(f.name()+": "+f.getClass()+" "+f.fieldType());
+            if (!"text".equals(f.name())) {
+                doc.add(f);
             }
-            doc.add(f);
+
+            if ((f instanceof TextField)
+                || (f instanceof FacetField)
+                || (f instanceof TermVectorField)) {
+                String text = f.stringValue();
+                if (text != null && !seen.contains(text)) {
+                    if (DEBUG (2))
+                        Logger.debug(".."+f.name()+":"
+                                     +text+" ["+f.getClass().getName()+"]");
+                    
+                    //doc.add(new TextField ("text", text, NO));
+                    doc.add(new HighlightField
+                            ("text", "\n["+f.name()+"]"
+                             +text+"[/"+f.name()+"]"));
+                    seen.add(text);
+                }
+            }
         }
         
         // now index
@@ -2525,13 +2576,12 @@ public class TextIndexer {
         String fname =
             "".equals(indexable.name()) ? name : indexable.name();
         
-        boolean asText = true;
-
+        boolean asText = false;
         if (value instanceof Long) {
             //fields.add(new NumericDocValuesField (full, (Long)value));
             Long lval = (Long)value;
             fields.add(new LongField (full, lval, NO));
-            asText = indexable.facet();
+            //asText = indexable.facet();
             if (!asText && !name.equals(full)) 
                 fields.add(new LongField (name, lval, store));
             if (indexable.sortable())
@@ -2542,14 +2592,13 @@ public class TextIndexer {
                 facetsConfig.setMultiValued(fname, true);
                 facetsConfig.setRequireDimCount(fname, true);
                 fields.add(ff);
-                asText = false;
             }
         }
         else if (value instanceof Integer) {
             //fields.add(new IntDocValuesField (full, (Integer)value));
             Integer ival = (Integer)value;
             fields.add(new IntField (full, ival, NO));
-            asText = indexable.facet();
+            //asText = indexable.facet();
             if (!asText && !name.equals(full))
                 fields.add(new IntField (name, ival, store));
             if (indexable.sortable())
@@ -2561,7 +2610,6 @@ public class TextIndexer {
                 facetsConfig.setMultiValued(fname, true);
                 facetsConfig.setRequireDimCount(fname, true);
                 fields.add(ff);
-                asText = false;
             }
         }
         else if (value instanceof Float) {
@@ -2580,7 +2628,6 @@ public class TextIndexer {
                 facetsConfig.setRequireDimCount(fname, true);
                 fields.add(ff);
             }
-            asText = false;
         }
         else if (value instanceof Double) {
             //fields.add(new DoubleDocValuesField (full, (Double)value));
@@ -2598,7 +2645,6 @@ public class TextIndexer {
                 facetsConfig.setRequireDimCount(fname, true);
                 fields.add(ff);
             }
-            asText = false;
         }
         else if (value instanceof java.util.Date) {
             long date = ((Date)value).getTime();
@@ -2612,6 +2658,8 @@ public class TextIndexer {
                 value = YEAR_DATE_FORMAT.format(date);
             }
         }
+        else
+            asText = true;
 
         if (asText) {
             String text = value.toString();
