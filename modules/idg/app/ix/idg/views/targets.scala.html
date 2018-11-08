@@ -43,13 +43,23 @@ facets: Array[FacetDecorator], targets: List[Target], ctx: String )
        @defining(IDGApp.getSeqAlignment(ctx, t)) { aln =>
          @if(aln != null) {
          <tr class="default">
-        <td colspan="10">
-          <pre class="pre-scrollable" style="max-width:600px;overflow-x:auto;">@{"identity = %.3f".format(aln.alignments(0).iden)} @{"score = %d".format(aln.alignments(0).score)}
+             <td colspan="10">
+                 <pre class="pre-scrollable" style="max-width:600px;overflow-x:auto;">@{"identity = %.3f".format(aln.alignments(0).iden)} @{"score = %d".format(aln.alignments(0).score)}
 @aln.alignments(0).alignment
 </pre>
-        </td>
-     </tr>
-     }
+           </td>
+         </tr>
+         }
+       }
+       @defining(IDGApp.getMatchFragments(ctx, t)){ lmf =>
+         @if(lmf != null) {
+         <tr class="default">
+           <td colspan="10">
+             <span class="badge badge-info">@lmf(0).field</span>
+             @HtmlFormat.raw(lmf(0).fragment)
+           </td>
+         </tr>  
+         }
        }
     }
 }

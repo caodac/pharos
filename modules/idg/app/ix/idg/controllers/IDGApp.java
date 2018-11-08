@@ -3171,6 +3171,15 @@ public class IDGApp extends App implements Commons {
         //Logger.debug("retrieving alignment "+context+" "+seq.id+" => "+r);
         return r;
     }
+
+    public static TextIndexer.MatchFragment[] getMatchFragments
+        (String context, Target target) {
+        SearchResult result = getSearchContext (context);
+        if (result != null) {
+            return result.getFragments(target);
+        }
+        return null;
+    }
     
     public static String getTargetTableHeader (String name, String field) {
         String order = request().getQueryString("order");

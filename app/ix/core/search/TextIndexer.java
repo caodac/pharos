@@ -120,6 +120,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -641,6 +643,20 @@ public class TextIndexer {
                  true, bin+1 >= counts.length);            
         }
     }
+
+    public static class MatchFragment {
+        public final String field;
+        public final String fragment;
+
+        protected MatchFragment (String field, String fragment) {
+            this.field = field;
+            this.fragment = fragment;
+        }
+
+        public String toString () {
+            return "MatchFragment{field="+field+",fragment="+fragment+"}";
+        }
+    }
     
     public static class SearchResult /*implements java.io.Serializable*/ {
 
@@ -658,6 +674,9 @@ public class TextIndexer {
         transient ReentrantLock wlck = new ReentrantLock (); // write lock
         transient Condition finished = lock.newCondition();
         transient Set<String> keys = new HashSet<String>();
+        
+        static final Pattern fragRe = Pattern.compile("<b>([^(</b>)]+)</b>");
+        Map<Object, MatchFragment[]> fragments = new ConcurrentHashMap<>();
 
         SearchResult () {}
         SearchResult (SearchOptions options, String query) {
@@ -682,6 +701,52 @@ public class TextIndexer {
             throw new UnsupportedOperationException
                 ("get(index) is no longer supported; please use copyTo()");
         }
+        
+        protected static MatchFragment parseFragment (String fragment) {
+            MatchFragment mf = null;
+            for (String f : fragment.split("\n")) {
+                Matcher m = fragRe.matcher(f);
+                if (m.find()) {
+                    // extract the field name [NAME]<b>...</b>[/NAME]
+                    int pe = m.start(1);
+                    while (--pe >= 0 && f.charAt(pe) != ']')
+                        ;
+                    String s = null;
+                    if (pe > 0) {
+                        int ps = pe;
+                        while (ps > 0 && f.charAt(--ps) != '[')
+                            ;
+                        s = f.substring(Math.max(0, ps+1), pe);
+                    }
+                        
+                    int qs = m.end(1);
+                    while (++qs < f.length() && f.charAt(qs) != '[')
+                        ;
+                    String t = null;
+                    if (qs < f.length() && f.charAt(qs+1) == '/') {
+                        int qe = ++qs; // skip over /
+                        while (qe < f.length() && f.charAt(qe) != ']')
+                            ++qe;
+                        t = f.substring(qs+1, qe);
+                    }
+
+                    if ((s == null || t == null)
+                        || (s != null && !s.equals(t))
+                        || (t != null && !t.equals(s))) {
+                        // the fragment doesn't capture the field name
+                        Logger.warn("Fragment doesn't capture field name: "+f);
+                        mf = new MatchFragment (null, f.substring(pe+1, qs-1));
+                    }
+                    else { // s.equals(t)
+                        mf = new MatchFragment (s, f.substring(pe+1, qs-1));
+                    }
+                    break;
+                }
+            }
+            
+            return mf;
+        }
+        
         // fill the given list with value starting at start up to start+count
         public int copyTo (List list, int start, int count) {
             wlck.lock();
@@ -748,14 +813,19 @@ public class TextIndexer {
             return null;
         }
 
-        protected void add (Object obj) {
+        protected void add (Object obj, MatchFragment... fragments) {
             wlck.lock();
             try {
                 matches.add(obj);
+                this.fragments.put(obj, fragments);
             }
             finally {
                 wlck.unlock();
             }
+        }
+
+        public MatchFragment[] getFragments (Object obj) {
+            return fragments.get(obj);
         }
         
         protected void done () {
@@ -1044,26 +1114,36 @@ public class TextIndexer {
                     String field = kind.stringValue()+"._id";
                     final IndexableField id = doc.getField(field);
                     if (id != null) {
-                        if (true || DEBUG (2)) {
+                        if (DEBUG (2)) {
                             Logger.debug("++ matched doc "
                                          +field+"="+id.stringValue());
                         }
-                        
-                        String[] fragments = fvh.getBestFragments
-                            (fq, searcher.getIndexReader(),
-                             docId, "text", 2000, 10);
-                        if (fragments != null) {
-                            Logger.debug("## found "+fragments.length
-                                         +" fragment(s) in document "+id+"!");
-                            for (String f : fragments) {
-                                Logger.debug(">>> "+f);
-                            }
-                        }
-                        
+                                                
                         try {
                             Object value = findObject (kind, id);
-                            if (value != null)
-                                result.add(value);
+                            if (value != null) {
+                                String[] fragments = fvh.getBestFragments
+                                    (fq, searcher.getIndexReader(),
+                                     docId, "text", 2000, 10);
+                                List<MatchFragment> lmf = new ArrayList<>();
+                                if (fragments != null) {
+                                    Logger.debug("## found "+fragments.length
+                                                 +" fragment(s) in document "
+                                                 +id+"!");
+                                    for (String f : fragments) {
+                                        //Logger.debug(">>> "+f);
+                                        MatchFragment mf =
+                                            SearchResult.parseFragment(f);
+                                        if (mf != null) {
+                                            Logger.debug(">>> "+mf);
+                                            lmf.add(mf);
+                                        }
+                                    }
+                                }
+                                
+                                result.add(value,
+                                           lmf.toArray(new MatchFragment[0]));
+                            }
                         }
                         catch (Exception ex) {
                             Logger.trace("Can't locate object "
