@@ -15,12 +15,93 @@ ligands: List[Ligand], totalLigands: Int,
 diseases: List[Disease], totalDiseases: Int,
 publications: List[Publication], totalPubs: Int, ctx: String)
 
-@tabrow(t: Target) = {
+@matchfragment(key: Object, col: Int) = {
+  @if(ctx != null){
+    @defining(IDGApp.getMatchFragments(ctx, key)){ lmf =>
+       @if(lmf != null && lmf.length > 0) {
+       <tr>
+           <td colspan="@col">
+             <span class="badge badge-default">@lmf(0).field</span>
+             @HtmlFormat.raw(lmf(0).fragment)
+           </td>         
+       </tr>
+       }
+    }
+  }
+}
+
+@targetrow(t: Target) = {
 <tr>
   <td><a href="@ix.idg.controllers.routes.IDGApp.target(IDGApp.getId(t))">@t.name</a></td>
   <td><span class="label label-@t.idgTDL.label" data-toggle="tooltip" data-html="true" title="<p align='left'>@t.idgTDL.desc</p>">@t.idgTDL.name</span></td>
   <td>@t.idgFamily</td>
 </tr>
+@matchfragment(t, 3)
+}
+
+@ligandrow(lig: Ligand) = {
+<tr>
+  <td>
+    @defining(IDGApp.getStructure(lig)) { struc =>
+      @if(struc != null) {
+           <a  tabindex="-1"
+           data-toggle="popover"
+           data-animation="true"
+           data-placement="top"
+           data-trigger="click hover focus"
+           data-title="@lig.getName()"
+       data-html="true"
+           data-content="<img src='@ix.ncats.controllers.routes.App.structure(struc.getId,"svg",150)'>">
+         <img alt="Structure of @IDGApp.getId(lig)"
+          src='@ix.ncats.controllers.routes.App.structure(struc.getId,"svg",80)'></a>
+       }
+    }
+  </td>
+  <td class="valign-center"><a href="@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))">@HtmlFormat.raw(lig.getName)</a></td>
+  <td class="valign-center">
+    @for(t <- IDGApp.getTDL(lig)) {
+      <span class="label label-@t.label" data-toggle="tooltip"
+          data-html="true" title="<p align='left'>@t.desc</p>">@t.name</span>
+    }
+  </td>
+  @**
+  <td class="valign-center">
+  @defining(IDGApp.getMajorTopics(lig)) { mesh =>
+    @for(i <- 0 until Math.min(3,mesh.size())) {
+      <a class="label label-default" href='@{ix.idg.controllers.routes.IDGApp.ligands(null,8,1) + "?facet=MeSH/"}@URLEncoder.encode(mesh(i).heading,"utf8")'>@mesh(i).heading</a>
+    }
+    @if(mesh.size() > 3) {
+       <a class="label label-default" href="@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))">...</a>
+    }
+  }
+  </td>
+**@
+</tr>
+@matchfragment(lig, 3)
+}
+
+@diseaserow(d: Disease) = {
+<tr>
+    <td><a href="@ix.idg.controllers.routes.IDGApp.disease(IDGApp.getId(d))">@d.name</a></td>
+    <td>@d.description</td>
+</tr>
+@matchfragment(d, 2)
+}
+
+@pubrow(p: Publication) = {
+<tr>
+   @if(p.pmid != null) {
+     <td><span class="__dimensions_badge_embed__" data-pmid="@p.pmid" data-style="small_rectangle"></span></td>
+     <td align="right"><a href='http://www.ncbi.nlm.nih.gov/pubmed/@p.pmid'>@p.pmid</a>
+     </td>
+     <td><a href='@{ix.idg.controllers.routes.IDGApp.targets(p.pmid.toString(), 10, 1) + "&type=pmid"}'>@p.title</td>
+   } else {
+     <td></td>
+     <td></td>
+     <td>@p.title</td>
+   }
+</tr>
+@matchfragment(p, 3)
 }
 
 @ix.ncats.views.html.main("Search: "+query){
@@ -66,7 +147,7 @@ publications: List[Publication], totalPubs: Int, ctx: String)
           <th>Target Family</th>
         </tr>
         @for(t <- targets) {
-          @tabrow(t)
+          @targetrow(t)
         }
       </table>
        @if(targets.length < totalTargets) {
@@ -88,49 +169,13 @@ publications: List[Publication], totalPubs: Int, ctx: String)
           <th>Name</th>
           <th>Development Level</th>
         </tr>
-        @for(lig <- ligands) {
-          <tr>
-  <td>
-    @defining(IDGApp.getStructure(lig)) { struc =>
-      @if(struc != null) {
-           <a  tabindex="-1"
-           data-toggle="popover"
-           data-animation="true"
-           data-placement="top"
-           data-trigger="click hover focus"
-           data-title="@lig.getName()"
-       data-html="true"
-           data-content="<img src='@ix.ncats.controllers.routes.App.structure(struc.getId,"svg",150)'>">
-         <img alt="Structure of @IDGApp.getId(lig)"
-          src='@ix.ncats.controllers.routes.App.structure(struc.getId,"svg",80)'></a>
-       }
-    }
-  </td>
-  <td class="valign-center"><a href="@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))">@lig.getName()</a></td>
-  <td class="valign-center">
-    @for(t <- IDGApp.getTDL(lig)) {
-      <span class="label label-@t.label" data-toggle="tooltip"
-          data-html="true" title="<p align='left'>@t.desc</p>">@t.name</span>
-    }
-  </td>
-  @**
-  <td class="valign-center">
-  @defining(IDGApp.getMajorTopics(lig)) { mesh =>
-    @for(i <- 0 until Math.min(3,mesh.size())) {
-      <a class="label label-default" href='@{ix.idg.controllers.routes.IDGApp.ligands(null,8,1) + "?facet=MeSH/"}@URLEncoder.encode(mesh(i).heading,"utf8")'>@mesh(i).heading</a>
-    }
-    @if(mesh.size() > 3) {
-       <a class="label label-default" href="@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))">...</a>
-    }
-  }
-  </td>
-**@
-          </tr>
-             }
-           </table>
-       @if(ligands.length < totalLigands) {
-        <span><i class="fa fa-ellipsis-h"></i></span>
+        @for(l <- ligands) {
+          @ligandrow(l)
         }
+      </table>
+      @if(ligands.length < totalLigands) {
+        <span><i class="fa fa-ellipsis-h"></i></span>
+      }
     </div>
     <div class="panel-footer">
       <a href="@{ix.idg.controllers.routes.IDGApp.ligands()+"?"+App.queryString(request().queryString())}">@totalLigands ligand(s)</a>
@@ -148,10 +193,7 @@ publications: List[Publication], totalPubs: Int, ctx: String)
                           <th>Description</th>
                       </tr>
                       @for(d <- diseases) {
-                          <tr>
-                              <td><a href="@ix.idg.controllers.routes.IDGApp.disease(IDGApp.getId(d))">@d.name</a></td>
-                              <td>@d.description</td>
-                          </tr>
+                        @diseaserow(d)
                       }
                   </table>
                   @if(diseases.length < totalDiseases) {
@@ -178,24 +220,11 @@ publications: List[Publication], totalPubs: Int, ctx: String)
               <th>Title</th>
             </tr>
             @for(p <- publications) {
-            <tr>
-              @if(p.pmid != null) {
-              <td><span class="__dimensions_badge_embed__" data-pmid="@p.pmid" data-style="small_rectangle"></span></td>
-              <td align="right"><a href='http://www.ncbi.nlm.nih.gov/pubmed/@p.pmid'>@p.pmid</a>
-              </td>
-              <td><a href='@{ix.idg.controllers.routes.IDGApp.targets(p.pmid.toString(), 10, 1) + "&type=pmid"}'>@p.title</td>
-              } else {
-              <td></td>
-              <td></td>
-              <td>@p.title</td>
-              }
-            </tr>
+              @pubrow(p)
             }
           </table>
         </div>
       </div>
-
-
   }
 
       </div>

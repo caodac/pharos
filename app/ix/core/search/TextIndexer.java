@@ -675,7 +675,7 @@ public class TextIndexer {
         transient Condition finished = lock.newCondition();
         transient Set<String> keys = new HashSet<String>();
         
-        static final Pattern fragRe = Pattern.compile("<b>([^(</b>)]+)</b>");
+        static final Pattern fragRe = Pattern.compile("<b>([^(<\\/)]+)</b>");
         Map<Object, MatchFragment[]> fragments = new ConcurrentHashMap<>();
 
         SearchResult () {}
@@ -703,7 +703,7 @@ public class TextIndexer {
         }
         
         protected static MatchFragment parseFragment (String fragment) {
-            MatchFragment mf = null;
+            MatchFragment frag = null;
             for (String f : fragment.split("\n")) {
                 Matcher m = fragRe.matcher(f);
                 if (m.find()) {
@@ -711,40 +711,48 @@ public class TextIndexer {
                     int pe = m.start(1);
                     while (--pe >= 0 && f.charAt(pe) != ']')
                         ;
-                    String s = null;
+                    String field = null;
                     if (pe > 0) {
                         int ps = pe;
                         while (ps > 0 && f.charAt(--ps) != '[')
                             ;
-                        s = f.substring(Math.max(0, ps+1), pe);
+                        String s = f.substring(Math.max(0, ps+1), pe);
+                        if (f.charAt(ps) == '[')
+                            field = s; // we have field name in its entirety
                     }
                         
                     int qs = m.end(1);
                     while (++qs < f.length() && f.charAt(qs) != '[')
                         ;
-                    String t = null;
                     if (qs < f.length() && f.charAt(qs+1) == '/') {
                         int qe = ++qs; // skip over /
                         while (qe < f.length() && f.charAt(qe) != ']')
                             ++qe;
-                        t = f.substring(qs+1, qe);
+                        String t = f.substring(qs+1, qe);
+                        if (f.charAt(qe) == ']') {
+                            if (field == null)
+                                field = t; // we have field name in its entirety
+                            else if (!field.equals(t))
+                                Logger.warn("Expect field name \""+field+"\""
+                                            +" but got \""+t+"\"!");
+                        }
                     }
 
-                    if ((s == null || t == null)
-                        || (s != null && !s.equals(t))
-                        || (t != null && !t.equals(s))) {
+                    if (field == null) {
                         // the fragment doesn't capture the field name
                         Logger.warn("Fragment doesn't capture field name: "+f);
-                        mf = new MatchFragment (null, f.substring(pe+1, qs-1));
                     }
-                    else { // s.equals(t)
-                        mf = new MatchFragment (s, f.substring(pe+1, qs-1));
+                    MatchFragment mf = new MatchFragment
+                        (field, f.substring(pe+1, qs-1));
+
+                    if (frag == null
+                        || (frag.field == null && mf.field != null)) {
+                        frag = mf;
                     }
-                    break;
                 }
             }
             
-            return mf;
+            return frag;
         }
         
         // fill the given list with value starting at start up to start+count

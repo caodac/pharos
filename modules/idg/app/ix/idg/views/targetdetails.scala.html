@@ -386,7 +386,7 @@
    }
    </td>
    <td class="valign-center">
-      <a class="label label-primary loader" href='@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))'>@lig.getName()</a>
+      <a class="label label-primary loader" href='@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))'>@HtmlFormat.raw(lig.getName)</a>
    </td>
    @defining(IDGApp.getActivity(target, lig)) { act =>
       @if(act != null) {
@@ -412,7 +412,7 @@
         src='@routes.Assets.versioned("images/npc_logo.png")'/>
      }
        <div class="caption" style="padding:0px;">
-             <p class="text-center"><a class="loader" href='@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))'>@lig.getName()</a>
+             <p class="text-center"><a class="loader" href='@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))'>@HtmlFormat.raw(lig.getName)</a>
              @defining(IDGApp.getActivity(target, lig)) { act =>
                @if(act != null) {
              @act.label match {

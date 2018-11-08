@@ -3173,10 +3173,10 @@ public class IDGApp extends App implements Commons {
     }
 
     public static TextIndexer.MatchFragment[] getMatchFragments
-        (String context, Target target) {
+        (String context, Object key) {
         SearchResult result = getSearchContext (context);
         if (result != null) {
-            return result.getFragments(target);
+            return result.getFragments(key);
         }
         return null;
     }
