@@ -435,8 +435,8 @@
 }
 
 @ligandcarousel(title: String, ligands: List[Ligand], group: String) = {
-       @if(!ligands.isEmpty()) {
-         <div class="row">
+   @if(!ligands.isEmpty()) {
+     <div class="row">
         <div class="col-md-12">
                <div class="panel panel-default">
                   <a name="@{title}s" tocname="@{title}s"></a>
@@ -837,6 +837,7 @@
     <script type="text/javascript" src='@routes.Assets.versioned("javascripts/stupidtable.min.js")'></script>
     <script src='@routes.WebJarAssets.at(WebJarAssets.locate("jquery.dataTables.min.js"))'></script>
     <script src='@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap/2/dataTables.bootstrap.min.js"))'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/ngl.js")'></script>
 
     <link rel="stylesheet" href='@routes.WebJarAssets.at(WebJarAssets.locate("jquery.dataTables.min.css"))'>
     <link rel="stylesheet" href='@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap/2/dataTables.bootstrap.css"))'>    
@@ -852,6 +853,9 @@
     <script type="text/javascript" src='@routes.Assets.versioned("javascripts/viz.js")'></script>
     <!--<link type="text/css" rel="stylesheet" href="https://code.highcharts.com/css/highcharts.css"></script>-->
 
+    <link href="http://ebi-uniprot.github.io/CDN/protvista/css/main.css" rel="stylesheet"/>
+    <script src="http://ebi-uniprot.github.io/CDN/protvista/protvista.js"></script>
+    
     <style type="text/css">
 
     .carousel-image {
@@ -1269,28 +1273,6 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
 @**
 @property(GRANT_APPLICATION, null, 0, "Count of NIH grant applications including target reported in parenthesis. Listing individual grants with links to NIH RePORT site and tally of occurance of target for particular grant in circle. Click on the bargraph icon to explore further the Summary of Grant Application information.")
 **@
-        @defining(target.getSynonyms(PDB_ID)) { pdbids =>
-              @if(pdbids.size() > 0) {
-                  <div class="panel panel-default"
-                       style="max-height: 300px; overflow-y: auto;">
-                      <a name="pdb" tocname="PDB"></a>
-                      <div class="panel-heading">
-                          <h3 class="panel-title">PDB
-                            <a href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/synonyms(label="+PDB_ID+")"}'>
-                              <span class="fa fa-code pull-right"></span></a>
-                <a href="http://www.rcsb.org/pdb/protein/@IDGApp.getId(target)">
-                              <span class="fa fa-external-link pull-right"></span>
-                            </a>
-              </h3>
-                      </div>
-                      <div class="panel-body">
-                          @for(aval <- pdbids){
-                          <a href="http://www.rcsb.org/pdb/explore.do?structureId=@aval.getValue()">@aval.getValue()</a> &nbsp;
-                            }
-                      </div>
-                  </div>
-              }
-          }
         @ortholog(target)        
         @techdev(target)
         @property(COLLECTION)
@@ -1316,7 +1298,7 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                           <h4 class="modal-title" id="myModalLabel">Compartment GO Terms for @target.getName</h4>
                        </div>
                        <div class="modal-body"
-                    style="max-height:400px;overflow-y:auto;">
+                            style="max-height:400px;overflow-y:auto;">
                           @for(t <- terms) {
                              @keyword(t, 0)
                           }
@@ -1536,6 +1518,41 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
   </div>
   }
 
+   @defining(target.getSynonyms(PDB_ID)) { pdbids =>
+     @if(pdbids.size() > 0) {
+     <div class="row">
+        <div class="col-md-12">
+           <div class="panel panel-default">
+              <a name="pdb" tocname="PDB"></a>
+              <div class="panel-heading">
+                 <h3 class="panel-title">PDB
+                   <a href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/synonyms(label="+PDB_ID+")"}'>
+                      <span class="fa fa-code pull-right"></span></a>
+                   <a href="http://www.rcsb.org/pdb/protein/@IDGApp.getId(target)">
+                     <span class="fa fa-external-link pull-right"></span>
+                   </a>
+                 </h3>
+              </div>
+              <div class="panel-body">
+                <ul class="nav nav-tabs" role="tablist">
+                   <li role="presentation" class="active">
+                       <a href="http://www.rcsb.org/pdb/explore.do?structureId=@pdbids(0).getValue" role="tab">@pdbids(0).getValue</a></li>
+                  @for(i <- 1 until pdbids.length) {
+                    @defining(pdbids(i).getValue){ pdb =>
+                      <li role="presentation">
+                        <a href="http://www.rcsb.org/pdb/explore.do?structureId=@pdb" role="tab">@pdb <span class="fa fa-external-link"></span></a></li>
+                    }
+                  }
+                 </ul>                  
+                 <div id="@pdbids(0).getValue"
+                         style="width:600px; height:400px;"></div>
+               </div>
+           </div>
+         </div>
+      </div>
+      }
+    }
+
     @defining(IDGApp.getDrugLigands(target)) { drugs =>
       @ligandcarousel("Drug", drugs, "drugs")
     }
@@ -1664,12 +1681,7 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                <div class="panel-body">
                  <div id="aa-profile" style="max-height:200px; width:100%;"></div>
                  <pre class="pre-scrollable">@seq.sequence</pre>
-                 <iframe sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-top-navigation allow-popups-to-escape-sandbox allow-modals"
-                         src='@ix.idg.controllers.routes.IDGApp.targetpviz(IDGApp.getId(target))'
-                         marginwidth="0" marginheight="0"
-                         frameBorder="0"
-                         style="height:450px; width:100%" scrolling="yes">
-                 </iframe>
+                 <div id="protvista" style="width:100%"></div>
                </div>
              </div>
            </div>
@@ -1804,6 +1816,28 @@ $(function () {
   $('[data-toggle="popover"]').popover();
   $('[data-toggle="tooltip"]').tooltip();
 });
+
+window.onload = function() {
+    var div = document.getElementById('protvista');
+    var ProtVista = require('ProtVista');
+    var instance = new ProtVista({
+        el: div,
+        uniprotacc: '@target.accession'
+    });
+}
+
+@defining(target.getSynonyms(PDB_ID)) { pdbids =>
+  @for(kw <- pdbids) {
+     @defining(kw.getValue){ pdb =>
+       document.addEventListener("DOMContentLoaded", function () {
+          var stage = new NGL.Stage("@pdb", {backgroundColor:"white",
+                                                hoeverTimeout: 150});
+          stage.loadFile("rcsb://@pdb", {defaultRepresentation: true});
+       });
+     }
+  }
+}
+
 
 $(document).ready(function () {
     $("#diffexptable").stupidtable();
