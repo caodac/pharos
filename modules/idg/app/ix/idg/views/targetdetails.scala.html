@@ -1519,14 +1519,14 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
   </div>
   }
 
-   @defining(IDGApp.getPDBEntries(target)) { pdbids =>
-     @if(pdbids.size() > 0) {
+   @defining(target.getSynonyms(PDB_ID)) { pdbids =>
+     @if(pdbids.size > 0) {
      <div class="row">
         <div class="col-md-12">
            <div class="panel panel-default">
               <a name="pdb" tocname="PDB"></a>
               <div class="panel-heading">
-                 <h3 class="panel-title">PDB (@pdbids.length)
+                 <h3 class="panel-title">PDB (@pdbids.size)
                    <a href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/synonyms(label="+PDB_ID+")"}'>
                       <span class="fa fa-code pull-right"></span></a>
                    <a href="http://www.rcsb.org/pdb/protein/@IDGApp.getId(target)">
@@ -1537,22 +1537,22 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
               <div class="panel-body">
                 <ul class="nav nav-tabs" role="tablist">
                    <li role="presentation" class="active">
-                       <a href="http://www.rcsb.org/pdb/explore.do?structureId=@pdbids(0).getValue" role="tab">@pdbids(0).getValue</a></li>
-                  @for(i <- 1 until pdbids.length) {
-                    @defining(pdbids(i).getValue){ pdb =>
-                      <li role="presentation">
-                        <a href="http://www.rcsb.org/pdb/explore.do?structureId=@pdb" role="tab">@pdb <span class="fa fa-external-link"></span></a></li>
-                    }
-                  }
+                       <a href="#pdb-viewer-tab" role="tab" data-toggle="tab">
+                          <span id="pdb-viewer-tab-label">...</span></a></li>
+                   <li role="presentation">
+                       <a href="#pdb-more-tab" role="tab"
+                          data-toggle="tab">More...</a></li>
                  </ul>
-                 <div id="@pdbids(0).getValue"
+                 <div class="tab-content">
+                    <div role="tabpanel" class="tab-pane active"
+                         id="pdb-viewer-tab"
                          style="width:100%; height:400px;"></div>
-                 @**
-                 <div style="height: 400px; width: 100%;"
-                      class='viewer_3Dmoljs' data-pdb='@pdbids(0).getValue'
-                      data-style1='cartoon:color=spectrum'
-                      data-surface1='opacity:.7;color:white'
-                      data-backgroundcolor='0xffffff'></div>**@
+                    <div role="tabpanel"
+                         class="tab-pane" id="pdb-more-tab">
+                         <table class="table table-striped"
+                                id="pdb-more-table"></table>
+                    </div>
+                 </div>
                </div>
            </div>
          </div>
@@ -1643,22 +1643,6 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
           <div class="panel-body"
                style="max-height:600px;overflow-y:auto;">
             <div class="panel-body table-responsive">
-              @**
-              <table class="table table-striped">
-                <tr>
-                  <th></th>
-                  <th>PMID <i class="fa fa-external-link"></i></th>
-                  <th>Text</th>
-                </tr>
-                @for(x <- generifs) {
-                <tr>
-                  <td><span class="__dimensions_badge_embed__" data-pmid="@x.pmid" data-style="small_rectangle"></span></td>
-                  <td><a href="http://www.ncbi.nlm.nih.gov/pubmed/@x.pmid">@x.pmid</a></td>
-                  <td>@x.text</td>
-                </tr>
-                }
-              </table>
-              **@
               <table class="table table-striped" id="grifTable">
               </table>
             </div>
@@ -1833,19 +1817,102 @@ window.onload = function() {
     });
 }
 
-@defining(IDGApp.getPDBEntries(target)) { pdbids =>
-  @for(kw <- pdbids) {
-     @defining(kw.getValue){ pdb =>
-       document.addEventListener("DOMContentLoaded", function () {
-          var stage = new NGL.Stage("@pdb", {backgroundColor:"white",
-                                                hoeverTimeout: 150});
-          stage.loadFile("rcsb://@pdb", {defaultRepresentation: true});
-          window.addEventListener( "resize", function( event ){
-              stage.handleResize();
-          }, false );
-       });
-     }
+
+@**
+           document.addEventListener("DOMContentLoaded", function () {
+              var stage = new NGL.Stage(pdbs[0], {backgroundColor:"white",
+                                                  hoeverTimeout: 150});
+              stage.loadFile('rcsb://'+pdbs[0], {defaultRepresentation: true});
+              window.addEventListener( "resize", function( event ){
+                  stage.handleResize();
+              }, false );
+           });
+**@
+
+function showPDBEntries () {
+  var pdbs = [
+  @defining(target.getSynonyms(PDB_ID)) { pdbids =>
+    @for(kw <- pdbids) {
+      @defining(kw.getValue){ pdb =>
+        '@pdb',
+      }
+    }
   }
+  ];
+
+  if (pdbs.length > 0) {
+     $.ajax({
+        url: 'https://www.rcsb.org/pdb/rest/customReport.csv?customReportColumns=structureId,ligandId,pubmedId,releaseDate,experimentalTechnique,structureTitle&service=wsfile&format=csv&pdbids='+pdbs.join(),
+        dataType: 'text',
+        success: function (d) {
+           var toks = d.split('\n');
+           console.log(toks[0]);
+           var p = {};
+           var selection;
+           for (var i = 1; i < toks.length; ++i) {
+              var fs = toks[i].split(',');
+              var n = fs[0].replace(/"/g,'');
+              if (!p[n] && fs[2]) { // chainId is implicit second column
+                 p[n] = {
+                    id: n,
+                    ligand: fs[2].replace(/"/g,''),
+                    pmid: fs[3].replace(/"/g,''),
+                    title: fs[6].replace(/"/g,''),
+                    method: fs[5].replace(/"/g,'')                    
+                 };
+                 if (selection == undefined
+                    || (selection.ligand == '' && p[n].ligand != '')) {
+                    selection = p[n];
+                 }
+              }
+           }
+           
+           console.log(p);
+
+           var table = [];
+           for (var k in p) {
+                 table.push(p[k]);
+           }
+              
+           var pdbtab = $('#pdb-more-table').dataTable({
+               dom: "pit",
+               data: table,
+               columnDefs: [{
+                     targets: 0,
+                     render: function(data,type,full,meta) {
+                         return '<a href="https://www.rcsb.org/structure/'+data+'">'+data+'</a>';
+                     }
+                  },{
+                     targets: 1,
+                     render: function(data,type,full,meta) {
+                        return '<a href="https://www.ncbi.nlm.nih.gov/pubmed/'+data+'">'+data+'</a>';
+                     }
+                  },{
+                     targets: 2,
+                     render: function(data,type,full,meta){
+                        return '<a href="https://www.rcsb.org/3d-view/'+full['id']+'?preset=ligandInteraction&sele='+data+'" target="#pdb-ligand">'+data+'</a>';
+                     }
+                  }],
+               columns: [
+                     {title: 'PDB', data: 'id'},
+                     {title: 'PMID', data: 'pmid'},
+                     {title: 'Ligand', data: 'ligand'},
+                     {title: 'Method', data: 'method'},
+                     {title: 'Title', data: 'title', orderable: false}
+                  ]
+              });
+
+           console.log('selection: '+selection.id);
+           $('#pdb-viewer-tab-label').html(selection.id);
+           var stage = new NGL.Stage('pdb-viewer-tab',
+                       {backgroundColor:"white", hoeverTimeout: 150});
+           stage.loadFile('rcsb://'+pdbs[0], {defaultRepresentation: true});
+           window.addEventListener( "resize", function( event ){
+                  stage.handleResize();
+           }, false );
+        }
+     });
+   }
 }
 
 $(document).ready(function () {
@@ -2317,6 +2384,7 @@ $('.tree').treegrid({
     tinx_target_plot("#tinx-plot", "@IDGApp.getId(target)");
     loadPubTable ();
     loadGeneRIFTable ();
+    showPDBEntries ();
 });
 
 function loadGeneRIFTable () {
