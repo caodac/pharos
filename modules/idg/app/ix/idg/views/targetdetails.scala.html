@@ -1842,41 +1842,45 @@ function showPDBEntries () {
 
   if (pdbs.length > 0) {
      $.ajax({
-        url: 'https://www.rcsb.org/pdb/rest/customReport.csv?customReportColumns=structureId,ligandId,pubmedId,releaseDate,experimentalTechnique,structureTitle&service=wsfile&format=csv&pdbids='+pdbs.join(),
+        url: 'https://www.rcsb.org/pdb/rest/customReport.csv?customReportColumns=structureId,ligandId,ligandSmiles,pubmedId,releaseDate,experimentalTechnique,structureTitle&service=wsfile&format=csv&pdbids='+pdbs.join(),
         dataType: 'text',
         success: function (d) {
            var toks = d.split('\n');
            console.log(toks[0]);
-           var p = {};
+           
            var selection;
+           var table = [];
+           var seen = {};
            for (var i = 1; i < toks.length; ++i) {
-              var fs = toks[i].split(',');
-              var n = fs[0].replace(/"/g,'');
-              if (!p[n] && fs[2]) { // chainId is implicit second column
-                 p[n] = {
-                    id: n,
-                    ligand: fs[2].replace(/"/g,''),
-                    pmid: fs[3].replace(/"/g,''),
-                    title: fs[6].replace(/"/g,''),
-                    method: fs[5].replace(/"/g,'')                    
+              var fs = toks[i].replace(/"/g,'').split(',');
+              var entry = fs[0]+fs[2];
+              if (!seen[entry] && fs[0]) {
+                 var p = {
+                   id: fs[0],
+                   ligandId: fs[2],
+                   ligandSmiles: fs[3],
+                   pmid: fs[4],
+                   method: fs[6],
+                   title: fs[7]
                  };
-                 if (selection == undefined
-                    || (selection.ligand == '' && p[n].ligand != '')) {
-                    selection = p[n];
+                 if (selection == undefined 
+                     || (selection.ligandSmiles == undefined 
+                         && p.ligandSmiles != undefined)
+                     || (p.ligandSmiles != undefined 
+                         && selection.ligandSmiles.length
+                             < p.ligandSmiles.length)) {
+                    selection = p;
                  }
+                 table.push(p);
+                 seen[entry] = true;
               }
            }
            
-           console.log(p);
-
-           var table = [];
-           for (var k in p) {
-                 table.push(p[k]);
-           }
-              
+           console.log(table);
            var pdbtab = $('#pdb-more-table').dataTable({
                dom: "pit",
                data: table,
+               pageLength: 5,
                columnDefs: [{
                      targets: 0,
                      render: function(data,type,full,meta) {
@@ -1892,11 +1896,18 @@ function showPDBEntries () {
                      render: function(data,type,full,meta){
                         return '<a href="https://www.rcsb.org/3d-view/'+full['id']+'?preset=ligandInteraction&sele='+data+'" target="#pdb-ligand">'+data+'</a>';
                      }
+                  },{
+                     targets: 3,
+                     render: function(data,type,full,meta){
+                        if (!data || data == '') return '';
+                        return '<img src="@ix.ncats.controllers.routes.App.render("")'+encodeURIComponent(data)+'?size=80"/>';
+                     }
                   }],
                columns: [
                      {title: 'PDB', data: 'id'},
                      {title: 'PMID', data: 'pmid'},
-                     {title: 'Ligand', data: 'ligand'},
+                     {title: 'LigandId', data: 'ligandId'},
+                     {title: 'Ligand', data: 'ligandSmiles'},
                      {title: 'Method', data: 'method'},
                      {title: 'Title', data: 'title', orderable: false}
                   ]
