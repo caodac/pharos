@@ -1565,13 +1565,7 @@ public class TextIndexer {
         throws IOException {
         //this is a quick and dirty way to have a cleaner-looking
         //query for display
-        String qtext =text;
-        if (qtext!=null){
-            qtext= text.replace(TextIndexer.GIVEN_START_WORD,
-                                TextIndexer.START_WORD);
-            qtext = qtext.replace(TextIndexer.GIVEN_STOP_WORD,
-                                  TextIndexer.STOP_WORD);
-        }
+        String qtext = text;
         SearchResult searchResult = new SearchResult (options, text);
 
         Query query = null;
@@ -1580,8 +1574,7 @@ public class TextIndexer {
         }
         else {
             try {
-                QueryParser parser = new QueryParser
-                    ("text", indexAnalyzer);
+                QueryParser parser = new QueryParser ("text", indexAnalyzer);
                 query = parser.parse(qtext);
             }
             catch (ParseException ex) {
@@ -1769,7 +1762,7 @@ public class TextIndexer {
         
         if (DEBUG (1)) {
             Logger.debug("## Query: "
-                         +query+" Filter: "
+                         +query+"["+query.getClass().getName()+"] Filter: "
                          //+(filter!=null?filter:"none")
                          +" Options:"+options);
         }
@@ -2320,18 +2313,13 @@ public class TextIndexer {
         instrument (new LinkedList<String>(), new HashSet (), entity, fields);
 
         Document doc = new Document ();
-        Set<String> seen = new HashSet<>();
         for (IndexableField f : fields) {
-            //Logger.debug(f.name()+": "+f.getClass()+" "+f.fieldType());
-            if (!"text".equals(f.name())) {
-                doc.add(f);
-            }
-
             if ((f instanceof TextField)
+                || (f instanceof StringField)
                 || (f instanceof FacetField)
                 || (f instanceof TermVectorField)) {
                 String text = f.stringValue();
-                if (text != null && !seen.contains(text)) {
+                if (text != null) {
                     if (DEBUG (2))
                         Logger.debug(".."+f.name()+":"
                                      +text+" ["+f.getClass().getName()+"]");
@@ -2340,8 +2328,12 @@ public class TextIndexer {
                     doc.add(new HighlightField
                             ("text", "\n["+f.name()+"]"
                              +text+"[/"+f.name()+"]"));
-                    seen.add(text);
                 }
+            }
+            
+            //Logger.debug(f.name()+": "+f.getClass()+" "+f.fieldType());
+            if (!"text".equals(f.name())) {
+                doc.add(f);
             }
         }
         
@@ -2583,7 +2575,9 @@ public class TextIndexer {
                 facetsConfig.setRequireDimCount(facetLabel, true);
                 ixFields.add(new FacetField (facetLabel, facetValue));
                 // allow searching of this field
-                //ixFields.add(new TextField (facetLabel, facetValue, NO));
+                ixFields.add(new TextField // for field searching
+                             (escapeFieldName (facetLabel), facetValue, NO));
+                // for term vector count
                 ixFields.add(new TermVectorField (facetLabel, facetValue));
                 // all dynamic facets are suggestable???
                 suggestField (facetLabel, facetValue);
@@ -2656,6 +2650,15 @@ public class TextIndexer {
         indexField (fields, indexable, path, value, NO);
     }
 
+    /*
+     * by convention all field names that can be used in query parser
+     * are prefixed with $; e.g., $IDG_Development_Level:tchem
+     */
+    static String escapeFieldName (String name) {
+        return "$"+name.replaceAll("[\\/\\s]+", "_")
+            .replaceAll("[\\(\\):]+","");
+    }
+        
     void indexField (List<IndexableField> fields, Indexable indexable, 
                      Collection<String> path, Object value, 
                      org.apache.lucene.document.Field.Store store) {
@@ -2671,7 +2674,8 @@ public class TextIndexer {
             fields.add(new LongField (full, lval, NO));
             //asText = indexable.facet();
             if (!asText && !name.equals(full)) 
-                fields.add(new LongField (name, lval, store));
+                fields.add(new LongField (escapeFieldName (name), lval, store));
+            
             if (indexable.sortable())
                 sorters.put(full, SortField.Type.LONG);
 
@@ -2688,7 +2692,7 @@ public class TextIndexer {
             fields.add(new IntField (full, ival, NO));
             //asText = indexable.facet();
             if (!asText && !name.equals(full))
-                fields.add(new IntField (name, ival, store));
+                fields.add(new IntField (escapeFieldName (name), ival, store));
             if (indexable.sortable())
                 sorters.put(full, SortField.Type.INT);
 
@@ -2703,7 +2707,7 @@ public class TextIndexer {
         else if (value instanceof Float) {
             //fields.add(new FloatDocValuesField (full, (Float)value));
             Float fval = (Float)value;
-            fields.add(new FloatField (name, fval, store));
+            fields.add(new FloatField (escapeFieldName (name), fval, store));
             if (!full.equals(name))
                 fields.add(new FloatField (full, fval, NO));
             if (indexable.sortable())
@@ -2720,7 +2724,7 @@ public class TextIndexer {
         else if (value instanceof Double) {
             //fields.add(new DoubleDocValuesField (full, (Double)value));
             Double dval = (Double)value;
-            fields.add(new DoubleField (name, dval, store));
+            fields.add(new DoubleField (escapeFieldName (name), dval, store));
             if (!full.equals(name))
                 fields.add(new DoubleField (full, dval, NO));
             if (indexable.sortable())
@@ -2736,7 +2740,7 @@ public class TextIndexer {
         }
         else if (value instanceof java.util.Date) {
             long date = ((Date)value).getTime();
-            fields.add(new LongField (name, date, store));
+            fields.add(new LongField (escapeFieldName (name), date, store));
             if (!full.equals(name))
                 fields.add(new LongField (full, date, NO));
             if (indexable.sortable())
@@ -2769,6 +2773,7 @@ public class TextIndexer {
                     fields.add(new FacetField (dim, text));
                 }
                 fields.add(new TermVectorField (dim, text));
+                fields.add(new TextField (escapeFieldName (dim), text, store));
             }
 
             if (indexable.suggest()) {
@@ -2779,22 +2784,20 @@ public class TextIndexer {
                 }
                 else {
                     fields.add(new TermVectorField (dim, text));
+                    fields.add(new TextField
+                               (escapeFieldName (dim), text, store));
                 }
                 suggestField (dim, text);
             }
 
             if (!(value instanceof Number)) {
                 if (!name.equals(full))
-                    fields.add(new TextField
-                               (full, TextIndexer.START_WORD
-                                + text + TextIndexer.STOP_WORD, NO));
+                    fields.add(new TextField (full, text, NO));
             }
 
             if (indexable.sortable() && !sorters.containsKey(name))
                 sorters.put(name, SortField.Type.STRING);
-            fields.add(new TextField
-                       (name, TextIndexer.START_WORD
-                        + text + TextIndexer.STOP_WORD, store));
+            fields.add(new TextField (escapeFieldName (name), text, store));
         }
     }
 
@@ -2873,7 +2876,7 @@ public class TextIndexer {
             }
 
             if (append) {
-                sb.append(p);
+                sb.append(escapeFieldName(p).substring(1));
                 if (it.hasNext())
                     sb.append('_');
             }

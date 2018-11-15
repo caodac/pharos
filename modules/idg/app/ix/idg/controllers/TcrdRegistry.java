@@ -348,7 +348,7 @@ public class TcrdRegistry extends Controller implements Commons {
             pstm32 = con.prepareStatement
                 ("select a.name as ortho_name,a.db_id,a.species,"
                  +"a.geneid,a.symbol,a.mod_url,a.sources,"
-                 +"b.ortholog_id,b.score,c.* "
+                 +"a.id as ortholog_id,b.score,c.* "
                  +"from ortholog a left join (ortholog_disease b, disease c) "
                  +"on b.ortholog_id = a.id and b.did = c.did and "
                  +"b.protein_id = c.protein_id where a.protein_id = ?");
@@ -357,7 +357,8 @@ public class TcrdRegistry extends Controller implements Commons {
         Keyword getTdlKw (Target.TDL tdl) {
             Keyword kw = tdlKeywords.get(tdl);
             if (kw == null) {
-                kw = KeywordFactory.registerIfAbsent(IDG_DEVELOPMENT, tdl.name, null);
+                kw = KeywordFactory.registerIfAbsent
+                    (IDG_DEVELOPMENT, tdl.name, null);
                 tdlKeywords.put(tdl, kw);
             }
             return kw;
@@ -2909,7 +2910,7 @@ public class TcrdRegistry extends Controller implements Commons {
                  //+"where c.id in (18204,862,74,6571)\n"
                  //+"where a.target_id in (875)\n"
                  //+"where c.uniprot = 'P62805'\n"
-                 //+"where b.tdl in ('Tclin','Tchem')\n"
+                 +"where b.tdl in ('Tclin','Tchem')\n"
                  //+"where b.idgfam = 'kinase'\n"
                  //+" where c.uniprot in ('Q96K76','Q6PEY2')\n"
                  //+"where b.idg2=1\n"
