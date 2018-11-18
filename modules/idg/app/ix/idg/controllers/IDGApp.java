@@ -90,6 +90,7 @@ import java.util.stream.Collectors;
 import static ix.core.search.TextIndexer.Facet;
 import static ix.core.search.TextIndexer.SearchResult;
 import static ix.core.search.TextIndexer.TermVectors;
+import static ix.core.search.TextIndexer.MatchFragment;
 import static play.mvc.Http.MultipartFormData;
 
 public class IDGApp extends App implements Commons {
@@ -3175,13 +3176,22 @@ public class IDGApp extends App implements Commons {
         return r;
     }
 
-    public static TextIndexer.MatchFragment[] getMatchFragments
+    public static MatchFragment[] getMatchFragments
         (String context, Object key) {
         SearchResult result = getSearchContext (context);
+        MatchFragment[] frags = null;
         if (result != null) {
-            return result.getFragments(key);
+            frags = result.getFragments(key);
+            if (frags != null) {
+                Arrays.sort(frags, (a, b) -> {
+                        int d = a.fragment.length() - b.fragment.length();
+                        if (d == 0)
+                            d = b.field.compareTo(a.field);
+                        return d;
+                    });
+            }
         }
-        return null;
+        return frags;
     }
     
     public static String getTargetTableHeader (String name, String field) {
