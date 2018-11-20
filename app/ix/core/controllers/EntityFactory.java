@@ -841,14 +841,13 @@ public class EntityFactory extends IxController {
     }
 
 
-    protected static <K,T> Function<String,JsonNode> batchResolveFunction(EntityFactory2<K,T> factory2){
+    protected static <K,T> Function<String,T> batchResolveFunction(EntityFactory2<K,T> factory2){
         ObjectMapper mapper = getEntityMapper ();
 
-        return n-> {
+        return n->
 
-            Object o =factory2.resolve(n,null);
-            return o==null? null : mapper.valueToTree(o);
-        };
+             factory2.resolve(n,null)
+        ;
     }
     protected static <K,T> Result resolve (final Expression filter, 
                                            final String expand,

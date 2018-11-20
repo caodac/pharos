@@ -70,7 +70,7 @@ public class TargetFactory extends EntityFactory implements Commons {
                 , expand, finder);
     }
 
-    public static Function<String, com.fasterxml.jackson.databind.JsonNode> batchResolveFunction(){
+    public static Function<String, Target> batchResolveFunction(){
          return batchResolveFunction(FACTORY_2);
     }
 

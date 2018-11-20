@@ -8,6 +8,9 @@ import ix.core.controllers.search.SearchFactory;
 import ix.core.models.Acl;
 import ix.core.models.Namespace;
 import ix.core.models.Principal;
+import ix.core.plugins.TextIndexerPlugin;
+import ix.core.search.TextIndexer;
+import ix.utils.CachedSupplier;
 import ix.utils.Global;
 
 import java.lang.reflect.Field;
@@ -16,10 +19,12 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import javax.persistence.Id;
 
 import play.Logger;
+import play.Play;
 import play.db.ebean.Model;
 import play.mvc.Controller;
 import play.mvc.Result;
@@ -42,6 +47,13 @@ public class RouteFactory extends IxController {
     static final ConcurrentMap<String, Class> _registry = 
         new ConcurrentHashMap<String, Class>();
     static final Set<String> _uuid = new TreeSet<String>();
+
+    static final CachedSupplier<TextIndexerPlugin> TEXT_INDEXER_PLUGIN_CACHED_SUPPLIER = CachedSupplier.of(new Supplier<TextIndexerPlugin>(){
+        @Override
+        public TextIndexerPlugin get() {
+            return Play.application().plugin(TextIndexerPlugin.class);
+        }
+    });
 
     public static <T  extends EntityFactory> void register 
         (String context, Class<T> factory) {
@@ -193,16 +205,22 @@ public class RouteFactory extends IxController {
         try {
             Method m = getMethod (context, "batchResolveFunction");
             if (m != null) {
-                Function<String, JsonNode> function = (Function<String, JsonNode>) m.invoke(null);
+                Function<String, ?> function = (Function<String, ?>) m.invoke(null);
 
-                LinkedHashMap<String, JsonNode> map = new LinkedHashMap<>();
+                LinkedHashMap<String, Object> map = new LinkedHashMap<>();
                 for(JsonNode a : array){
                     String key = a.asText();
                     map.computeIfAbsent(key, k-> function.apply(k));
                 }
 
+
+
+                TextIndexer.SearchResult result= TEXT_INDEXER_PLUGIN_CACHED_SUPPLIER.get().getIndexer().filter(map.values());
+
+                result.getMatchesAndWaitIfNotFinished();
+//                return ok(result.getMatchesAndWaitIfNotFinished());
                 ObjectMapper mapper = new ObjectMapper();
-                return new CachableContent((JsonNode)mapper.valueToTree(map)).ok();
+                return new CachableContent((JsonNode)mapper.valueToTree(result)).ok();
             }
         }
         catch (Exception ex) {

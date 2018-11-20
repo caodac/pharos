@@ -1647,7 +1647,7 @@ public class TextIndexer {
                          //+(filter!=null?filter:"none")
                          +" Options:"+options);
         }
-        
+
         long start = System.currentTimeMillis();
             
         FacetsCollector fc = new FacetsCollector ();
