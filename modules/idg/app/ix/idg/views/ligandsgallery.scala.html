@@ -22,17 +22,24 @@ current, rows, total, pages, facets){ @ligandmenu() }{
       @for(f <- facets) {
          @if(f.startsWith(WHO_ATC)) {
             @for(a <- IDGApp.getATCAncestry(f)) {
-	       <li><a href="@a.href">@a.term</a></li>
-	    }
-	    <li class="active">@IDGApp.getATC(f.substring(f.indexOf('/')+1)).term</li>
-	 }
+           <li><a href="@a.href">@a.term</a></li>
+        }
+        <li class="active">@IDGApp.getATC(f.substring(f.indexOf('/')+1)).term</li>
+     }
        }
      } else {
        <li class="active">Ligands</li>
      }
   }
 </ol>
-    @inprogress("ligands")
+@**inprogress("ligands")**@
+<div class="alert alert-success" role="alert">
+  The current view for <b>Ligands</b> is a work in progress and should
+  not be considered a definitive resource. For more
+  comprehensive resources on drugs and ligands in general, please
+  consider <a href="http://drugcentral.org">Drug Central</a>
+  and <a href="https://drugs.ncats.io">Inxight Drugs</a>.
+</div>
 }{
 <div id="page-loader"></div>
 <div id="grid-gallery" class="grid-gallery">
@@ -41,26 +48,26 @@ current, rows, total, pages, facets){ @ligandmenu() }{
       <li class="grid-sizer"></li><!-- for Masonry column width -->
       @for(lig <-ligands) {
          @defining(IDGApp.getStructure(lig)) { struc =>
-	   <li>
-	     <figure>
+       <li>
+         <figure>
                @if(struc != null) {
-	       <img src='@ix.idg.controllers.routes.IDGApp.structure(struc.getId,"svg",150,ctx)' alt="Structure for @lig.getName"/>
+           <img src='@ix.idg.controllers.routes.IDGApp.structure(struc.getId,"svg",150,ctx)' alt="Structure for @lig.getName"/>
                } else {
-	       <img src='@routes.Assets.versioned("images/npc_logo.png")' alt='No structure available'/>
-	       }
-	       <figcaption>
-		 <h4><a href='@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))'>@lig.getName</a></h4>
-		 <p>
-		   @for(t <- IDGApp.getTDL(lig)) {
-		   <span class="label label-@t.label"
-	      		 data-toggle="tooltip"
-          		 data-html="true" title="<p align='left'>@t.desc</p>">@t.name</span>
-		   }
-		 </p>
-	       </figcaption>
-	     </figure>
-	   </li>
-	 }
+           <img src='@routes.Assets.versioned("images/npc_logo.png")' alt='No structure available'/>
+           }
+           <figcaption>
+         <h4><a href='@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))'>@HtmlFormat.raw(lig.getName)</a></h4>
+         <p>
+           @for(t <- IDGApp.getTDL(lig)) {
+           <span class="label label-@t.label"
+                 data-toggle="tooltip"
+                 data-html="true" title="<p align='left'>@t.desc</p>">@t.name</span>
+           }
+         </p>
+           </figcaption>
+         </figure>
+       </li>
+     }
       }
     </ul>
   </section><!-- // grid-wrap -->
@@ -69,24 +76,24 @@ current, rows, total, pages, facets){ @ligandmenu() }{
       @for(lig <-ligands) {
          @defining(IDGApp.getStructure(lig)) { struc =>
            @if(struc != null) {
-	   <li>
-	     <figure>
-	       <figcaption>
-		 <h3><a href='@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))'>@lig.getName</a>
-		   @for(t <- IDGApp.getTDL(lig)) {
-		   <span class="label label-@t.label"
-	      		 data-toggle="tooltip"
-			 data-placement="bottom"
-          		 data-html="true"
-			 title="<p align='left'>@t.desc</p>">@t.name</span>
-		   }
-		   </h3>
-	       </figcaption>
-	       <img src='@ix.idg.controllers.routes.IDGApp.structure(struc.getId,"svg",400,ctx)' alt="Structure for @lig.getName"/>
-	     </figure>
-	   </li>
+       <li>
+         <figure>
+           <figcaption>
+         <h3><a href='@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))'>@lig.getName</a>
+           @for(t <- IDGApp.getTDL(lig)) {
+           <span class="label label-@t.label"
+                 data-toggle="tooltip"
+             data-placement="bottom"
+                 data-html="true"
+             title="<p align='left'>@t.desc</p>">@t.name</span>
+           }
+           </h3>
+           </figcaption>
+           <img src='@ix.idg.controllers.routes.IDGApp.structure(struc.getId,"svg",400,ctx)' alt="Structure for @lig.getName"/>
+         </figure>
+       </li>
           }
-	 }
+     }
        }
     </ul>
     <nav>

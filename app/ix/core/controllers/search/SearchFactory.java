@@ -191,6 +191,15 @@ public class SearchFactory extends EntityFactory {
                     ObjectNode node = (ObjectNode)mapper.valueToTree(obj);
                     node.put("kind", kind == null
                              ? obj.getClass().getName() : kind.getName());
+                    TextIndexer.MatchFragment[] frags =
+                        result.getFragments(obj);
+                    if (frags != null && frags.length > 0) {
+                        ArrayNode fragments = mapper.createArrayNode();
+                        for (TextIndexer.MatchFragment mf : frags) {
+                            fragments.add(mapper.valueToTree(mf));
+                        }
+                        node.put("fragments", fragments);
+                    }
                     
                     //if(added>=skip)
                     nodes.add(node);

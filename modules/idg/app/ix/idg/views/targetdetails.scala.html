@@ -386,7 +386,7 @@
    }
    </td>
    <td class="valign-center">
-      <a class="label label-primary loader" href='@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))'>@lig.getName()</a>
+      <a class="label label-primary loader" href='@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))'>@HtmlFormat.raw(lig.getName)</a>
    </td>
    @defining(IDGApp.getActivity(target, lig)) { act =>
       @if(act != null) {
@@ -412,7 +412,7 @@
         src='@routes.Assets.versioned("images/npc_logo.png")'/>
      }
        <div class="caption" style="padding:0px;">
-             <p class="text-center"><a class="loader" href='@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))'>@lig.getName()</a>
+             <p class="text-center"><a class="loader" href='@ix.idg.controllers.routes.IDGApp.ligand(IDGApp.getId(lig))'>@HtmlFormat.raw(lig.getName)</a>
              @defining(IDGApp.getActivity(target, lig)) { act =>
                @if(act != null) {
              @act.label match {
@@ -435,8 +435,8 @@
 }
 
 @ligandcarousel(title: String, ligands: List[Ligand], group: String) = {
-       @if(!ligands.isEmpty()) {
-         <div class="row">
+   @if(!ligands.isEmpty()) {
+     <div class="row">
         <div class="col-md-12">
                <div class="panel panel-default">
                   <a name="@{title}s" tocname="@{title}s"></a>
@@ -534,11 +534,7 @@
                @for(link <- orthologs){
                  <tr>
                    @defining(link.deRef().asInstanceOf[Ortholog]){ ortho =>
-                     @if(ortho.url != null){
-                     <td><a href="@ortho.url">@ortho.species</a></td>
-                     }else{
-                     <td>@ortho.species</td>
-                     }
+                     <td>@facet(ORTHOLOG_SPECIES, ortho.species, ortho.url)</td>
                    }
                    <td>@for(v <- link.getProperties(SOURCE)) {
                      @v.getValue.asInstanceOf[String] match {
@@ -837,6 +833,8 @@
     <script type="text/javascript" src='@routes.Assets.versioned("javascripts/stupidtable.min.js")'></script>
     <script src='@routes.WebJarAssets.at(WebJarAssets.locate("jquery.dataTables.min.js"))'></script>
     <script src='@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap/2/dataTables.bootstrap.min.js"))'></script>
+    <script type="text/javascript" src='@routes.Assets.versioned("javascripts/ngl.js")'></script>
+@**    <script src="http://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>**@
 
     <link rel="stylesheet" href='@routes.WebJarAssets.at(WebJarAssets.locate("jquery.dataTables.min.css"))'>
     <link rel="stylesheet" href='@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap/2/dataTables.bootstrap.css"))'>    
@@ -852,6 +850,9 @@
     <script type="text/javascript" src='@routes.Assets.versioned("javascripts/viz.js")'></script>
     <!--<link type="text/css" rel="stylesheet" href="https://code.highcharts.com/css/highcharts.css"></script>-->
 
+    <link href="https://ebi-uniprot.github.io/CDN/protvista/css/main.css" rel="stylesheet"/>
+    <script src="https://ebi-uniprot.github.io/CDN/protvista/protvista.js"></script>
+    
     <style type="text/css">
 
     .carousel-image {
@@ -1269,30 +1270,8 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
 @**
 @property(GRANT_APPLICATION, null, 0, "Count of NIH grant applications including target reported in parenthesis. Listing individual grants with links to NIH RePORT site and tally of occurance of target for particular grant in circle. Click on the bargraph icon to explore further the Summary of Grant Application information.")
 **@
-        @defining(target.getSynonyms(PDB_ID)) { pdbids =>
-              @if(pdbids.size() > 0) {
-                  <div class="panel panel-default"
-                       style="max-height: 300px; overflow-y: auto;">
-                      <a name="pdb" tocname="PDB"></a>
-                      <div class="panel-heading">
-                          <h3 class="panel-title">PDB
-                            <a href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/synonyms(label="+PDB_ID+")"}'>
-                              <span class="fa fa-code pull-right"></span></a>
-                <a href="http://www.rcsb.org/pdb/protein/@IDGApp.getId(target)">
-                              <span class="fa fa-external-link pull-right"></span>
-                            </a>
-              </h3>
-                      </div>
-                      <div class="panel-body">
-                          @for(aval <- pdbids){
-                          <a href="http://www.rcsb.org/pdb/explore.do?structureId=@aval.getValue()">@aval.getValue()</a> &nbsp;
-                            }
-                      </div>
-                  </div>
-              }
-          }
         @ortholog(target)        
-        @techdev(target)
+        @**techdev(target)**@
         @property(COLLECTION)
         @property(UNIPROT_KEYWORD, null, 0, "Occurance of target in the 10 categories of UniProt keywords.")                  
       </div>
@@ -1316,7 +1295,7 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                           <h4 class="modal-title" id="myModalLabel">Compartment GO Terms for @target.getName</h4>
                        </div>
                        <div class="modal-body"
-                    style="max-height:400px;overflow-y:auto;">
+                            style="max-height:400px;overflow-y:auto;">
                           @for(t <- terms) {
                              @keyword(t, 0)
                           }
@@ -1536,6 +1515,47 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
   </div>
   }
 
+   @defining(target.getSynonyms(PDB_ID)) { pdbids =>
+     @if(pdbids.size > 0) {
+     <div class="row">
+        <div class="col-md-12">
+           <div class="panel panel-default">
+              <a name="pdb" tocname="PDB"></a>
+              <div class="panel-heading">
+                 <h3 class="panel-title">PDB (@pdbids.size)
+                   <a href='@{ix.core.controllers.v1.routes.RouteFactory.get("targets",target.id,null)+"/synonyms(label="+PDB_ID+")"}'>
+                      <span class="fa fa-code pull-right"></span></a>
+                   <a href="http://www.rcsb.org/pdb/protein/@IDGApp.getId(target)">
+                     <span class="fa fa-external-link pull-right"></span>
+                   </a>
+                 </h3>
+              </div>
+              <div class="panel-body">
+                <ul class="nav nav-tabs" role="tablist">
+                   <li role="presentation" class="active">
+                       <a href="#pdb-viewer-tab" role="tab" data-toggle="tab">
+                          <span id="pdb-viewer-tab-label">...</span></a></li>
+                   <li role="presentation">
+                       <a href="#pdb-more-tab" role="tab"
+                          data-toggle="tab">More...</a></li>
+                 </ul>
+                 <div class="tab-content">
+                    <div role="tabpanel" class="tab-pane active"
+                         id="pdb-viewer-tab"
+                         style="width:100%; height:400px;"></div>
+                    <div role="tabpanel"
+                         class="tab-pane" id="pdb-more-tab">
+                         <table class="table table-striped"
+                                id="pdb-more-table"></table>
+                    </div>
+                 </div>
+               </div>
+           </div>
+         </div>
+      </div>
+      }
+    }
+
     @defining(IDGApp.getDrugLigands(target)) { drugs =>
       @ligandcarousel("Drug", drugs, "drugs")
     }
@@ -1619,22 +1639,6 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
           <div class="panel-body"
                style="max-height:600px;overflow-y:auto;">
             <div class="panel-body table-responsive">
-              @**
-              <table class="table table-striped">
-                <tr>
-                  <th></th>
-                  <th>PMID <i class="fa fa-external-link"></i></th>
-                  <th>Text</th>
-                </tr>
-                @for(x <- generifs) {
-                <tr>
-                  <td><span class="__dimensions_badge_embed__" data-pmid="@x.pmid" data-style="small_rectangle"></span></td>
-                  <td><a href="http://www.ncbi.nlm.nih.gov/pubmed/@x.pmid">@x.pmid</a></td>
-                  <td>@x.text</td>
-                </tr>
-                }
-              </table>
-              **@
               <table class="table table-striped" id="grifTable">
               </table>
             </div>
@@ -1664,12 +1668,7 @@ This is TCRD target <a href='@ix.core.controllers.v1.routes.RouteFactory.get("ta
                <div class="panel-body">
                  <div id="aa-profile" style="max-height:200px; width:100%;"></div>
                  <pre class="pre-scrollable">@seq.sequence</pre>
-                 <iframe sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-top-navigation allow-popups-to-escape-sandbox allow-modals"
-                         src='@ix.idg.controllers.routes.IDGApp.targetpviz(IDGApp.getId(target))'
-                         marginwidth="0" marginheight="0"
-                         frameBorder="0"
-                         style="height:450px; width:100%" scrolling="yes">
-                 </iframe>
+                 <div id="protvista" style="width:100%"></div>
                </div>
              </div>
            </div>
@@ -1804,6 +1803,124 @@ $(function () {
   $('[data-toggle="popover"]').popover();
   $('[data-toggle="tooltip"]').tooltip();
 });
+
+window.onload = function() {
+    var div = document.getElementById('protvista');
+    var ProtVista = require('ProtVista');
+    var instance = new ProtVista({
+        el: div,
+        uniprotacc: '@target.accession'
+    });
+}
+
+
+@**
+           document.addEventListener("DOMContentLoaded", function () {
+              var stage = new NGL.Stage(pdbs[0], {backgroundColor:"white",
+                                                  hoeverTimeout: 150});
+              stage.loadFile('rcsb://'+pdbs[0], {defaultRepresentation: true});
+              window.addEventListener( "resize", function( event ){
+                  stage.handleResize();
+              }, false );
+           });
+**@
+
+function showPDBEntries () {
+  var pdbs = [
+  @defining(target.getSynonyms(PDB_ID)) { pdbids =>
+    @for(kw <- pdbids) {
+      @defining(kw.getValue){ pdb =>
+        '@pdb',
+      }
+    }
+  }
+  ];
+
+  if (pdbs.length > 0) {
+     $.ajax({
+        url: 'https://www.rcsb.org/pdb/rest/customReport.csv?customReportColumns=structureId,ligandId,ligandSmiles,pubmedId,releaseDate,experimentalTechnique,structureTitle&service=wsfile&format=csv&pdbids='+pdbs.join(),
+        dataType: 'text',
+        success: function (d) {
+           var toks = d.split('\n');
+           console.log(toks[0]);
+           
+           var selection;
+           var table = [];
+           var seen = {};
+           for (var i = 1; i < toks.length; ++i) {
+              var fs = toks[i].replace(/"/g,'').split(',');
+              var entry = fs[0]+fs[2];
+              if (!seen[entry] && fs[0]) {
+                 var p = {
+                   id: fs[0],
+                   ligandId: fs[2],
+                   ligandSmiles: fs[3],
+                   pmid: fs[4],
+                   method: fs[6],
+                   title: fs[7]
+                 };
+                 if (selection == undefined 
+                     || (selection.ligandSmiles == undefined 
+                         && p.ligandSmiles != undefined)
+                     || (p.ligandSmiles != undefined 
+                         && selection.ligandSmiles.length
+                             < p.ligandSmiles.length)) {
+                    selection = p;
+                 }
+                 table.push(p);
+                 seen[entry] = true;
+              }
+           }
+           
+           console.log(table);
+           var pdbtab = $('#pdb-more-table').dataTable({
+               dom: "pit",
+               data: table,
+               pageLength: 5,
+               columnDefs: [{
+                     targets: 0,
+                     render: function(data,type,full,meta) {
+                         return '<a href="https://www.rcsb.org/structure/'+data+'">'+data+'</a>';
+                     }
+                  },{
+                     targets: 1,
+                     render: function(data,type,full,meta) {
+                        return '<a href="https://www.ncbi.nlm.nih.gov/pubmed/'+data+'">'+data+'</a>';
+                     }
+                  },{
+                     targets: 2,
+                     render: function(data,type,full,meta){
+                        return '<a href="https://www.rcsb.org/3d-view/'+full['id']+'?preset=ligandInteraction&sele='+data+'" target="#pdb-ligand">'+data+'</a>';
+                     }
+                  },{
+                     targets: 3,
+                     render: function(data,type,full,meta){
+                        if (!data || data == '') return '';
+                        return '<img src="@ix.ncats.controllers.routes.App.render("")'+encodeURIComponent(data)+'?size=80"/>';
+                     }
+                  }],
+               columns: [
+                     {title: 'PDB', data: 'id'},
+                     {title: 'PMID', data: 'pmid'},
+                     {title: 'LigandId', data: 'ligandId'},
+                     {title: 'Ligand', data: 'ligandSmiles'},
+                     {title: 'Method', data: 'method'},
+                     {title: 'Title', data: 'title', orderable: false}
+                  ]
+              });
+
+           console.log('selection: '+selection.id);
+           $('#pdb-viewer-tab-label').html(selection.id);
+           var stage = new NGL.Stage('pdb-viewer-tab',
+                       {backgroundColor:"white", hoeverTimeout: 150});
+           stage.loadFile('rcsb://'+pdbs[0], {defaultRepresentation: true});
+           window.addEventListener( "resize", function( event ){
+                  stage.handleResize();
+           }, false );
+        }
+     });
+   }
+}
 
 $(document).ready(function () {
     $("#diffexptable").stupidtable();
@@ -2274,6 +2391,7 @@ $('.tree').treegrid({
     tinx_target_plot("#tinx-plot", "@IDGApp.getId(target)");
     loadPubTable ();
     loadGeneRIFTable ();
+    showPDBEntries ();
 });
 
 function loadGeneRIFTable () {

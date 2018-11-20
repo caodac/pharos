@@ -255,7 +255,7 @@ public class TcrdRegistry extends Controller implements Commons {
                      "and e.id = a.target_id " +
                      "and f.protein_id = a.target_id");
             pstm2 = con.prepareStatement
-                ("select * from chembl_activity where target_id = ?");
+                ("select * from cmpd_activity where target_id = ?");
             pstm3 = con.prepareStatement
                 ("select * from drug_activity where target_id = ?");
             pstm4 = con.prepareStatement
@@ -288,7 +288,7 @@ public class TcrdRegistry extends Controller implements Commons {
             pstm15 = con.prepareStatement
                 ("select * from alias where protein_id = ?");
             pstm16 = con.prepareStatement
-                ("select * from chembl_activity where target_id = ?");
+                ("select * from cmpd_activity where target_id = ?");
             pstm17 = con.prepareStatement
                 ("select * from drug_activity where target_id = ?");
             pstm18 = con.prepareStatement("select p.sym, p.uniprot, hg.*, gat.* " +
@@ -322,8 +322,8 @@ public class TcrdRegistry extends Controller implements Commons {
                  +"from drug_activity where drug = ?");
 
             pstm24 = con.prepareStatement
-                ("select distinct cmpd_name_in_ref "
-                 +"from chembl_activity where cmpd_chemblid = ?");
+                ("select distinct cmpd_name_in_src "
+                 +"from cmpd_activity where cmpd_id_in_src = ?");
 
             pstm25 = con.prepareStatement
                 ("select * from pmscore where protein_id = ? order by year");
@@ -348,7 +348,7 @@ public class TcrdRegistry extends Controller implements Commons {
             pstm32 = con.prepareStatement
                 ("select a.name as ortho_name,a.db_id,a.species,"
                  +"a.geneid,a.symbol,a.mod_url,a.sources,"
-                 +"b.ortholog_id,b.score,c.* "
+                 +"a.id as ortholog_id,b.score,c.* "
                  +"from ortholog a left join (ortholog_disease b, disease c) "
                  +"on b.ortholog_id = a.id and b.did = c.did and "
                  +"b.protein_id = c.protein_id where a.protein_id = ?");
@@ -357,7 +357,8 @@ public class TcrdRegistry extends Controller implements Commons {
         Keyword getTdlKw (Target.TDL tdl) {
             Keyword kw = tdlKeywords.get(tdl);
             if (kw == null) {
-                kw = KeywordFactory.registerIfAbsent(IDG_DEVELOPMENT, tdl.name, null);
+                kw = KeywordFactory.registerIfAbsent
+                    (IDG_DEVELOPMENT, tdl.name, null);
                 tdlKeywords.put(tdl, kw);
             }
             return kw;
@@ -1680,6 +1681,12 @@ public class TcrdRegistry extends Controller implements Commons {
                     String ref = rset.getString("reference");
                     String source = rset.getString("source");
                     String info = rset.getString("nlm_drug_info");
+                    Long dcid = rset.getLong("dcid");
+                    if (rset.wasNull())
+                        dcid = null;
+                    Long cid = rset.getLong("cmpd_pubchem_cid");
+                    if (rset.wasNull())
+                        cid = null;
                 
                     List<Ligand> ligands = LigandFactory.finder.where()
                         .in("synonyms.term", drug, chemblId).findList();
@@ -1711,6 +1718,7 @@ public class TcrdRegistry extends Controller implements Commons {
                         ligand = new Ligand (drug);
                         ligand.addIfAbsent(KeywordFactory.registerIfAbsent
                                            (IDG_DRUG, drug, ref));
+                        
                         ligand.properties.add(tcrd);
                         ligand.description = info;
 
@@ -1781,7 +1789,30 @@ public class TcrdRegistry extends Controller implements Commons {
 
                     ligand.addIfAbsent((Value)KeywordFactory.registerIfAbsent
                                        (LIGAND_DRUG, "YES", null));
-                
+
+                    if (dcid != null) {
+                        ligand.addIfAbsent
+                            (KeywordFactory.registerIfAbsent
+                             (DRUGCENTRAL_ID, "DrugCentral"+dcid,
+                              "http://drugcentral.org/drugcard/"+dcid));
+                        
+                        Keyword ds = datasources.get(DRUGCENTRAL);
+                        if (ds == null) {
+                            ds = KeywordFactory.registerIfAbsent
+                                (SOURCE, DRUGCENTRAL, "http://drugcentral.org");
+                            datasources.put(DRUGCENTRAL, ds);
+                        }
+                        ligand.addIfAbsent((Value)ds);
+                    }
+                    
+                    if (cid != null) {
+                        ligand.addIfAbsent
+                            (KeywordFactory.registerIfAbsent
+                             (PUBCHEM_CID, "CID"+cid,
+                              "https://pubchem.ncbi.nlm.nih.gov/compound/"
+                              +cid));
+                    }
+                    
                     if (chemblId != null) {
                         Keyword kw = KeywordFactory.registerIfAbsent
                             (ChEMBL_ID, chemblId,
@@ -1792,7 +1823,8 @@ public class TcrdRegistry extends Controller implements Commons {
                         Keyword ds = datasources.get(ChEMBL);
                         if (ds == null) {
                             ds = KeywordFactory.registerIfAbsent
-                                (SOURCE, ChEMBL, "https://www.ebi.ac.uk/chembl");
+                                (SOURCE, ChEMBL,
+                                 "https://www.ebi.ac.uk/chembl");
                             datasources.put(ChEMBL, ds);
                         }
                         ligand.addIfAbsent((Value)ds);
@@ -1870,14 +1902,8 @@ public class TcrdRegistry extends Controller implements Commons {
             }
         }
         
-        int addChembl (Target target, long tid, Keyword tcrd)
+        int addLigands (Target target, long tid, Keyword tcrd)
             throws Exception {
-            Keyword source = datasources.get(ChEMBL);
-            if (source == null) {
-                source = KeywordFactory.registerIfAbsent
-                    (SOURCE, ChEMBL, "https://www.ebi.ac.uk/chembl");
-                datasources.put(ChEMBL, source);
-            }
             
             int count = 0;            
             pstm16.setLong(1, tid);
@@ -1885,26 +1911,46 @@ public class TcrdRegistry extends Controller implements Commons {
                 Set<String> seen = new HashSet<String>();
                 long start = System.currentTimeMillis();        
                 while (rset.next()) {
-                    String chemblId = rset.getString("cmpd_chemblid");
-                    if (seen.contains(chemblId))
+                    String cmpdId = rset.getString("cmpd_id_in_src");
+                    if (seen.contains(cmpdId))
                         continue;
 
-                    seen.add(chemblId);
-                    String syn = rset.getString("cmpd_name_in_ref");
-                
+                    seen.add(cmpdId);
+                    String syn = rset.getString("cmpd_name_in_src");
+                    String catype = rset.getString("catype");
+                    boolean isChembl = catype.equalsIgnoreCase("ChEMBL");
+                    
+                    Keyword source = datasources.get(catype);
+                    if (source == null) {
+                        source = KeywordFactory.registerIfAbsent
+                            (SOURCE, catype, null);
+                        datasources.put(catype, source);
+                    }
+
                     List<Ligand> ligands = LigandFactory.finder.where()
-                        .eq("synonyms.term", chemblId).findList();
+                        .eq("synonyms.term", isChembl
+                            ? cmpdId : ("IUPHAR"+cmpdId)).findList();
                 
                     Ligand ligand = null;
                     if (ligands.isEmpty()) {
-                        ligand = new Ligand (chemblId);
+                        if (isChembl) {
+                            ligand = new Ligand (cmpdId);
+                            ligand.synonyms.add
+                                (KeywordFactory.registerIfAbsent
+                                 (ChEMBL_SYNONYM, cmpdId,
+                                  "https://www.ebi.ac.uk/chembl/compound/inspect/"
+                                  +cmpdId));
+                            
+                        }
+                        else {
+                            ligand = new Ligand (syn);
+                            ligand.synonyms.add
+                                (KeywordFactory.registerIfAbsent
+                                 (IUPHAR_SYNONYM, "IUPHAR"+cmpdId,
+                                  "http://www.guidetopharmacology.org/GRAC/LigandDisplayForward?ligandId="+cmpdId));
+                        }
                         ligand.properties.add(source);
                         ligand.properties.add(tcrd);
-                        ligand.synonyms.add
-                            (KeywordFactory.registerIfAbsent
-                             (ChEMBL_SYNONYM, chemblId,
-                              "https://www.ebi.ac.uk/chembl/compound/inspect/"
-                              +chemblId));
                     
                         Keyword kw = new Keyword (LIGAND_SOURCE, source.term);
                         kw.href = source.href;
@@ -1933,30 +1979,37 @@ public class TcrdRegistry extends Controller implements Commons {
                                 Logger.debug(e.toString());
                             }
                             /*
-                              Logger.debug("... "+chemblId+": structure "
+                              Logger.debug("... "+cmpdId+": structure "
                               +struc.id+" indexed in "
                               +(System.currentTimeMillis()-t0)+"ms");
                             */
                         }
 
-                        pstm24.setString(1, chemblId);
+                        pstm24.setString(1, cmpdId);
                         ResultSet rs = pstm24.executeQuery();
                         while (rs.next()) {
                             String s = rs.getString(1);
                             if (s != null && s.length() <= 255) {
-                                ligand.addIfAbsent
-                                    (KeywordFactory.registerIfAbsent
-                                     (ChEMBL_SYNONYM, s,
-                                      "https://www.ebi.ac.uk/chembl/compound/inspect/"+chemblId));
+                                if (isChembl) {
+                                    ligand.addIfAbsent
+                                        (KeywordFactory.registerIfAbsent
+                                         (ChEMBL_SYNONYM, s,
+                                          "https://www.ebi.ac.uk/chembl/compound/inspect/"+cmpdId));
+                                }
+                                else {
+                                    ligand.addIfAbsent
+                                        (KeywordFactory.registerIfAbsent
+                                         (IUPHAR_SYNONYM, s,
+                                          "http://www.guidetopharmacology.org/GRAC/LigandDisplayForward?ligandId="+cmpdId));
+                                }
                             }
                         }
                         rs.close();
-                    
                         ligand.save();
                     }
                     else {
                         if (ligands.size() > 1)
-                            Logger.warn("Ligand "+chemblId+" has "+ligands.size()
+                            Logger.warn("Ligand "+cmpdId+" has "+ligands.size()
                                         +"instances!");
                         ligand = ligands.get(0);
                     }
@@ -1970,20 +2023,32 @@ public class TcrdRegistry extends Controller implements Commons {
                             }
                     
                         if (found == null) {
-                            Keyword kw = getKeyword 
-                                (ChEMBL_SYNONYM, syn,
-                                 "https://www.ebi.ac.uk/chembl/compound/inspect/"
-                                 +chemblId);
+                            Keyword kw;
+                            if (isChembl) {
+                                kw = getKeyword 
+                                    (ChEMBL_SYNONYM, syn,
+                                     "https://www.ebi.ac.uk/chembl/compound/inspect/"
+                                     +cmpdId);
+                            }
+                            else {
+                                kw = getKeyword
+                                    (IUPHAR_SYNONYM, syn,
+                                     "http://www.guidetopharmacology.org/GRAC/LigandDisplayForward?ligandId="+cmpdId);
+                            }
                             ligand.addIfAbsent(kw);
                         }
                     }
 
+                    Value actsrc = KeywordFactory.registerIfAbsent
+                        (LIGAND_ACTIVITY_SOURCE, catype, null);
+                    ligand.addIfAbsent(actsrc);
+                    
                     VNum act = new VNum (rset.getString("act_type"),
                                          rset.getDouble("act_value"));
                     act.save();
 
-                    long pmid = rset.getLong("pubmed_id");
-                    if (pmid != 0) {
+                    String pmids = rset.getString("pubmed_ids");
+                    if (pmids != null) {
                         /*
                           Publication pub = PublicationFactory.registerIfAbsent(pmid);
                           XRef ref = new XRef (pub);
@@ -1991,7 +2056,15 @@ public class TcrdRegistry extends Controller implements Commons {
                           ligand.addIfAbsent(ref);
                           ligand.addIfAbsent(pub);
                         */
-                        ligand.properties.add(new VInt (PUBMED_ID, pmid));
+                        for (String p : pmids.split("\\|")) {
+                            try {
+                                ligand.properties.add
+                                    (new VInt (PUBMED_ID, Long.parseLong(p)));
+                            }
+                            catch (NumberFormatException ex) {
+                                Logger.error("Bogus PMID: "+p, ex);
+                            }
+                        }
                     }
 
                     Keyword endpoint = getKeyword (LIGAND_ACTIVITY, act.label);
@@ -2003,10 +2076,13 @@ public class TcrdRegistry extends Controller implements Commons {
                         tref.addIfAbsent((Value)getKeyword
                                          (IDG_TARGET, acc.term, acc.href));
                     tref.addIfAbsent(endpoint);
+                    tref.addIfAbsent(actsrc);
                 
                     XRef lref = target.addIfAbsent(new XRef (ligand));
                     lref.addIfAbsent(getKeyword (IDG_LIGAND, ligand.getName()));
                     lref.addIfAbsent(endpoint);
+                    lref.addIfAbsent(actsrc);
+                    
                     // transfer lychies over
                     for (Value v : ligand.properties)
                         if (v.getLabel().startsWith("LyChI"))
@@ -2674,7 +2750,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 addPMScore (target, t.protein);
                 //addGrant (target, t.id);
                 long count = addDrugs (target, t.id, t.source);
-                count += addChembl (target, t.id, t.source);
+                count += addLigands (target, t.id, t.source);
                 if (count > 0) {
                     target.properties.add
                         (new VInt (LIGAND_COUNT, count));
@@ -2833,8 +2909,8 @@ public class TcrdRegistry extends Controller implements Commons {
                  +"    on d.protein_id = a.protein_id \n"
                  //+"where c.id in (18204,862,74,6571)\n"
                  //+"where a.target_id in (875)\n"
-                 //+"where c.uniprot = 'Q9H3Y6'\n"
-                 //+"where b.tdl in ('Tclin','Tchem')\n"
+                 //+"where c.uniprot = 'P62805'\n"
+                 +"where b.tdl in ('Tclin','Tchem')\n"
                  //+"where b.idgfam = 'kinase'\n"
                  //+" where c.uniprot in ('Q96K76','Q6PEY2')\n"
                  //+"where b.idg2=1\n"

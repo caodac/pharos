@@ -35,8 +35,11 @@ public interface Commons {
     public static final String PDB_ID = "PDB ID";
     public static final String LIGAND_SOURCE = "Ligand Source";
     public static final String LIGAND_ACTIVITY = "Ligand Activity";
+    public static final String LIGAND_ACTIVITY_SOURCE =
+        "Ligand Activity Source";
     public static final String LIGAND_DRUG = "Ligand Drug";
     public static final String LIGAND_COUNT = "Ligand Count";
+    public static final String IUPHAR_SYNONYM = "IUPHAR Synonym";
     
     public static final String GRANT_FUNDING_IC = "Grant Funding IC";
     public static final String GRANT_ACTIVITY = "Grant Activity";
@@ -117,6 +120,10 @@ public interface Commons {
         "CHEMBL Protein Ancestry";
     public static final String ChEMBL_ACTIVITY_ID = "CHEMBL Activity ID";
     public static final String ChEMBL_MOLREGNO = "CHEMBL Molregno";
+
+    public static final String DRUGCENTRAL = "DrugCentral";
+    public static final String DRUGCENTRAL_ID = "DrugCentral ID";
+    public static final String PUBCHEM_CID = "PubChem CID";
 
     public static final String DISGENET_DISEASE = "DisGeNET Disease";
     public static final String DISGENET_SOURCE = "DisGeNET Source";

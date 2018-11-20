@@ -50,15 +50,15 @@
     @for(kw <- breadcrumb) {
     <li><a href="@kw.href">@kw.term</a></li>
     }
-    <li class="active">@ligand.getName()</li>
+    <li class="active">@HtmlFormat.raw(ligand.getName())</li>
 </ol>
 }{
 <div class="container-fluid">
   <div class="col-md-12">
     <div class="page-header">
-      @defining(ligand.getSynonyms.get(0)) { syn =>
+      @defining(IDGApp.getPreferredSynonym(ligand, DRUGCENTRAL_ID)) { syn =>
         @if(syn != null) {
-            <h1><a href='@HtmlFormat.raw(syn.href)'>@ligand.getName</a> <i class="fa fa-external-link"></i></h1>
+            <h1><a href='@HtmlFormat.raw(syn.href)'>@HtmlFormat.raw(ligand.getName)</a> <i class="fa fa-external-link"></i></h1>
     } else {
              <h1>@ligand.getName()</h1>
         }
@@ -130,12 +130,12 @@
               <tr>
                 @if(syn.href != null) {
                @if(syn.href.startsWith("http")) {
-                  <td><a href="@syn.href">@syn.term</a></td>
+                  <td><a href="@syn.href">@HtmlFormat.raw(syn.term)</a></td>
                } else {
-                      <td>@syn.term [@syn.href]</td>
+                      <td>@HtmlFormat.raw(syn.term) [@syn.href]</td>
                }
             } else {
-               <td>@syn.term</td>
+               <td>@HtmlFormat.raw(syn.term)</td>
             }
             </tr>
               }

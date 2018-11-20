@@ -75,6 +75,8 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.suggest.DocumentDictionary;
 import org.apache.lucene.search.suggest.Lookup;
 import org.apache.lucene.search.suggest.analyzing.AnalyzingInfixSuggester;
+import org.apache.lucene.search.vectorhighlight.FastVectorHighlighter;
+import org.apache.lucene.search.vectorhighlight.FieldQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -85,6 +87,7 @@ import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.NumericUtils;
+
 import org.reflections.Reflections;
 import play.Logger;
 
@@ -117,6 +120,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -138,8 +143,8 @@ import static org.apache.lucene.document.Field.Store.YES;
  * Singleton class that responsible for all entity indexing
  */
 public class TextIndexer {
-    protected static final String STOP_WORD = " THE_STOP";
-    protected static final String START_WORD = "THE_START ";
+    protected static final String STOP_WORD = ""; //" THE_STOP";
+    protected static final String START_WORD = ""; //"THE_START ";
     protected static final String GIVEN_STOP_WORD = "$";
     protected static final String GIVEN_START_WORD = "^";
 
@@ -179,13 +184,29 @@ public class TextIndexer {
         TermVectorFieldType.setIndexed(true);
         TermVectorFieldType.setTokenized(false);
         TermVectorFieldType.setStoreTermVectors(true);
-        TermVectorFieldType.setStoreTermVectorPositions(false);
         TermVectorFieldType.freeze();
     }
 
     static class TermVectorField extends org.apache.lucene.document.Field {
         TermVectorField (String field, String value) {
             super (field, value, TermVectorFieldType);
+        }
+    }
+
+    static final FieldType HighlightFieldType =
+        new FieldType (TextField.TYPE_STORED);
+    static {
+        HighlightFieldType.setIndexed(true);
+        HighlightFieldType.setStoreTermVectors(true);
+        HighlightFieldType.setStoreTermVectorPositions(true);
+        //HighlightFieldType.setStoreTermVectorPayloads(true);
+        HighlightFieldType.setStoreTermVectorOffsets(true);
+        HighlightFieldType.freeze(); 
+    }
+
+    static class HighlightField extends org.apache.lucene.document.Field {
+        HighlightField (String field, String value) {
+            super (field, value, HighlightFieldType);
         }
     }
 
@@ -622,6 +643,20 @@ public class TextIndexer {
                  true, bin+1 >= counts.length);            
         }
     }
+
+    public static class MatchFragment {
+        public final String field;
+        public final String fragment;
+
+        protected MatchFragment (String field, String fragment) {
+            this.field = field;
+            this.fragment = fragment;
+        }
+
+        public String toString () {
+            return "MatchFragment{field="+field+",fragment="+fragment+"}";
+        }
+    }
     
     public static class SearchResult /*implements java.io.Serializable*/ {
 
@@ -639,6 +674,9 @@ public class TextIndexer {
         transient ReentrantLock wlck = new ReentrantLock (); // write lock
         transient Condition finished = lock.newCondition();
         transient Set<String> keys = new HashSet<String>();
+        
+        static final Pattern fragRe = Pattern.compile("<b>([^(<\\/)]+)</b>");
+        Map<Object, MatchFragment[]> fragments = new ConcurrentHashMap<>();
 
         SearchResult () {}
         SearchResult (SearchOptions options, String query) {
@@ -663,6 +701,60 @@ public class TextIndexer {
             throw new UnsupportedOperationException
                 ("get(index) is no longer supported; please use copyTo()");
         }
+        
+        protected static MatchFragment parseFragment (String fragment) {
+            MatchFragment frag = null;
+            for (String f : fragment.split("\n")) {
+                Matcher m = fragRe.matcher(f);
+                if (m.find()) {
+                    // extract the field name [NAME]<b>...</b>[/NAME]
+                    int pe = m.start(1);
+                    while (--pe >= 0 && f.charAt(pe) != ']')
+                        ;
+                    String field = null;
+                    if (pe > 0) {
+                        int ps = pe;
+                        while (ps > 0 && f.charAt(--ps) != '[')
+                            ;
+                        String s = f.substring(Math.max(0, ps+1), pe);
+                        if (f.charAt(ps) == '[')
+                            field = s; // we have field name in its entirety
+                    }
+                        
+                    int qs = m.end(1);
+                    while (++qs < f.length() && f.charAt(qs) != '[')
+                        ;
+                    if (qs < f.length() && f.charAt(qs+1) == '/') {
+                        int qe = ++qs; // skip over /
+                        while (qe < f.length() && f.charAt(qe) != ']')
+                            ++qe;
+                        String t = f.substring(qs+1, qe);
+                        if (f.charAt(qe) == ']') {
+                            if (field == null)
+                                field = t; // we have field name in its entirety
+                            else if (!field.equals(t))
+                                Logger.warn("Expect field name \""+field+"\""
+                                            +" but got \""+t+"\"!");
+                        }
+                    }
+
+                    if (field == null) {
+                        // the fragment doesn't capture the field name
+                        Logger.warn("Fragment doesn't capture field name: "+f);
+                    }
+                    MatchFragment mf = new MatchFragment
+                        (field, f.substring(pe+1, qs-1));
+
+                    if (frag == null
+                        || (frag.field == null && mf.field != null)) {
+                        frag = mf;
+                    }
+                }
+            }
+            
+            return frag;
+        }
+        
         // fill the given list with value starting at start up to start+count
         public int copyTo (List list, int start, int count) {
             wlck.lock();
@@ -729,14 +821,19 @@ public class TextIndexer {
             return null;
         }
 
-        protected void add (Object obj) {
+        protected void add (Object obj, MatchFragment... fragments) {
             wlck.lock();
             try {
                 matches.add(obj);
+                this.fragments.put(obj, fragments);
             }
             finally {
                 wlck.unlock();
             }
+        }
+
+        public MatchFragment[] getFragments (Object obj) {
+            return fragments.get(obj);
         }
         
         protected void done () {
@@ -917,10 +1014,14 @@ public class TextIndexer {
         SearchOptions options;
         int total, offset, requeued = 0;
         final long epoch = System.currentTimeMillis();
+        FastVectorHighlighter fvh;
+        FieldQuery fq;
         
         SearchResultPayload () {}
+        
         SearchResultPayload (SearchResult result, TopDocs hits,
-                             IndexSearcher searcher) {
+                             IndexSearcher searcher,
+                             Query query) throws IOException {
             this.result = result;
             this.hits = hits;
             this.searcher = searcher;
@@ -928,6 +1029,8 @@ public class TextIndexer {
             result.count = hits.totalHits; 
             total = Math.max(0, Math.min(options.max(), result.count));
             offset = Math.min(options.skip, total);
+            fvh = new FastVectorHighlighter ();
+            fq = fvh.getFieldQuery(query, searcher.getIndexReader());
         }
 
         void fetch () throws Exception {
@@ -1011,7 +1114,9 @@ public class TextIndexer {
             // queue!
             // FIXME: make this configurable!
             for (long elapsed = 0l; i < size && elapsed < 500l; ++i) {
-                Document doc = searcher.doc(hits.scoreDocs[i+offset].doc);
+                int docId = hits.scoreDocs[i+offset].doc;
+                Document doc = searcher.doc(docId);
+                
                 final IndexableField kind = doc.getField(FIELD_KIND);
                 if (kind != null) {
                     String field = kind.stringValue()+"._id";
@@ -1021,11 +1126,32 @@ public class TextIndexer {
                             Logger.debug("++ matched doc "
                                          +field+"="+id.stringValue());
                         }
-                        
+                                                
                         try {
                             Object value = findObject (kind, id);
-                            if (value != null)
-                                result.add(value);
+                            if (value != null) {
+                                String[] fragments = fvh.getBestFragments
+                                    (fq, searcher.getIndexReader(),
+                                     docId, "text", 2000, 10);
+                                List<MatchFragment> lmf = new ArrayList<>();
+                                if (fragments != null) {
+                                    Logger.debug("## found "+fragments.length
+                                                 +" fragment(s) in document "
+                                                 +id+"!");
+                                    for (String f : fragments) {
+                                        //Logger.debug(">>> "+f);
+                                        MatchFragment mf =
+                                            SearchResult.parseFragment(f);
+                                        if (mf != null) {
+                                            Logger.debug(">>> "+mf);
+                                            lmf.add(mf);
+                                        }
+                                    }
+                                }
+                                
+                                result.add(value,
+                                           lmf.toArray(new MatchFragment[0]));
+                            }
                         }
                         catch (Exception ex) {
                             Logger.trace("Can't locate object "
@@ -1439,13 +1565,7 @@ public class TextIndexer {
         throws IOException {
         //this is a quick and dirty way to have a cleaner-looking
         //query for display
-        String qtext =text;
-        if (qtext!=null){
-            qtext= text.replace(TextIndexer.GIVEN_START_WORD,
-                                TextIndexer.START_WORD);
-            qtext = qtext.replace(TextIndexer.GIVEN_STOP_WORD,
-                                  TextIndexer.STOP_WORD);
-        }
+        String qtext = text;
         SearchResult searchResult = new SearchResult (options, text);
 
         Query query = null;
@@ -1454,8 +1574,7 @@ public class TextIndexer {
         }
         else {
             try {
-                QueryParser parser = new QueryParser
-                    ("text", indexAnalyzer);
+                QueryParser parser = new QueryParser ("text", indexAnalyzer);
                 query = parser.parse(qtext);
             }
             catch (ParseException ex) {
@@ -1643,7 +1762,7 @@ public class TextIndexer {
         
         if (DEBUG (1)) {
             Logger.debug("## Query: "
-                         +query+" Filter: "
+                         +query+"["+query.getClass().getName()+"] Filter: "
                          //+(filter!=null?filter:"none")
                          +" Options:"+options);
         }
@@ -1773,7 +1892,7 @@ public class TextIndexer {
                 filter = new ChainedFilter (all.toArray(new Filter[0]),
                                             ChainedFilter.AND);
             }
-
+            
             int max = Math.max(100, options.max());            
             if (drills.isEmpty()) {
                 hits = sorter != null 
@@ -1928,7 +2047,7 @@ public class TextIndexer {
         if (options.top > 0) {
             try {
                 SearchResultPayload payload = new SearchResultPayload
-                    (searchResult, hits, searcher);
+                    (searchResult, hits, searcher, query);
                 if (options.fetch <= 0) {
                     payload.fetch();
                 }
@@ -2195,15 +2314,27 @@ public class TextIndexer {
 
         Document doc = new Document ();
         for (IndexableField f : fields) {
-            String text = f.stringValue();
-            if (text != null) {
-                if (DEBUG (2))
-                    Logger.debug(".."+f.name()+":"
-                                 +text+" ["+f.getClass().getName()+"]");
-                
-                doc.add(new TextField ("text", text, NO));
+            if ((f instanceof TextField)
+                || (f instanceof StringField)
+                || (f instanceof FacetField)
+                || (f instanceof TermVectorField)) {
+                String text = f.stringValue();
+                if (text != null) {
+                    if (DEBUG (2))
+                        Logger.debug(".."+f.name()+":"
+                                     +text+" ["+f.getClass().getName()+"]");
+                    
+                    //doc.add(new TextField ("text", text, NO));
+                    doc.add(new HighlightField
+                            ("text", "\n["+f.name()+"]"
+                             +text+"[/"+f.name()+"]"));
+                }
             }
-            doc.add(f);
+            
+            //Logger.debug(f.name()+": "+f.getClass()+" "+f.fieldType());
+            if (!"text".equals(f.name())) {
+                doc.add(f);
+            }
         }
         
         // now index
@@ -2444,7 +2575,9 @@ public class TextIndexer {
                 facetsConfig.setRequireDimCount(facetLabel, true);
                 ixFields.add(new FacetField (facetLabel, facetValue));
                 // allow searching of this field
-                //ixFields.add(new TextField (facetLabel, facetValue, NO));
+                ixFields.add(new TextField // for field searching
+                             (escapeFieldName (facetLabel), facetValue, NO));
+                // for term vector count
                 ixFields.add(new TermVectorField (facetLabel, facetValue));
                 // all dynamic facets are suggestable???
                 suggestField (facetLabel, facetValue);
@@ -2517,6 +2650,15 @@ public class TextIndexer {
         indexField (fields, indexable, path, value, NO);
     }
 
+    /*
+     * by convention all field names that can be used in query parser
+     * are prefixed with $; e.g., $IDG_Development_Level:tchem
+     */
+    static String escapeFieldName (String name) {
+        return "$"+name.replaceAll("[\\/\\s]+", "_")
+            .replaceAll("[\\(\\):]+","");
+    }
+        
     void indexField (List<IndexableField> fields, Indexable indexable, 
                      Collection<String> path, Object value, 
                      org.apache.lucene.document.Field.Store store) {
@@ -2525,15 +2667,15 @@ public class TextIndexer {
         String fname =
             "".equals(indexable.name()) ? name : indexable.name();
         
-        boolean asText = true;
-
+        boolean asText = false;
         if (value instanceof Long) {
             //fields.add(new NumericDocValuesField (full, (Long)value));
             Long lval = (Long)value;
             fields.add(new LongField (full, lval, NO));
-            asText = indexable.facet();
+            //asText = indexable.facet();
             if (!asText && !name.equals(full)) 
-                fields.add(new LongField (name, lval, store));
+                fields.add(new LongField (escapeFieldName (name), lval, store));
+            
             if (indexable.sortable())
                 sorters.put(full, SortField.Type.LONG);
 
@@ -2542,16 +2684,15 @@ public class TextIndexer {
                 facetsConfig.setMultiValued(fname, true);
                 facetsConfig.setRequireDimCount(fname, true);
                 fields.add(ff);
-                asText = false;
             }
         }
         else if (value instanceof Integer) {
             //fields.add(new IntDocValuesField (full, (Integer)value));
             Integer ival = (Integer)value;
             fields.add(new IntField (full, ival, NO));
-            asText = indexable.facet();
+            //asText = indexable.facet();
             if (!asText && !name.equals(full))
-                fields.add(new IntField (name, ival, store));
+                fields.add(new IntField (escapeFieldName (name), ival, store));
             if (indexable.sortable())
                 sorters.put(full, SortField.Type.INT);
 
@@ -2561,13 +2702,12 @@ public class TextIndexer {
                 facetsConfig.setMultiValued(fname, true);
                 facetsConfig.setRequireDimCount(fname, true);
                 fields.add(ff);
-                asText = false;
             }
         }
         else if (value instanceof Float) {
             //fields.add(new FloatDocValuesField (full, (Float)value));
             Float fval = (Float)value;
-            fields.add(new FloatField (name, fval, store));
+            fields.add(new FloatField (escapeFieldName (name), fval, store));
             if (!full.equals(name))
                 fields.add(new FloatField (full, fval, NO));
             if (indexable.sortable())
@@ -2580,12 +2720,11 @@ public class TextIndexer {
                 facetsConfig.setRequireDimCount(fname, true);
                 fields.add(ff);
             }
-            asText = false;
         }
         else if (value instanceof Double) {
             //fields.add(new DoubleDocValuesField (full, (Double)value));
             Double dval = (Double)value;
-            fields.add(new DoubleField (name, dval, store));
+            fields.add(new DoubleField (escapeFieldName (name), dval, store));
             if (!full.equals(name))
                 fields.add(new DoubleField (full, dval, NO));
             if (indexable.sortable())
@@ -2598,11 +2737,10 @@ public class TextIndexer {
                 facetsConfig.setRequireDimCount(fname, true);
                 fields.add(ff);
             }
-            asText = false;
         }
         else if (value instanceof java.util.Date) {
             long date = ((Date)value).getTime();
-            fields.add(new LongField (name, date, store));
+            fields.add(new LongField (escapeFieldName (name), date, store));
             if (!full.equals(name))
                 fields.add(new LongField (full, date, NO));
             if (indexable.sortable())
@@ -2612,6 +2750,8 @@ public class TextIndexer {
                 value = YEAR_DATE_FORMAT.format(date);
             }
         }
+        else
+            asText = true;
 
         if (asText) {
             String text = value.toString();
@@ -2633,6 +2773,7 @@ public class TextIndexer {
                     fields.add(new FacetField (dim, text));
                 }
                 fields.add(new TermVectorField (dim, text));
+                fields.add(new TextField (escapeFieldName (dim), text, store));
             }
 
             if (indexable.suggest()) {
@@ -2643,22 +2784,20 @@ public class TextIndexer {
                 }
                 else {
                     fields.add(new TermVectorField (dim, text));
+                    fields.add(new TextField
+                               (escapeFieldName (dim), text, store));
                 }
                 suggestField (dim, text);
             }
 
             if (!(value instanceof Number)) {
                 if (!name.equals(full))
-                    fields.add(new TextField
-                               (full, TextIndexer.START_WORD
-                                + text + TextIndexer.STOP_WORD, NO));
+                    fields.add(new TextField (full, text, NO));
             }
 
             if (indexable.sortable() && !sorters.containsKey(name))
                 sorters.put(name, SortField.Type.STRING);
-            fields.add(new TextField
-                       (name, TextIndexer.START_WORD
-                        + text + TextIndexer.STOP_WORD, store));
+            fields.add(new TextField (escapeFieldName (name), text, store));
         }
     }
 
@@ -2737,7 +2876,7 @@ public class TextIndexer {
             }
 
             if (append) {
-                sb.append(p);
+                sb.append(escapeFieldName(p).substring(1));
                 if (it.hasNext())
                     sb.append('_');
             }

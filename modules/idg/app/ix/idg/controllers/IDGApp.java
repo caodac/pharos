@@ -47,8 +47,11 @@ import play.mvc.Call;
 import play.mvc.Result;
 import play.mvc.Security;
 import play.twirl.api.Content;
+import play.libs.ws.*;
 import tripod.chem.indexer.StructureIndexer;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -87,6 +90,7 @@ import java.util.stream.Collectors;
 import static ix.core.search.TextIndexer.Facet;
 import static ix.core.search.TextIndexer.SearchResult;
 import static ix.core.search.TextIndexer.TermVectors;
+import static ix.core.search.TextIndexer.MatchFragment;
 import static play.mvc.Http.MultipartFormData;
 
 public class IDGApp extends App implements Commons {
@@ -727,6 +731,7 @@ public class IDGApp extends App implements Commons {
         "Is Transcription Factor",
         PDB_ID,
         "DrugBank",
+        LIGAND_ACTIVITY_SOURCE,
         LIGAND_ACTIVITY,
         MLP_ASSAY_TYPE,
         UNIPROT_KEYWORD,
@@ -756,7 +761,8 @@ public class IDGApp extends App implements Commons {
         IDG_FAMILY,
         IDG_TARGET,    
         PHARMALOGICAL_ACTION,
-        LIGAND_ACTIVITY,        
+        LIGAND_ACTIVITY,
+        LIGAND_ACTIVITY_SOURCE,        
         LIGAND_SOURCE
     };
 
@@ -2715,12 +2721,33 @@ public class IDGApp extends App implements Commons {
         return LigandResult.get(name);
     }
 
+    static boolean isSimpleName (String name) {
+        boolean special = name.indexOf('<') > 0 || name.indexOf('&') > 0
+            || name.indexOf('/') > 0;
+        return !special;
+    }
+    
     /**
      * return the canonical/default ligand id
      */
     public static String getId (Ligand ligand) {
-        return ligand.getName();
+        String name = ligand.getName();
+        if (!isSimpleName (name)) {
+            for (Keyword kw : ligand.synonyms)
+                if (isSimpleName (kw.term))
+                    return kw.term;
+            return ligand.getId().toString();
+        }
+        return name;
     }
+
+    public static Keyword getPreferredSynonym (Ligand ligand, String label) {
+        for (Keyword kw : ligand.synonyms)
+            if (label.equalsIgnoreCase(kw.label))
+                return kw;
+        return ligand.synonyms.isEmpty() ? null : ligand.synonyms.get(0);
+    }
+    
     public static Structure getStructure (Ligand ligand) {
         for (XRef xref : ligand.getLinks()) {
             if (xref.kind.equals(Structure.class.getName())) {
@@ -3147,6 +3174,24 @@ public class IDGApp extends App implements Commons {
         }
         //Logger.debug("retrieving alignment "+context+" "+seq.id+" => "+r);
         return r;
+    }
+
+    public static MatchFragment[] getMatchFragments
+        (String context, Object key) {
+        SearchResult result = getSearchContext (context);
+        MatchFragment[] frags = null;
+        if (result != null) {
+            frags = result.getFragments(key);
+            if (frags != null) {
+                Arrays.sort(frags, (a, b) -> {
+                        int d = a.fragment.length() - b.fragment.length();
+                        if (d == 0)
+                            d = b.field.compareTo(a.field);
+                        return d;
+                    });
+            }
+        }
+        return frags;
     }
     
     public static String getTargetTableHeader (String name, String field) {
@@ -4574,5 +4619,60 @@ public class IDGApp extends App implements Commons {
             }
         }
         return libs;
+    }
+
+    public static List<Keyword> getPDBEntries (Target t) {
+        String url = "https://www.rcsb.org/pdb/rest/customReport.csv";
+        StringBuilder pdbs = new StringBuilder ();
+
+        List<Keyword> entries = t.getSynonyms(PDB_ID);
+        for (Keyword kw : entries) {
+            if (pdbs.length() > 0)
+                pdbs.append(",");
+            pdbs.append(kw.term);
+        }
+        
+        WSRequestHolder ws = WS.url(url)
+            .setQueryParameter("reportName","Ligands")
+            .setQueryParameter("service", "wsfile")
+            .setQueryParameter("format", "csv")
+            .setQueryParameter("pdbids", pdbs.toString());
+
+        Set<String> ligands = new TreeSet<>();
+        try {
+            WSResponse wsres = ws.get().get(1000l);
+            try (BufferedReader br = new BufferedReader
+                 (new InputStreamReader (wsres.getBodyAsStream()))) {
+                br.readLine(); // skip header
+                for (String line; (line = br.readLine()) != null; ) {
+                    String[] toks = line.split(",");
+                    if (toks.length > 0) {
+                        String id = toks[0].replaceAll("\"", "");
+                        ligands.add(id);
+                        ligands.add(id.toLowerCase());
+                    }
+                }
+            }
+            Logger.debug("Target "+t.accession
+                         +" has pdb with ligands: "+ligands);
+        }
+        catch (Exception ex) {
+            Logger.error("Unable to retrieve ligand info from PDB!", ex);
+        }
+
+        List<Keyword> all = new ArrayList<>();
+        if (!ligands.isEmpty()) {
+            List<Keyword> not = new ArrayList<>();
+            for (Keyword kw : entries) {
+                if (ligands.contains(kw.term)) {
+                    all.add(kw);
+                }
+                else
+                    not.add(kw);
+            }
+            all.addAll(not);
+        }
+        
+        return all.isEmpty() ? entries : all;
     }
 }
