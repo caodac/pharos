@@ -1,5 +1,6 @@
 package ix.core.controllers.v1;
 
+import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.core.TreeNode;
 import ix.core.NamedResource;
 import ix.core.controllers.IxController;
@@ -24,6 +25,7 @@ import java.util.function.Supplier;
 
 import javax.persistence.Id;
 
+import ix.utils.Util;
 import play.Logger;
 import play.Play;
 import play.db.ebean.Model;
@@ -197,6 +199,25 @@ public class RouteFactory extends IxController {
         return badRequest ("Unknown Context: \""+context+"\"");
     }
 
+    private static <K, V> Map<Object, List<K>> toIdMap(Map<K, V> map){
+        Map<Object, List<K>> valueMap = new LinkedHashMap<>();
+
+        for(Map.Entry<K, V> entry : map.entrySet()){
+            Object id=null;
+            try {
+                 id = Util.getFieldValue(entry.getValue(), Id.class);
+            }catch(Exception e){
+
+            }
+            if(id !=null) {
+                valueMap.computeIfAbsent(id, k -> new ArrayList<>()).add(entry.getKey());
+            }
+        }
+        return valueMap;
+    }
+
+    private static JsonPointer ID_POINTER = JsonPointer.valueOf("/id");
+    private static JsonPointer CONTENT_POINTER = JsonPointer.valueOf("/content");
     public static Result batchResolve(String context){
         JsonNode body = request().body().asJson();
         if(!body.isArray()){
@@ -214,7 +235,7 @@ public class RouteFactory extends IxController {
 
                     map.computeIfAbsent(key, k-> function.apply(k));
                 }
-                System.out.println("map = " + map);
+                Map<Object, List<String>> valueMap = toIdMap(map);
                 Class factory = _registry.get(context);
                 Class kind = null;
                 if (factory != null) {
@@ -224,9 +245,22 @@ public class RouteFactory extends IxController {
                 }
                  TextIndexer.SearchResult result = SearchFactory.search(TEXT_INDEXER_PLUGIN_CACHED_SUPPLIER.get().getIndexer(),kind, map.values(), "*:*", 10,0,10 , request().queryString());
 
-                return ok(SearchFactory.convertToSearchResultJson(kind,"*:*", 10, 0, result));
+                JsonNode jsonSearch = SearchFactory.convertToSearchResultJson(kind,"*:*", 10, 0, result);
+
+                JsonNode contextNode = jsonSearch.at(CONTENT_POINTER);
+
+                for(JsonNode resultNode : contextNode){
+                    List<String> list = valueMap.get(resultNode.at(ID_POINTER).asLong());
+                    ArrayNode ar = ((ObjectNode)resultNode).putArray("_matchContext");
+                    for(String l : list){
+                        ar.add(l);
+                    }
+                }
+
+
 //
 //
+                return ok(jsonSearch);
 //                TextIndexer.SearchResult result= TEXT_INDEXER_PLUGIN_CACHED_SUPPLIER.get().getIndexer().filter(map.values());
 //
 //                result.getMatchesAndWaitIfNotFinished();
