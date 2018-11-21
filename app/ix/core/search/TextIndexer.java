@@ -1899,7 +1899,6 @@ public class TextIndexer {
                     all.add(cf);
                 }
 
-                System.out.println("all filters = " + all);
                 filter = new ChainedFilter (all.toArray(new Filter[0]),
                                             ChainedFilter.AND);
             }
