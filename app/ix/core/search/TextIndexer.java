@@ -1586,7 +1586,11 @@ public class TextIndexer {
             Filter f = null;
             if (subset != null) {
                 Set<String> kinds = new HashSet<>();
+
+                System.out.println("subset = " + subset);
+
                 List<Term> terms = getTerms (subset, kinds);
+                System.out.println("terms = " + terms);
                 //Logger.debug("Filter terms "+subset.size());
                 if (!terms.isEmpty()) {
                     if (kinds.size() == 1) {
@@ -1889,6 +1893,8 @@ public class TextIndexer {
                          ChainedFilter.OR);
                     all.add(cf);
                 }
+
+                System.out.println("all filters = " + all);
                 filter = new ChainedFilter (all.toArray(new Filter[0]),
                                             ChainedFilter.AND);
             }

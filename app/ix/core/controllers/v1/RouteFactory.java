@@ -6,6 +6,7 @@ import ix.core.controllers.IxController;
 import ix.core.controllers.EntityFactory;
 import ix.core.controllers.search.SearchFactory;
 import ix.core.models.Acl;
+import ix.core.models.BeanViews;
 import ix.core.models.Namespace;
 import ix.core.models.Principal;
 import ix.core.plugins.TextIndexerPlugin;
@@ -210,17 +211,29 @@ public class RouteFactory extends IxController {
                 LinkedHashMap<String, Object> map = new LinkedHashMap<>();
                 for(JsonNode a : array){
                     String key = a.asText();
+
                     map.computeIfAbsent(key, k-> function.apply(k));
                 }
+                System.out.println("map = " + map);
+                Class factory = _registry.get(context);
+                Class kind = null;
+                if (factory != null) {
+                    NamedResource res = (NamedResource) factory.getAnnotation
+                            (NamedResource.class);
+                    kind = res.type();
+                }
+                 TextIndexer.SearchResult result = SearchFactory.search(TEXT_INDEXER_PLUGIN_CACHED_SUPPLIER.get().getIndexer(),kind, map.values(), "*:*", 10,0,10 , request().queryString());
 
+                return ok(SearchFactory.convertToSearchResultJson(kind,"*:*", 10, 0, result));
+//
+//
+//                TextIndexer.SearchResult result= TEXT_INDEXER_PLUGIN_CACHED_SUPPLIER.get().getIndexer().filter(map.values());
+//
+//                result.getMatchesAndWaitIfNotFinished();
+////                return ok(result.getMatchesAndWaitIfNotFinished());
+//                ObjectMapper mapper = new EntityFactory.EntityMapper(BeanViews.Compact.class);
 
-
-                TextIndexer.SearchResult result= TEXT_INDEXER_PLUGIN_CACHED_SUPPLIER.get().getIndexer().filter(map.values());
-
-                result.getMatchesAndWaitIfNotFinished();
-//                return ok(result.getMatchesAndWaitIfNotFinished());
-                ObjectMapper mapper = new ObjectMapper();
-                return new CachableContent((JsonNode)mapper.valueToTree(result)).ok();
+//                return new CachableContent((JsonNode)mapper.valueToTree(result)).ok();
             }
         }
         catch (Exception ex) {

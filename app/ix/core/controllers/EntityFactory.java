@@ -842,7 +842,6 @@ public class EntityFactory extends IxController {
 
 
     protected static <K,T> Function<String,T> batchResolveFunction(EntityFactory2<K,T> factory2){
-        ObjectMapper mapper = getEntityMapper ();
 
         return n->
 

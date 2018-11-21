@@ -181,6 +181,10 @@ public class SearchFactory extends EntityFactory {
                 }
             });
 
+        return convertToSearchResultJson(kind, q, top, skip, result);
+    }
+
+    public static JsonNode convertToSearchResultJson(Class kind, String q, int top, int skip, SearchResult result) {
         SearchOptions options = result.getOptions();
         ObjectMapper mapper = getEntityMapper ();
         ArrayNode nodes = mapper.createArrayNode();
@@ -191,16 +195,16 @@ public class SearchFactory extends EntityFactory {
                     ObjectNode node = (ObjectNode)mapper.valueToTree(obj);
                     node.put("kind", kind == null
                              ? obj.getClass().getName() : kind.getName());
-                    TextIndexer.MatchFragment[] frags =
+                    MatchFragment[] frags =
                         result.getFragments(obj);
                     if (frags != null && frags.length > 0) {
                         ArrayNode fragments = mapper.createArrayNode();
-                        for (TextIndexer.MatchFragment mf : frags) {
+                        for (MatchFragment mf : frags) {
                             fragments.add(mapper.valueToTree(mf));
                         }
                         node.put("fragments", fragments);
                     }
-                    
+
                     //if(added>=skip)
                     nodes.add(node);
                     added++;
@@ -211,7 +215,7 @@ public class SearchFactory extends EntityFactory {
                 }
             }
         }
-        
+
         /*
          * TODO: setup etag right here!
          */
@@ -227,13 +231,13 @@ public class SearchFactory extends EntityFactory {
         etag.method = request().method();
         etag.filter = options.filter;
         etag.save();
-        
+
         ObjectNode obj = (ObjectNode)mapper.valueToTree(etag);
         obj.put(options.sideway ? "sideway" : "drilldown",
                 mapper.valueToTree(options.facets));
         obj.put("facets", mapper.valueToTree(result.getFacets()));
         obj.put("content", nodes);
-        
+
         return obj;
     }
 
