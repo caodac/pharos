@@ -235,7 +235,7 @@ public class RouteFactory extends IxController {
 
                     map.computeIfAbsent(key, k-> function.apply(k));
                 }
-                Map<Object, List<String>> valueMap = toIdMap(map);
+
                 Class factory = _registry.get(context);
                 Class kind = null;
                 if (factory != null) {
@@ -243,31 +243,20 @@ public class RouteFactory extends IxController {
                             (NamedResource.class);
                     kind = res.type();
                 }
-                 TextIndexer.SearchResult result = SearchFactory.search(TEXT_INDEXER_PLUGIN_CACHED_SUPPLIER.get().getIndexer(),kind, map.values(), "*:*", 10,0,10 , request().queryString());
+                int top = map.size();
+                 TextIndexer.SearchResult result = SearchFactory.search(TEXT_INDEXER_PLUGIN_CACHED_SUPPLIER.get().getIndexer(),kind,
+                         map.values(),
+                         "*:*", top,0,10 , request().queryString());
 
-                JsonNode jsonSearch = SearchFactory.convertToSearchResultJson(kind,"*:*", 10, 0, result);
+                JsonNode jsonSearch = SearchFactory.convertToSearchResultJson(kind,"*:*",
+                        top, 0, result);
 
-                JsonNode contextNode = jsonSearch.at(CONTENT_POINTER);
-
-                for(JsonNode resultNode : contextNode){
-                    List<String> list = valueMap.get(resultNode.at(ID_POINTER).asLong());
-                    ArrayNode ar = ((ObjectNode)resultNode).putArray("_matchContext");
-                    for(String l : list){
-                        ar.add(l);
-                    }
-                }
+                addMatchContextsTo(jsonSearch, map);
 
 
 //
 //
                 return ok(jsonSearch);
-//                TextIndexer.SearchResult result= TEXT_INDEXER_PLUGIN_CACHED_SUPPLIER.get().getIndexer().filter(map.values());
-//
-//                result.getMatchesAndWaitIfNotFinished();
-////                return ok(result.getMatchesAndWaitIfNotFinished());
-//                ObjectMapper mapper = new EntityFactory.EntityMapper(BeanViews.Compact.class);
-
-//                return new CachableContent((JsonNode)mapper.valueToTree(result)).ok();
             }
         }
         catch (Exception ex) {
@@ -277,6 +266,20 @@ public class RouteFactory extends IxController {
         Logger.warn("Context {} has no method batchResolveFunction()",context);
         return badRequest ("Unknown Context: \""+context+"\"");
     }
+
+    private static void addMatchContextsTo(JsonNode jsonSearch, Map<String, ?> map) {
+        Map<Object, List<String>> valueMap = toIdMap(map);
+        JsonNode contextNode = jsonSearch.at(CONTENT_POINTER);
+
+        for(JsonNode resultNode : contextNode){
+            List<String> list = valueMap.get(resultNode.at(ID_POINTER).asLong());
+            ArrayNode ar = ((ObjectNode)resultNode).putArray("_matchContext");
+            for(String l : list){
+                ar.add(l);
+            }
+        }
+    }
+
     public static Result resolve (String context, String name, String expand) {
         try {
             Method m = getResolveMethodFor(context);
