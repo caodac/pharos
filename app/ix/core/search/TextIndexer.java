@@ -1134,7 +1134,7 @@ public class TextIndexer {
                                     (fq, searcher.getIndexReader(),
                                      docId, "text", 2000, 10);
                                 List<MatchFragment> lmf = new ArrayList<>();
-                                if (fragments != null) {
+                                if (fragments != null && fragments.length > 0) {
                                     Logger.debug("## found "+fragments.length
                                                  +" fragment(s) in document "
                                                  +id+"!");

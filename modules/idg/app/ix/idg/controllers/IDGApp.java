@@ -262,12 +262,21 @@ public class IDGApp extends App implements Commons {
     }
 
     public static class GeneRIF implements Comparable<GeneRIF>, Serializable {
-        public Long pmid;       
-        public String text;
+        public final Long pmid;       
+        public final String text;
 
         GeneRIF (Long pmid, String text) {
             this.pmid = pmid;
-            this.text = text;
+            StringBuilder sb = new StringBuilder ();
+            for (int i = 0; i < text.length(); ++i) {
+                char ch = text.charAt(i);
+                switch (ch) {
+                case '\\': sb.append("\\\\"); break;
+                default:
+                    sb.append(ch);
+                }
+            }
+            this.text = sb.toString();
         }
 
         public int compareTo (GeneRIF gene) {
