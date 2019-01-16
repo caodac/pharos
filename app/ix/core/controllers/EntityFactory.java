@@ -4,6 +4,8 @@ import java.io.*;
 import java.security.*;
 import java.util.*;
 import java.net.URLDecoder;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.regex.*;
 import java.util.concurrent.*;
 import java.lang.reflect.Field;
@@ -838,6 +840,14 @@ public class EntityFactory extends IxController {
         }
     }
 
+
+    protected static <K,T> Function<String,T> batchResolveFunction(EntityFactory2<K,T> factory2){
+
+        return n->
+
+             factory2.resolve(n,null)
+        ;
+    }
     protected static <K,T> Result resolve (final Expression filter, 
                                            final String expand,
                                            final Model.Finder<K,T> finder) {

@@ -1,7 +1,9 @@
 package ix.idg.controllers;
 
 import java.util.*;
+import java.util.function.Function;
 
+import org.codehaus.jackson.JsonNode;
 import play.*;
 import play.db.ebean.*;
 import play.data.*;
@@ -18,8 +20,10 @@ public class TargetFactory extends EntityFactory implements Commons {
     static final public Model.Finder<Long, Target> finder = 
         new Model.Finder(Long.class, Target.class);
 
+    private static final TargetFactory2 FACTORY_2 = new TargetFactory2(finder);
+
     public static Target getTarget (Long id) {
-        return getEntity (id, finder);
+        return FACTORY_2.get (id);
     }
 
     public static List<Target> getTargets (int top, int skip, String filter) {
@@ -59,7 +63,15 @@ public class TargetFactory extends EntityFactory implements Commons {
     }
 
     public static Result resolve (String name, String expand) {
-        return resolve (Expr.eq("synonyms.term", name), expand, finder);
+        return resolve (Expr.or(Expr.or(Expr.or(Expr.eq("synonyms.term", name),
+                                Expr.eq("name", name)),
+                Expr.eq("accession", name)),
+                Expr.eq("gene", name))
+                , expand, finder);
+    }
+
+    public static Function<String, Target> batchResolveFunction(){
+         return batchResolveFunction(FACTORY_2);
     }
 
     public static Result field (Long id, String path) {

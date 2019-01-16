@@ -135,6 +135,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import static org.apache.lucene.document.Field.Store.NO;
 import static org.apache.lucene.document.Field.Store.YES;
@@ -1283,6 +1284,8 @@ public class TextIndexer {
     static ConcurrentMap<File, TextIndexer> indexers = 
         new ConcurrentHashMap<File, TextIndexer>();
 
+    private Reflections reflections = new Reflections("ix");
+    private Map<Class<?>, String[]> subTypes = new ConcurrentHashMap<>();
 
     public IndexReader getIndexReader() {
         return indexReader;
@@ -1586,6 +1589,7 @@ public class TextIndexer {
             Filter f = null;
             if (subset != null) {
                 Set<String> kinds = new HashSet<>();
+
                 List<Term> terms = getTerms (subset, kinds);
                 //Logger.debug("Filter terms "+subset.size());
                 if (!terms.isEmpty()) {
@@ -1603,19 +1607,24 @@ public class TextIndexer {
                 }
             }
             else if (options.kind != null) {
-                Set<String> kinds = new TreeSet<String>();
-                kinds.add(options.kind.getName());
-                Reflections reflections = new Reflections("ix");
-                for (Class c : reflections.getSubTypesOf(options.kind)) {
-                    kinds.add(c.getName());
-                }
-                f = new FieldCacheTermsFilter 
-                    (FIELD_KIND, kinds.toArray(new String[0]));
+
+                f = new FieldCacheTermsFilter (FIELD_KIND, getSubTypesOf(options.kind));
             }
             search (searchResult, query, f);
         }
         
         return searchResult;
+    }
+    private <T> String[] getSubTypesOf(Class<T> c){
+       return subTypes.computeIfAbsent(c, k ->{
+           Set<String> kinds = new TreeSet<>();
+           kinds.add(k.getName());
+
+           for (Class klass : reflections.getSubTypesOf(k)) {
+               kinds.add(klass.getName());
+           }
+           return kinds.toArray(new String[kinds.size()]);
+       });
     }
 
     public SearchResult filter (Collection subset)  throws IOException {
@@ -1766,7 +1775,7 @@ public class TextIndexer {
                          //+(filter!=null?filter:"none")
                          +" Options:"+options);
         }
-        
+
         long start = System.currentTimeMillis();
             
         FacetsCollector fc = new FacetsCollector ();
@@ -1889,6 +1898,7 @@ public class TextIndexer {
                          ChainedFilter.OR);
                     all.add(cf);
                 }
+
                 filter = new ChainedFilter (all.toArray(new Filter[0]),
                                             ChainedFilter.AND);
             }

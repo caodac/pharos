@@ -1,27 +1,33 @@
 package ix.core.controllers.v1;
 
+import com.fasterxml.jackson.core.JsonPointer;
+import com.fasterxml.jackson.core.TreeNode;
 import ix.core.NamedResource;
 import ix.core.controllers.IxController;
 import ix.core.controllers.EntityFactory;
 import ix.core.controllers.search.SearchFactory;
 import ix.core.models.Acl;
+import ix.core.models.BeanViews;
 import ix.core.models.Namespace;
 import ix.core.models.Principal;
+import ix.core.plugins.TextIndexerPlugin;
+import ix.core.search.TextIndexer;
+import ix.utils.CachedSupplier;
 import ix.utils.Global;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import javax.persistence.Id;
 
+import ix.utils.Util;
 import play.Logger;
+import play.Play;
 import play.db.ebean.Model;
 import play.mvc.Controller;
 import play.mvc.Result;
@@ -44,6 +50,13 @@ public class RouteFactory extends IxController {
     static final ConcurrentMap<String, Class> _registry = 
         new ConcurrentHashMap<String, Class>();
     static final Set<String> _uuid = new TreeSet<String>();
+
+    static final CachedSupplier<TextIndexerPlugin> TEXT_INDEXER_PLUGIN_CACHED_SUPPLIER = CachedSupplier.of(new Supplier<TextIndexerPlugin>(){
+        @Override
+        public TextIndexerPlugin get() {
+            return Play.application().plugin(TextIndexerPlugin.class);
+        }
+    });
 
     public static <T  extends EntityFactory> void register 
         (String context, Class<T> factory) {
@@ -186,12 +199,93 @@ public class RouteFactory extends IxController {
         return badRequest ("Unknown Context: \""+context+"\"");
     }
 
+    private static <K, V> Map<Object, List<K>> toIdMap(Map<K, V> map){
+        Map<Object, List<K>> valueMap = new LinkedHashMap<>();
+
+        for(Map.Entry<K, V> entry : map.entrySet()){
+            Object id=null;
+            try {
+                 id = Util.getFieldValue(entry.getValue(), Id.class);
+            }catch(Exception e){
+
+            }
+            if(id !=null) {
+                valueMap.computeIfAbsent(id, k -> new ArrayList<>()).add(entry.getKey());
+            }
+        }
+        return valueMap;
+    }
+
+    private static JsonPointer ID_POINTER = JsonPointer.valueOf("/id");
+    private static JsonPointer CONTENT_POINTER = JsonPointer.valueOf("/content");
+    public static Result batchResolve(String context){
+        JsonNode body = request().body().asJson();
+        if(!body.isArray()){
+            return badRequest("body must be JSON array");
+        }
+        ArrayNode array = (ArrayNode) body;
+        try {
+            Method m = getMethod (context, "batchResolveFunction");
+            if (m != null) {
+                Function<String, ?> function = (Function<String, ?>) m.invoke(null);
+
+                LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+                for(JsonNode a : array){
+                    String key = a.asText();
+
+                    map.computeIfAbsent(key, k-> function.apply(k));
+                }
+
+                Class factory = _registry.get(context);
+                Class kind = null;
+                if (factory != null) {
+                    NamedResource res = (NamedResource) factory.getAnnotation
+                            (NamedResource.class);
+                    kind = res.type();
+                }
+                int top = map.size();
+                 TextIndexer.SearchResult result = SearchFactory.search(TEXT_INDEXER_PLUGIN_CACHED_SUPPLIER.get().getIndexer(),kind,
+                         map.values(),
+                         "*:*", top,0,10 , request().queryString());
+
+                JsonNode jsonSearch = SearchFactory.convertToSearchResultJson(kind,"*:*",
+                        top, 0, result);
+
+                addMatchContextsTo(jsonSearch, map);
+
+
+//
+//
+                return ok(jsonSearch);
+            }
+        }
+        catch (Exception ex) {
+            Logger.trace("["+context+"]", ex);
+            return internalServerError (context);
+        }
+        Logger.warn("Context {} has no method batchResolveFunction()",context);
+        return badRequest ("Unknown Context: \""+context+"\"");
+    }
+
+    private static void addMatchContextsTo(JsonNode jsonSearch, Map<String, ?> map) {
+        Map<Object, List<String>> valueMap = toIdMap(map);
+        JsonNode contextNode = jsonSearch.at(CONTENT_POINTER);
+
+        for(JsonNode resultNode : contextNode){
+            List<String> list = valueMap.get(resultNode.at(ID_POINTER).asLong());
+            ArrayNode ar = ((ObjectNode)resultNode).putArray("_matchContext");
+            for(String l : list){
+                ar.add(l);
+            }
+        }
+    }
+
     public static Result resolve (String context, String name, String expand) {
         try {
-            Method m = getMethod (context, "resolve", 
-                                  String.class, String.class);
-            if (m != null)
-                return (Result)m.invoke(null, name, expand);
+            Method m = getResolveMethodFor(context);
+            if (m != null) {
+                return (Result) m.invoke(null, name, expand);
+            }
         }
         catch (Exception ex) {
             Logger.trace("["+context+"]", ex);
@@ -199,6 +293,11 @@ public class RouteFactory extends IxController {
         }
         Logger.warn("Context {} has no method resolve(String,String)",context);
         return badRequest ("Unknown Context: \""+context+"\"");
+    }
+
+    private static Method getResolveMethodFor(String context) {
+        return getMethod (context, "resolve",
+                                      String.class, String.class);
     }
 
     public static Result doc (String context, Long id) {
