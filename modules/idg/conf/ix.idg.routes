@@ -12,6 +12,7 @@ GET     /ppi      ix.idg.controllers.TcrdRegistry.ppi
 POST    /tcrd     ix.idg.controllers.TcrdRegistry.load
 GET     /reindex  ix.idg.controllers.RebuildIndexes.reindex
 
+POST    /api/v1/topics/:kind    ix.idg.controllers.TopicFactory.getTopics(kind: String)
 GET     /api/v1/targets/descriptors	ix.idg.controllers.TargetVectorFactory.descriptorVectors
 GET     /api/v1/targets/:id/descriptor	ix.idg.controllers.TargetVectorFactory.targetVector(id: Long)
 GET     /api/v1/targets/:ids/pairwise   ix.idg.controllers.TargetVectorFactory.targetPairwiseSimilarity(ids: String)
