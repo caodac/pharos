@@ -141,19 +141,23 @@ public class TopicFactory extends IxController {
         ObjectMapper mapper = new ObjectMapper ();
         ArrayNode nodes = mapper.createArrayNode();
         for (Topic t : topics) {
-            ObjectNode n = mapper.createObjectNode();
-            n.put("query", t.query);
-            n.put("id", t.entity.id);
-            n.put("kind", t.entity.getClass().getName());
+            ObjectNode tn = mapper.createObjectNode();
+            
+            tn.put("id", t.entity.id);
+            tn.put("kind", t.entity.getClass().getName());
             if (t.entity instanceof Target) {
                 Target tar = (Target)t.entity;
-                n.put("accession", tar.accession);
-                n.put("gene", tar.gene);
-                n.put("tdl", Json.toJson(tar.idgTDL));
-                n.put("family", tar.idgFamily);
+                tn.put("accession", tar.accession);
+                tn.put("gene", tar.gene);
+                tn.put("tdl", Json.toJson(tar.idgTDL));
+                tn.put("family", tar.idgFamily);
             }
-            n.put("name", t.entity.getName());
-            n.put("uri", Global.getRef(t.entity));
+            tn.put("name", t.entity.getName());
+            tn.put("uri", Global.getRef(t.entity));
+
+            ObjectNode n = mapper.createObjectNode();
+            n.put("query", t.query);
+            n.put("target", tn);
             
             List<XRef> ligands = new ArrayList<>();
             List<XRef> diseases = new ArrayList<>();
@@ -164,7 +168,7 @@ public class TopicFactory extends IxController {
                     diseases.add(xref);
             }
             
-            n.put("ligand_count", ligands.size());
+            tn.put("ligand_count", ligands.size());
             if (!ligands.isEmpty()) {
                 ArrayNode ln = mapper.createArrayNode();
                 for (XRef xref : ligands) {
@@ -174,9 +178,17 @@ public class TopicFactory extends IxController {
                     l.put("kind", ligand.getClass().getName());
                     l.put("name", ligand.getName());
                     l.put("uri", Global.getRef(ligand));
+                    
                     for (Value v : ligand.getProperties()) {
-                        l.put(v.getLabel(), Json.toJson(v.getValue()));
+                        l.put(v.getLabel().replaceAll("\\s", "_"),
+                              Json.toJson(v.getValue()));
                     }
+                    
+                    for (Value v : xref.getProperties()) {
+                        l.put(v.getLabel().replaceAll("\\s", "_"),
+                              Json.toJson(v.getValue()));
+                    }
+                    
                     for (XRef r : ligand.getLinks()) {
                         if (Structure.class.getName().equals(r.kind)) {
                             Structure struc = (Structure) r.deRef();
@@ -190,7 +202,7 @@ public class TopicFactory extends IxController {
                 n.put("ligands", ln);
             }
             
-            n.put("disease_count", diseases.size());
+            tn.put("disease_count", diseases.size());
             if (!diseases.isEmpty()) {
                 ArrayNode dn = mapper.createArrayNode();
                 for (XRef xref : diseases) {
@@ -201,9 +213,11 @@ public class TopicFactory extends IxController {
                     d.put("name", disease.getName());
                     d.put("uri", Global.getRef(disease));
                     for (Value v : disease.getProperties())
-                        d.put(v.getLabel(), Json.toJson(v.getValue()));
+                        d.put(v.getLabel().replaceAll("\\s", "_"),
+                              Json.toJson(v.getValue()));
                     for (Value v : xref.getProperties()) {
-                        d.put(v.getLabel(), Json.toJson(v.getValue()));
+                        d.put(v.getLabel().replaceAll("\\s", "_"),
+                              Json.toJson(v.getValue()));
                     }
                     dn.add(d);
                 }
