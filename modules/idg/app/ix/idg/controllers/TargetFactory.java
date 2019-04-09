@@ -78,6 +78,10 @@ public class TargetFactory extends EntityFactory implements Commons {
         return field (id, path, finder);
     }
 
+    public static Result getField (Target target, String field) {
+        return field (target, field);
+    }
+
     public static Result create () {
         return create (Target.class, finder);
     }

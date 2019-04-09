@@ -321,4 +321,21 @@ public class Util {
             kg.put(me.getKey(), me.getValue().toArray(new String[0]));
         return kg;
     }
+
+    public static <T> List<T> getPage (List<T> list, int top, int skip) {
+        if (skip > list.size()) {
+            return Collections.EMPTY_LIST;
+        }
+        else if (top > 0 && skip >= 0) {
+            list = list.subList(skip, Math.min(list.size(), skip+top));
+        }
+        else if (skip >= 0) {
+            list = list.subList
+                (skip, Math.min(list.size(), list.size() - skip));
+        }
+        else if (top > 0) {
+            list = list.subList(0, Math.min(top, list.size()));
+        }
+        return list;
+    }
 }

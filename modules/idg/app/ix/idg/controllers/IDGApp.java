@@ -4148,53 +4148,44 @@ public class IDGApp extends App implements Commons {
             for (Value v : l.getProperties()) {
                 if (Commons.ChEMBL_INCHI_KEY.equals(v.label)) {
                     String val = (String) v.getValue();
-                    if (val != null) mol.setProperty(Commons.ChEMBL_INCHI_KEY, val);
+                    if (val != null)
+                        mol.setProperty(Commons.ChEMBL_INCHI_KEY, val);
                 } else if (Commons.ChEMBL_SMILES.equals(v.label)) {
                     String val = (String) v.getValue();
-                    if (val != null) mol.setProperty(Commons.ChEMBL_SMILES, val);
+                    if (val != null)
+                        mol.setProperty(Commons.ChEMBL_SMILES, val);
                 } else if (Commons.PUBMED_ID.equals(v.label)) {
                     Object val = v.getValue();
-                    if (val != null) mol.setProperty(Commons.PUBMED_ID, val.toString());
+                    if (val != null)
+                        mol.setProperty(Commons.PUBMED_ID, val.toString());
                 }
             }
             exporter.write(mol);
         }
         exporter.close();
         byte[] contents = baos.toByteArray();
-        response().setHeader("Content-Disposition", "attachment;filename="+IDGApp.getId(t)+"-"+group+".sdf");
+        response().setHeader("Content-Disposition", "attachment;filename="
+                             +IDGApp.getId(t)+"-"+group+".sdf");
         return ok(contents).as("chemical/x-mdl-molfile");
     }
 
     public static Result _publicationsForTarget (String name, int top, int skip)
         throws Exception {
-        List<Target> targets = TargetResult.find(name);
-        if (targets.isEmpty()) {
-            return _notFound ("Unknown target: "+name);
+        Target t = TargetResult.findUnique(name);
+        if (t != null) {
+            List<Publication> pubs =
+                Util.getPage(getPublications (t), top, skip);
+            
+            ObjectMapper mapper = EntityFactory.getEntityMapper();
+            return ok ((JsonNode)mapper.valueToTree(pubs));
         }
-        
-        if (targets.size() > 1) {
-            Logger.debug("** \""+name+"\" resolves to "+targets.size()+" targets!");
-        }
-        
-        Target t = targets.iterator().next();
-        List<Publication> pubs = getPublications (t);
-        if (top > 0 && skip >= 0) {
-            pubs = pubs.subList(skip, Math.min(pubs.size(), skip+top));
-        }
-        else if (skip >= 0) {
-            pubs = pubs.subList(skip, Math.min(pubs.size(), pubs.size() - skip));
-        }
-        else if (top > 0) {
-            pubs = pubs.subList(0, Math.min(top, pubs.size()));
-        }
-        
-        ObjectMapper mapper = EntityFactory.getEntityMapper();
-        return ok ((JsonNode)mapper.valueToTree(pubs));
+        return notFound ("Can't find target for \""+name+"\"!");
     }
 
-    public static Result ligandsForTarget(final String name, final String group) {
+    public static Result ligandsForTarget (final String name,
+                                           final String group) {
         try {
-            final String key = "targets/"+name+"/"+group;
+            final String key = "targets/"+name+"/ligands/"+group;
             return getOrElse (key, new Callable<Result> () {
                     public Result call () throws Exception {
                         return _ligandsForTarget (name, group);
@@ -4203,14 +4194,14 @@ public class IDGApp extends App implements Commons {
         }
         catch (Exception ex) {
             ex.printStackTrace();
-            return _internalServerError (ex);
+            return internalServerError (ex.getMessage());
         }
     }
 
     public static Result publicationsForTarget
         (final String name, final int top, final int skip) {
         try {
-            final String key = "targets/"+name+"/"+top+"/"+skip;
+            final String key = "targets/"+name+"/pubs/"+top+"/"+skip;
             return getOrElse (key, new Callable<Result> () {
                     public Result call () throws Exception {
                         return _publicationsForTarget (name, top, skip);
@@ -4219,7 +4210,114 @@ public class IDGApp extends App implements Commons {
         }
         catch (Exception ex) {
             ex.printStackTrace();
-            return _internalServerError (ex);
+            return internalServerError (ex.getMessage());
+        }
+    }
+
+    public static Result getLigandsForTarget
+        (final String id, final int top, final int skip) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null) {
+                List<Ligand> ligands =
+                    Util.getPage(getChemblLigands (t), top, skip);
+                
+                ObjectMapper mapper = EntityFactory.getEntityMapper();
+                return ok ((JsonNode)mapper.valueToTree(ligands));
+            }
+            return notFound ("Can't find target \""+id+"\"!");
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }
+    }
+
+    public static Result getDrugsForTarget
+        (final String id, final int top, final int skip) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null) {
+                List<Ligand> ligands =
+                    Util.getPage(getDrugLigands (t), top, skip);
+                
+                ObjectMapper mapper = EntityFactory.getEntityMapper();
+                return ok ((JsonNode)mapper.valueToTree(ligands));
+            }
+            return notFound ("Can't find target \""+id+"\"!");
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }        
+    }
+
+    public static Result getDiseasesForTarget
+        (final String id, final int top, final int skip) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null) {
+                List<Disease> diseases =
+                    Util.getPage(getLinkedObjects(t, Disease.class), top, skip);
+                
+                ObjectMapper mapper = EntityFactory.getEntityMapper();
+                return ok ((JsonNode)mapper.valueToTree(diseases));
+            }
+            return notFound ("Can't find target \""+id+"\"!");
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }        
+    }
+
+    public static Result getGeneRifsForTarget
+        (final String id, final int top, final int skip) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null) {
+                List<GeneRIF> generifs =
+                    Util.getPage(getGeneRIFs (t), top, skip);
+                
+                ObjectMapper mapper = EntityFactory.getEntityMapper();
+                return ok ((JsonNode)mapper.valueToTree(generifs));
+            }
+            return notFound ("Can't find target \""+id+"\"!");
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }
+    }
+
+    public static Result getBreadcrumbForTarget (final String id) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null) {
+                List<Keyword> breadcrumb = getBreadcrumb (t);
+                
+                ObjectMapper mapper = EntityFactory.getEntityMapper();
+                return ok ((JsonNode)mapper.valueToTree(breadcrumb));
+            }
+            return notFound ("Can't find target \""+id+"\"!");
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }
+    }
+    
+    public static Result getFieldForTarget (final String id,
+                                            final String field) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null)
+                return TargetFactory.getField(t, field);
+            return notFound ("Can't find target \""+id+"\"!");
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
         }
     }
 
@@ -4231,7 +4329,8 @@ public class IDGApp extends App implements Commons {
                     public Result call () throws Exception {
                         SearchResultProcessor<Target> processor =
                             new SearchResultProcessor<Target>() {
-                            protected Object instrument (Target t) throws Exception {
+                            protected Object instrument (Target t)
+                                throws Exception {
                                 return t;
                             }
                         };

@@ -184,6 +184,19 @@ public class App extends Authentication {
             return e;
         }
 
+        public T findUnique (final String name) throws Exception {
+            List<T> list = find (name);
+            if (list.isEmpty()) {
+                Logger.warn("Can't find \""+name+"\" for "+cls.getName());
+                return null;
+            }
+
+            if (list.size() > 1) {
+                Logger.warn("\""+name+"\" return "+list.size()+" matches!");
+            }
+            return list.iterator().next();
+        }
+
         /*
          * perform basic validation; subclass should override to provide
          * more control.

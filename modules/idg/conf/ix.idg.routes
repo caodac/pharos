@@ -15,6 +15,25 @@ GET     /reindex  ix.idg.controllers.RebuildIndexes.reindex
 POST    /api/v1/topics/:kind    ix.idg.controllers.TopicFactory.getTopics(kind: String)
 GET     /api/v1/targets/descriptors	ix.idg.controllers.TargetVectorFactory.descriptorVectors
 GET     /api/v1/targets/:id/descriptor	ix.idg.controllers.TargetVectorFactory.targetVector(id: Long)
+
+GET     /api/v1/targets/:name/ligands     ix.idg.controllers.IDGApp.getLigandsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
+GET     /api/v1/targets(:name)/ligands     ix.idg.controllers.IDGApp.getLigandsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
+
+GET     /api/v1/targets/:name/drugs     ix.idg.controllers.IDGApp.getDrugsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
+GET     /api/v1/targets(:name)/drugs     ix.idg.controllers.IDGApp.getDrugsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
+
+GET     /api/v1/targets/:name/diseases     ix.idg.controllers.IDGApp.getDiseasesForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
+GET     /api/v1/targets(:name)/diseases     ix.idg.controllers.IDGApp.getDiseasesForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
+
+GET     /api/v1/targets/:name/generifs     ix.idg.controllers.IDGApp.getGeneRifsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
+GET     /api/v1/targets(:name)/generifs     ix.idg.controllers.IDGApp.getGeneRifsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
+
+GET     /api/v1/targets/:name/breadcrumb     ix.idg.controllers.IDGApp.getBreadcrumbForTarget(name: String)
+GET     /api/v1/targets(:name)/breadcrumb     ix.idg.controllers.IDGApp.getBreadcrumbForTarget(name: String)
+
+GET     /api/v1/targets(:name)/*field      ix.idg.controllers.IDGApp.getFieldForTarget(name: String, field: String)
+GET     /api/v1/targets/:name/*field      ix.idg.controllers.IDGApp.getFieldForTarget(name: String, field: String)
+
 GET     /api/v1/targets/:ids/pairwise   ix.idg.controllers.TargetVectorFactory.targetPairwiseSimilarity(ids: String)
 GET     /api/v1/targets/:id/similarity  ix.idg.controllers.TargetVectorFactory.targetSimilarity(id: Long)
 GET     /api/v1/targets/_simmat         ix.idg.controllers.TargetVectorFactory.allPairwiseSimilarity
@@ -46,7 +65,7 @@ GET     /targets/facets/:name	ix.idg.controllers.IDGApp.targetdescriptor(name: S
 GET     /targets/:name		ix.idg.controllers.IDGApp.target(name: String)
 GET     /targets/:name/ligands   ix.idg.controllers.IDGApp.ligandsForTarget(name: String, group: String ?= null)
 GET     /targets/:name/pviz	ix.idg.controllers.IDGApp.targetpviz(name: String)
-GET     /targets/:name/publications	ix.idg.controllers.IDGApp.publicationsForTarget(name: String, top: Int ?= -1, skip: Int ?= 0)
+GET     /targets/:name/publications	ix.idg.controllers.IDGApp.publicationsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
 GET     /diseases	ix.idg.controllers.IDGApp.diseases(q: String ?= null, rows: Int ?= 10, page: Int ?= 1)
 GET     /diseases/:name	ix.idg.controllers.IDGApp.disease(name: String)
 GET     /ligands	ix.idg.controllers.IDGApp.ligands(q: String ?= null, rows: Int ?= 20, page: Int ?= 1)
