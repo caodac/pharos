@@ -3875,6 +3875,20 @@ public class IDGApp extends App implements Commons {
         return nodes;
     }
 
+    public static Result getPatentsForTarget (String id) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null) {
+                return ok (getPatents (t));
+            }
+            return notFound ("Can't find target \""+id+"\"!");
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }        
+    }
+    
     public static JsonNode getPubTator (Target target) {
         ObjectMapper mapper = new ObjectMapper ();
         ArrayNode nodes = mapper.createArrayNode();
@@ -3912,6 +3926,20 @@ public class IDGApp extends App implements Commons {
             }
         }
         return nodes;
+    }
+
+    public static Result getPubTatorForTarget (String id) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null) {
+                return ok (getPubTator (t));
+            }
+            return notFound ("Can't find target \""+id+"\"!");
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }        
     }
 
     public static String getPatentSparkline (Target target) {
@@ -3966,6 +3994,21 @@ public class IDGApp extends App implements Commons {
 
         return nodes;
     }
+
+    public static Result getPubMedScoreForTarget (final String id) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null) {
+                return ok (getPubMedScore (t));
+            }
+            return notFound ("Can't find target \""+id+"\"!");
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }        
+    }
+    
     
     public static String getPubMedScoreSparkline (Target target) {
         StringBuilder sb = new StringBuilder ();
@@ -4233,6 +4276,21 @@ public class IDGApp extends App implements Commons {
         }
     }
 
+    public static Result getLigandsCountForTarget (final String id) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null) {
+                List<Ligand> ligands = getChemblLigands (t);
+                return ok (String.valueOf(ligands.size()));
+            }
+            return notFound ("Can't find target \""+id+"\"!");            
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }
+    }
+
     public static Result getDrugsForTarget
         (final String id, final int top, final int skip) {
         try {
@@ -4252,6 +4310,21 @@ public class IDGApp extends App implements Commons {
         }        
     }
 
+    public static Result getDrugsCountForTarget (final String id) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null) {
+                List<Ligand> drugs = getDrugLigands (t);
+                return ok (String.valueOf(drugs.size()));
+            }
+            return notFound ("Can't find target \""+id+"\"!");            
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }
+    }
+    
     public static Result getDiseasesForTarget
         (final String id, final int top, final int skip) {
         try {
@@ -4271,6 +4344,21 @@ public class IDGApp extends App implements Commons {
         }        
     }
 
+    public static Result getDiseasesCountForTarget (final String id) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null) {
+                List<Disease> diseases = getLinkedObjects(t, Disease.class);
+                return ok (String.valueOf(diseases.size()));
+            }
+            return notFound ("Can't find target \""+id+"\"!");
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }        
+    }
+    
     public static Result getGeneRifsForTarget
         (final String id, final int top, final int skip) {
         try {
@@ -4290,6 +4378,21 @@ public class IDGApp extends App implements Commons {
         }
     }
 
+    public static Result getGeneRifsCountForTarget (final String id) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null) {
+                List<GeneRIF> generifs = getGeneRIFs (t);
+                return ok (String.valueOf(generifs.size()));
+            }
+            return notFound ("Can't find target \""+id+"\"!");
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }
+    }
+    
     public static Result getBreadcrumbForTarget (final String id) {
         try {
             Target t = TargetResult.findUnique(id);

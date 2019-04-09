@@ -18,18 +18,35 @@ GET     /api/v1/targets/:id/descriptor	ix.idg.controllers.TargetVectorFactory.ta
 
 GET     /api/v1/targets/:name/ligands     ix.idg.controllers.IDGApp.getLigandsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
 GET     /api/v1/targets(:name)/ligands     ix.idg.controllers.IDGApp.getLigandsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
+GET     /api/v1/targets/:name/ligands/@count     ix.idg.controllers.IDGApp.getLigandsCountForTarget(name: String)
+GET     /api/v1/targets/(:name)/ligands/@count     ix.idg.controllers.IDGApp.getLigandsCountForTarget(name: String)
 
 GET     /api/v1/targets/:name/drugs     ix.idg.controllers.IDGApp.getDrugsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
 GET     /api/v1/targets(:name)/drugs     ix.idg.controllers.IDGApp.getDrugsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
+GET     /api/v1/targets/:name/drugs/@count     ix.idg.controllers.IDGApp.getDrugsCountForTarget(name: String)
+GET     /api/v1/targets(:name)/drugs/@count     ix.idg.controllers.IDGApp.getDrugsCountForTarget(name: String)
 
 GET     /api/v1/targets/:name/diseases     ix.idg.controllers.IDGApp.getDiseasesForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
 GET     /api/v1/targets(:name)/diseases     ix.idg.controllers.IDGApp.getDiseasesForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
+GET     /api/v1/targets/:name/diseases/@count     ix.idg.controllers.IDGApp.getDiseasesCountForTarget(name: String)
+GET     /api/v1/targets(:name)/diseases/@count     ix.idg.controllers.IDGApp.getDiseasesCountForTarget(name: String)
 
 GET     /api/v1/targets/:name/generifs     ix.idg.controllers.IDGApp.getGeneRifsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
 GET     /api/v1/targets(:name)/generifs     ix.idg.controllers.IDGApp.getGeneRifsForTarget(name: String, top: Int ?= 10, skip: Int ?= 0)
+GET     /api/v1/targets/:name/generifs/@count     ix.idg.controllers.IDGApp.getGeneRifsCountForTarget(name: String)
+GET     /api/v1/targets(:name)/generifs/@count     ix.idg.controllers.IDGApp.getGeneRifsCountForTarget(name: String)
 
 GET     /api/v1/targets/:name/breadcrumb     ix.idg.controllers.IDGApp.getBreadcrumbForTarget(name: String)
 GET     /api/v1/targets(:name)/breadcrumb     ix.idg.controllers.IDGApp.getBreadcrumbForTarget(name: String)
+
+GET     /api/v1/targets/:name/pmscore     ix.idg.controllers.IDGApp.getPubMedScoreForTarget(name: String)
+GET     /api/v1/targets(:name)/pmscore     ix.idg.controllers.IDGApp.getPubMedScoreForTarget(name: String)
+
+GET     /api/v1/targets/:name/pubtator     ix.idg.controllers.IDGApp.getPubTatorForTarget(name: String)
+GET     /api/v1/targets(:name)/pubtator     ix.idg.controllers.IDGApp.getPubTatorForTarget(name: String)
+
+GET     /api/v1/targets/:name/patents     ix.idg.controllers.IDGApp.getPatentsForTarget(name: String)
+GET     /api/v1/targets(:name)/patents     ix.idg.controllers.IDGApp.getPatentsForTarget(name: String)
 
 GET     /api/v1/targets(:name)/*field      ix.idg.controllers.IDGApp.getFieldForTarget(name: String, field: String)
 GET     /api/v1/targets/:name/*field      ix.idg.controllers.IDGApp.getFieldForTarget(name: String, field: String)
