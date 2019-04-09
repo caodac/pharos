@@ -70,6 +70,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.suggest.DocumentDictionary;
@@ -1982,7 +1983,7 @@ public class TextIndexer {
                                 +(options.sideway ? "sideway" : "down")
                                 +" "+facetResults.size()
                                 +" facets and "+hits.totalHits
-                                +" hits");
+                                +" hits; sorter="+sorter);
                 }
                 
                 for (FacetResult result : facetResults) {
@@ -2717,7 +2718,7 @@ public class TextIndexer {
         else if (value instanceof Float) {
             //fields.add(new FloatDocValuesField (full, (Float)value));
             Float fval = (Float)value;
-            fields.add(new FloatField (escapeFieldName (name), fval, store));
+            fields.add(new FloatField (name, fval, store));
             if (!full.equals(name))
                 fields.add(new FloatField (full, fval, NO));
             if (indexable.sortable())
@@ -2734,7 +2735,7 @@ public class TextIndexer {
         else if (value instanceof Double) {
             //fields.add(new DoubleDocValuesField (full, (Double)value));
             Double dval = (Double)value;
-            fields.add(new DoubleField (escapeFieldName (name), dval, store));
+            fields.add(new DoubleField (name, dval, store));
             if (!full.equals(name))
                 fields.add(new DoubleField (full, dval, NO));
             if (indexable.sortable())

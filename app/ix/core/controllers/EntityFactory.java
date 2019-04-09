@@ -165,7 +165,9 @@ public class EntityFactory extends IxController {
                 String param = me.getKey();
                 if ("order".equalsIgnoreCase(param)) {
                     for (String s : me.getValue()) {
-                        if (Util.isValidFieldName(s))
+                        if (s.charAt(0) == '^'
+                            || s.charAt(0) == '$'
+                            || Util.isValidFieldName(s))
                             order.add(s);
                         else 
                             Logger.warn("Bogus order field: "+s);
@@ -218,7 +220,9 @@ public class EntityFactory extends IxController {
                     String param = me.getKey();
                     if ("order".equalsIgnoreCase(param)) {
                         for (String s : me.getValue()) {
-                            if (Util.isValidFieldName(s))
+                            if (s.charAt(0) == '^'
+                                || s.charAt(0) == '$'
+                                || Util.isValidFieldName(s))
                                 order.add(s);
                             else
                                 Logger.warn("Bogus order field: "+s);

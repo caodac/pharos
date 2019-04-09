@@ -2909,7 +2909,7 @@ public class TcrdRegistry extends Controller implements Commons {
                  +"    on d.protein_id = a.protein_id \n"
                  //+"where c.id in (18204,862,74,6571)\n"
                  //+"where a.target_id in (875)\n"
-                 +"where c.uniprot = 'P01375'\n"
+                 //+"where c.uniprot = 'P01375'\n"
                  //+"where b.tdl in ('Tclin','Tchem')\n"
                  //+"where b.idgfam = 'kinase'\n"
                  //+" where c.uniprot in ('Q96K76','Q6PEY2')\n"

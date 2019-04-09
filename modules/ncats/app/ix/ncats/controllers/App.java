@@ -922,9 +922,11 @@ public class App extends Authentication {
                 args.add(f);
         }
         Collections.sort(args);
-        
+
+        /*
         if (kind != null)
             args.add(kind.getName());
+        */
 
         String sha1 = Util.sha1(args.toArray(new String[0]));
         //Logger.debug("SIGNATURE: "+args+" => "+sha1);
