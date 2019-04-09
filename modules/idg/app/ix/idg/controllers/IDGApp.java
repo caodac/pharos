@@ -1471,7 +1471,11 @@ public class IDGApp extends App implements Commons {
     public static List<Ligand> getChemblLigands(EntityModel e) {
         List<Ligand> ret = new ArrayList<>();
         for (Ligand lig : getLigands(e)) {
-            if (lig.getSynonym(IDG_DRUG) == null) ret.add(lig);
+            if (lig.getSynonym(IDG_DRUG) != null
+                || lig.getProperty(LIGAND_DRUG) != null)
+                ;
+            else
+                ret.add(lig);
         }
         return ret;
     }
@@ -1479,7 +1483,9 @@ public class IDGApp extends App implements Commons {
     public static List<Ligand> getDrugLigands(EntityModel e) {
         List<Ligand> ret = new ArrayList<>();
         for (Ligand lig : getLigands(e)) {
-            if (lig.getSynonym(IDG_DRUG) != null) ret.add(lig);
+            if (lig.getSynonym(IDG_DRUG) != null
+                || lig.getProperty(LIGAND_DRUG) != null)
+                ret.add(lig);
         }
         return ret;
     }
