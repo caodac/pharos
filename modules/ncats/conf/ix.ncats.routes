@@ -5,15 +5,15 @@ GET	/marvin	ix.ncats.controllers.App.marvin
 POST   	/smiles	ix.ncats.controllers.App.smiles
 
 # mol conversion based on the chemaxon's convention
-POST   	/molconvert    ix.ncats.controllers.App.molconvert
+POST   	/api/v1/molconvert    ix.ncats.controllers.App.molconvert
 
 # render an arbitrary value
-GET	/render/:value	ix.ncats.controllers.App.render(value: String, size: Int ?= 150)
+GET	/api/v1/render/:value	ix.ncats.controllers.App.render(value: String, size: Int ?= 150)
 #GET	/rendertest	ix.ncats.controllers.App.rendertest
 
 # return a structure in the designated format
-GET	/structure/$id<[a-f0-9\-]+>.$format<(svg|png|mol|sdf|smi|smiles|mrv)>	ix.ncats.controllers.App.structure(id: String, format: String, size: Int ?= 150, atomMap: String ?= null)
-POST    /structure	ix.ncats.controllers.App.molinstrument
+GET	/api/v1/structure/$id<[a-f0-9\-]+>.$format<(svg|png|mol|sdf|smi|smiles|mrv)>	ix.ncats.controllers.App.structure(id: String, format: String, size: Int ?= 150, atomMap: String ?= null)
+POST    /api/v1/structure	ix.ncats.controllers.App.molinstrument
 
 # return the status of a previous query
 GET     /status/*key    ix.ncats.controllers.App.status(key: String)

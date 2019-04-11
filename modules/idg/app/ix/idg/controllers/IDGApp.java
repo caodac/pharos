@@ -3754,6 +3754,20 @@ public class IDGApp extends App implements Commons {
         }
     }
 
+    public static Result getHomunculusForTarget (String id, String source) {
+        try {
+            Target t = TargetResult.findUnique(id);
+            if (t != null)
+                return ok (ExpressionApp.getHomunculusXml(t, source))
+                    .as("image/svg+xml");
+            return notFound ("Can't find target for \""+id+"\"!");
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return internalServerError (ex.getMessage());
+        }
+    }
+
     public static Result structure (final String id,
                                     final String format, final int size,
                                     final String context) {

@@ -57,7 +57,7 @@ public class TopicFactory extends IxController {
                 .sorted()
                 .forEach(v -> {
                         try {
-                            md.digest(v.getBytes("utf8"));
+                            md.update(v.getBytes("utf8"));
                         }
                         catch (Exception ex) {
                             Logger.error("Can't convert to utf8", ex);
@@ -110,6 +110,7 @@ public class TopicFactory extends IxController {
                 || "targets".equalsIgnoreCase(kind)) {
                 String[] names = text.split("[;\\s,]");
                 final String key = cacheKey (names);
+                Logger.debug(text+" => "+key);
                 Topic[] topics = IxCache.getOrElse
                     (key, new Callable<Topic[]> () {
                             public Topic[] call () throws Exception {

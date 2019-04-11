@@ -48,8 +48,8 @@ GET     /api/v1/targets(:name)/pubtator     ix.idg.controllers.IDGApp.getPubTato
 GET     /api/v1/targets/:name/patents     ix.idg.controllers.IDGApp.getPatentsForTarget(name: String)
 GET     /api/v1/targets(:name)/patents     ix.idg.controllers.IDGApp.getPatentsForTarget(name: String)
 
-GET     /api/v1/targets(:name)/*field      ix.idg.controllers.IDGApp.getFieldForTarget(name: String, field: String)
-GET     /api/v1/targets/:name/*field      ix.idg.controllers.IDGApp.getFieldForTarget(name: String, field: String)
+GET     /api/v1/targets/:name/homunculus     ix.idg.controllers.IDGApp.getHomunculusForTarget(name: String, source: String ?= null)
+GET     /api/v1/targets(:name)/homunculus     ix.idg.controllers.IDGApp.getHomunculusForTarget(name: String, source: String ?= null)
 
 GET     /api/v1/targets/:ids/pairwise   ix.idg.controllers.TargetVectorFactory.targetPairwiseSimilarity(ids: String)
 GET     /api/v1/targets/:id/similarity  ix.idg.controllers.TargetVectorFactory.targetSimilarity(id: Long)
@@ -134,6 +134,10 @@ POST    /lib/mipe     ix.idg.controllers.ChemLibraryLoader.loadMIPE
 ->      /clinical   ix.ncats.clinical.Routes
 ->      /	ix.ncats.Routes
 ->      /       ix.core.test.Routes
+
+# make sure this goes after the core api
+GET     /api/v1/targets(:name)/*field      ix.idg.controllers.IDGApp.getFieldForTarget(name: String, field: String)
+GET     /api/v1/targets/:name/*field      ix.idg.controllers.IDGApp.getFieldForTarget(name: String, field: String)
 
 GET     /warm/targets	ix.idg.controllers.IDGApp.targetWarmCache(secret: String)
 GET     /:any		ix.idg.controllers.IDGApp.lastUnicorn(any: String)

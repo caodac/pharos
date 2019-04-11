@@ -189,7 +189,11 @@ public class ExpressionApp extends App {
         */
         if (targets.size() == 0) return null;
         Target t = targets.get(0);
+        return getHomunculusXml (t, source);
+    }
 
+    public static String getHomunculusXml (Target t, String source)
+        throws Exception {
         // iterate over tissue names and map them to the SVG id's
         // may need to update mapping
         String ds = Commons.GTEx_EXPR;
@@ -219,7 +223,8 @@ public class ExpressionApp extends App {
             Expression expr = (Expression) xref.deRef();
 
             // TODO HPM PROTEIN should get a key in Commons
-            if (expr.getSourceid() == null || !expr.getSourceid().equals(ds)) continue;
+            if (expr.getSourceid() == null
+                || !expr.getSourceid().equals(ds)) continue;
 
             // map to canonical organ terms
             for (String key : onm.keySet()) {
@@ -286,7 +291,8 @@ public class ExpressionApp extends App {
 
         for (String tissue : organsLevel.keySet()) {
             Node node = XPath.selectNode("//*[@id='" + tissue + "']", doc);
-            NamedNodeMap attributes = node == null ? null : node.getAttributes();
+            NamedNodeMap attributes =
+                node == null ? null : node.getAttributes();
             if (attributes == null) continue;
             Node attrNode = attributes.getNamedItem("style");
             if (attrNode == null) {
@@ -326,7 +332,7 @@ public class ExpressionApp extends App {
                     && index < confidenceColorsOther.length)
                     color = confidenceColorsOther[index];
                 else 
-                    Logger.warn(acc+": invalid index "+index
+                    Logger.warn(t.accession+": invalid index "+index
                                 +" for source \""+source
                                 +"\" and tissue \""+tissue+"\"!");
                 break;
@@ -351,7 +357,7 @@ public class ExpressionApp extends App {
                 String xml = getHomunculusXml (acc, source);
                 if (xml == null)
                     return _notFound("No data found for " + acc);
-                return ok (xml);
+                return ok(xml);
             }
         });
     }
@@ -368,6 +374,4 @@ public class ExpressionApp extends App {
             colorChildren(child, color, doc);
         }
     }
-
-
 }
