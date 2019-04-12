@@ -87,7 +87,7 @@
          <td>
            <input type="checkbox" onclick="filterToggle(this)" 
                   label = "Toggle @f.facet.getLabel(i)"
-              id="@id" @if(f.count(i) > 2000){disabled}/>
+              id="@id" @**if(f.count(i) > 2000){disabled}**@/>
          </td>
          <script>
             filters['@id'] = {
