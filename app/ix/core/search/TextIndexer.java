@@ -1038,8 +1038,15 @@ public class TextIndexer {
         void fetch () throws Exception {
             String thread = Thread.currentThread().getName();
             try {
-                int size = fetch (total);
-                if (size+offset < total) {
+                int size = offset + fetch (total);
+                // FIXME: THIS IS THE HARD LIMIT THAT SHOULD BE IN A CONFIG FILE!!!
+                int limit = 1000; 
+
+                if (size > limit) {
+                    Logger.warn("Search results ("+size+") exceed allowed size: "+limit);
+                    result.done();
+                }
+                else if (size < total) {
                     // FIXME: make this configurable
                     if (true || requeued < 20) {
                         // requeue this payload
