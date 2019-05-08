@@ -184,7 +184,8 @@ public class SearchFactory extends EntityFactory {
         return convertToSearchResultJson(kind, q, top, skip, result);
     }
 
-    public static JsonNode convertToSearchResultJson(Class kind, String q, int top, int skip, SearchResult result) {
+    public static JsonNode convertToSearchResultJson
+        (Class kind, String q, int top, int skip, SearchResult result) {
         SearchOptions options = result.getOptions();
         ObjectMapper mapper = getEntityMapper ();
         ArrayNode nodes = mapper.createArrayNode();

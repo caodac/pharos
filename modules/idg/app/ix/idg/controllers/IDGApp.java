@@ -3358,15 +3358,68 @@ public class IDGApp extends App implements Commons {
         }
     }
 
+    public static Result _getBatchTargets (String q) throws Exception {
+        Payload payload = createPayloadIfAbsent (q, Target.class.getName());
+        if (payload != null) {
+            response().setHeader(ETAG, payload.id.toString());
+            q = PayloadFactory.getString(payload.id);
+        }
+
+        Map<Long, Target> found = new HashMap<Long, Target>();
+        for (String tok : q.split("[\\s;,\n\t]")) {
+            List<Target> targets = TargetFactory.finder.where().eq
+                ("synonyms.term", tok).findList();
+            for (Target t : targets)
+                found.put(t.id, t);
+        }
+        Logger.debug("_resolve: "+found.size()+" unique entries resolved!");
+
+        int top = found.size(), skip = 0, fdim = 100;
+        SearchResult result = _textIndexer.search
+            (new SearchOptions (Target.class, top, skip, fdim),
+             null, found.values());
+        
+        return ok (SearchFactory.convertToSearchResultJson
+                   (Target.class, q, top, skip, result));
+    }
+
+    public static Result getBatchTargets (final String q) {
+        try {
+            final String key = Util.sha1(q);
+            return getOrElse (key, new Callable<Result> () {
+                    public Result call () throws Exception {
+                        return _getBatchTargets (q);
+                    }
+                });
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            return _internalServerError (ex);
+        }
+    }
+
+    @BodyParser.Of(value = BodyParser.Text.class, maxLength = 100000)
+    public static Result resolveBatchTargets () {
+        String type = request().getHeader("Content-Type");
+        if (!"text/plain".equals(type))
+            return badRequest ("Invalid Content-Type: "+type
+                               +"; only \"text/plain\" is allowed!");
+        
+        if (request().body().isMaxSizeExceeded())
+            return badRequest ("Input is too large!");
+
+        return getBatchTargets (request().body().asText());
+    }
+
     @BodyParser.Of(value = BodyParser.Text.class, maxLength = 100000)
     public static Result resolveBatch (String kind, String format) {
-        if (request().body().isMaxSizeExceeded()) {
-            String type = request().getHeader("Content-Type");
-            if (!"text/plain".equals(type))
-                return badRequest ("Invalid Content-Type: "+type
-                                   +"; only \"text/plain\" is allowed!");
+        String type = request().getHeader("Content-Type");
+        if (!"text/plain".equals(type))
+            return badRequest ("Invalid Content-Type: "+type
+                               +"; only \"text/plain\" is allowed!");
+        
+        if (request().body().isMaxSizeExceeded())
             return badRequest ("Input is too large!");
-        }
 
         try {
             String text = request().body().asText();
@@ -3488,19 +3541,10 @@ public class IDGApp extends App implements Commons {
         return pis;
     }
 
-    public static Result resolve (String q, String format, String kind) {
-        Logger.debug("resolve: q="+(q.length() < 40 ? q : q.substring(0,40))
-                     +" kind="+kind+" format="+format);
-
-        if ("target".equalsIgnoreCase(kind))
-            kind = Target.class.getName();
-        else if ("ligand".equalsIgnoreCase(kind))
-            kind = Ligand.class.getName();
-        else if ("disease".equalsIgnoreCase(kind))
-            kind = Disease.class.getName();
-        
+    static Payload createPayloadIfAbsent (String q, String kind) {
+        Payload payload = null;
         try {
-            Payload payload = PayloadFactory.getPayload(UUID.fromString(q));
+            payload = PayloadFactory.getPayload(UUID.fromString(q));
             if (payload != null) {
                 if (kind == null) {
                     // get kind from the
@@ -3518,50 +3562,53 @@ public class IDGApp extends App implements Commons {
                                     +kind);
                     }
                 }
-
-                String content = PayloadFactory.getString(payload.id);
-                response().setHeader(ETAG, q);
-                if ("json".equalsIgnoreCase(format)) {
-                    ArrayNode nodes = resolveAsJson (content, kind);
-                    if (nodes.size() > 0)
-                        return ok (nodes);
-                }
-                else if ("csv".equalsIgnoreCase(format)) {
-                    return ok (resolveAsChunk (content, kind, ","));
-                }
-                else if ("txt".equalsIgnoreCase(format)) {
-                    return ok (resolveAsChunk (content, kind, "\t"));
-                }
-                else 
-                    return badRequest ("Unknown resolve format: "+format);
             }
         }
         catch (IllegalArgumentException ex) {
             // not a payload id
             Logger.warn("resolver: input is not a payload; treat as-is!");
+            // first save the payload
+            try {
+                payload = _payloader.createPayload
+                    ("Resolver Query", "text/plain", q);
+                if (payload != null) {
+                    payload.addIfAbsent
+                        (KeywordFactory.registerIfAbsent
+                         (IDG_RESOLVER, kind, null));
+                    payload.update();
+                    Logger.debug("resolver: kind="+kind
+                                 +" => payload "+payload.id);
+                }
+            }
+            catch (Exception exx) {
+                exx.printStackTrace();
+            }
         }
         catch (Exception ex) {
             ex.printStackTrace();
-            return _internalServerError (ex);
+        }
+        
+        return payload;
+    }
+    
+    public static Result resolve (String q, String format, String kind) {
+        Logger.debug("resolve: q="+(q.length() < 40 ? q : q.substring(0,40))
+                     +" kind="+kind+" format="+format);
+
+        if ("target".equalsIgnoreCase(kind))
+            kind = Target.class.getName();
+        else if ("ligand".equalsIgnoreCase(kind))
+            kind = Ligand.class.getName();
+        else if ("disease".equalsIgnoreCase(kind))
+            kind = Disease.class.getName();
+
+        Payload payload = createPayloadIfAbsent (q, kind);
+        if (payload != null) {
+            response().setHeader(ETAG, payload.id.toString());
+            q = PayloadFactory.getString(payload.id);
         }
 
-        if (kind == null)
-            kind = Target.class.getName();
-        
         try {
-            // first save the payload 
-            Payload payload = _payloader.createPayload
-                ("Resolver Query", "text/plain", q);
-            if (payload != null) {
-                payload.addIfAbsent
-                    (KeywordFactory.registerIfAbsent
-                            (IDG_RESOLVER, kind, null));
-                payload.update();
-                Logger.debug("resolver: kind="+kind
-                             +" => payload "+payload.id);
-                response().setHeader(ETAG, payload.id.toString());              
-            }
-            
             if ("json".equalsIgnoreCase(format)) {
                 ArrayNode nodes = resolveAsJson (q, kind);
                 if (nodes.size() > 0)
@@ -3573,14 +3620,11 @@ public class IDGApp extends App implements Commons {
             else if ("txt".equalsIgnoreCase(format)) {
                 return ok (resolveAsChunk (q, kind, "\t"));
             }
-            else 
-                return badRequest ("Unknown resolve format: "+format);
-            
-            return ok (payload.id.toString());
+            return badRequest ("Unknown resolve format: "+format);
         }
         catch (Exception ex) {
             ex.printStackTrace();
-            return _internalServerError (ex);
+            return _internalServerError (ex.getMessage());
         }
     }
     

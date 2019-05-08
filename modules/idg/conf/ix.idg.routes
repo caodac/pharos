@@ -52,6 +52,9 @@ GET     /api/v1/targets(:name)/patents     ix.idg.controllers.IDGApp.getPatentsF
 GET     /api/v1/targets/:name/homunculus     ix.idg.controllers.IDGApp.getHomunculusForTarget(name: String, source: String ?= null)
 GET     /api/v1/targets(:name)/homunculus     ix.idg.controllers.IDGApp.getHomunculusForTarget(name: String, source: String ?= null)
 
+GET     /api/v1/targets/:q/resolve      ix.idg.controllers.IDGApp.getBatchTargets(q: String)
+POST    /api/v1/targets/resolve         ix.idg.controllers.IDGApp.resolveBatchTargets
+
 GET     /api/v1/targets/:ids/pairwise   ix.idg.controllers.TargetVectorFactory.targetPairwiseSimilarity(ids: String)
 GET     /api/v1/targets/:id/similarity  ix.idg.controllers.TargetVectorFactory.targetSimilarity(id: Long)
 GET     /api/v1/targets/_simmat         ix.idg.controllers.TargetVectorFactory.allPairwiseSimilarity

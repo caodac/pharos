@@ -1038,8 +1038,14 @@ public class TextIndexer {
         void fetch () throws Exception {
             String thread = Thread.currentThread().getName();
             try {
-                int size = fetch (total);
-                if (size+offset < total) {
+                int size = offset + fetch (total);
+                int limit = 5;
+                if (size > limit) {
+                    Logger.warn("Search results exceed allowed size: "
+                                +size+" > "+limit);
+                    result.done();
+                }
+                else if (size < total) {
                     // FIXME: make this configurable
                     if (true || requeued < 20) {
                         // requeue this payload
@@ -1608,8 +1614,8 @@ public class TextIndexer {
                 }
             }
             else if (options.kind != null) {
-
-                f = new FieldCacheTermsFilter (FIELD_KIND, getSubTypesOf(options.kind));
+                f = new FieldCacheTermsFilter
+                    (FIELD_KIND, getSubTypesOf(options.kind));
             }
             search (searchResult, query, f);
         }
