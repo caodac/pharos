@@ -1039,10 +1039,13 @@ public class TextIndexer {
             String thread = Thread.currentThread().getName();
             try {
                 int size = offset + fetch (total);
-                int limit = 5;
+                // FIXME: THIS IS THE HARD LIMIT THAT SHOULD BE IN A CONFIG
+                // FILE!!!
+                int limit = 1000; 
+
                 if (size > limit) {
-                    Logger.warn("Search results exceed allowed size: "
-                                +size+" > "+limit);
+                    Logger.warn("Search results ("+size
+                                +") exceed allowed size: "+limit);
                     result.done();
                 }
                 else if (size < total) {
