@@ -22,8 +22,10 @@ public interface Commons {
     public static final String IDG_LIGAND = "IDG Ligand";
     public static final String IDG_TISSUE_REF = "IDG Tissue Ref";
     public static final String IDG_TOOLS = "IDG Tools";
+    public static final String IDG_RESOURCES = "IDG Resources";
     public static final String IDG_TOOLS_ANTIBODIES = "Antibodies";
-    public static final String IDG_TOOLS_SELECTIVE_COMPOUNDS = "Selective compounds";
+    public static final String IDG_TOOLS_SELECTIVE_COMPOUNDS =
+        "ChEMBL Selective Compound";
     public static final String IDG_TOOLS_PHENOTYPES = "Phenotypes";
     public static final String IDG_PUBLICATIONS = "Publications";
     
@@ -61,6 +63,7 @@ public interface Commons {
     
     public static final String REACTOME_REF = "Reactome Pathway Ref";
 
+    public static final String UBERON_TISSUE = "UBERON Tissue";
     public static final String GTEx_TISSUE = "GTEx Tissue";
     public static final String GTEx_EXPR = "GTEx Expression";
     public static final String HPM_TISSUE = "HPM Tissue";
@@ -87,6 +90,10 @@ public interface Commons {
     public static final String GO_PROCESS = "GO Process";
     public static final String GO_FUNCTION = "GO Function";
 
+    public static final String UBERON_TISSUE_CLASS = "UBERON Tissue Class";
+    public static final String UBERON_TISSUE_ANCESTRY =
+        "UBERON Tissue Ancestry";
+    
     public static final String PANTHER_PROTEIN_CLASS = "PANTHER Protein Class";
     public static final String PANTHER_PROTEIN_ANCESTRY =
         "PANTHER Protein Ancestry";

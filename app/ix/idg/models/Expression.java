@@ -38,6 +38,7 @@ public class Expression extends play.db.ebean.Model
     public String cellType;
 
     public String evidence;
+    public String uberonid;
 
     public Expression() {
     }
