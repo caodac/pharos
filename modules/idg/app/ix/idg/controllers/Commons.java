@@ -23,7 +23,8 @@ public interface Commons {
     public static final String IDG_TISSUE_REF = "IDG Tissue Ref";
     public static final String IDG_TOOLS = "IDG Tools";
     public static final String IDG_TOOLS_ANTIBODIES = "Antibodies";
-    public static final String IDG_TOOLS_SELECTIVE_COMPOUNDS = "Selective compounds";
+    public static final String IDG_TOOLS_SELECTIVE_COMPOUNDS =
+        "ChEMBL Selective compounds";
     public static final String IDG_TOOLS_PHENOTYPES = "Phenotypes";
     public static final String IDG_PUBLICATIONS = "Publications";
     

@@ -350,7 +350,7 @@ public class HarmonogramApp extends App {
             });
         
         return content != null ? ok (content)
-            : notFound("{}").as("application/json");
+            : ok("{}").as("application/json");
     }
     
     public static JsonNode _hgForRadarJson (final String q, String type)
@@ -491,7 +491,7 @@ public class HarmonogramApp extends App {
                 }
             });
         return content != null ? ok (content)
-            : notFound("{}").as("application/json");
+            : ok("{}").as("application/json");
     }
     
     public static Content _hgForTargetsContent

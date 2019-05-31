@@ -264,7 +264,7 @@ public class TcrdRegistry extends Controller implements Commons {
                 ("select * from dto_classification "
                  +"where protein_id = ? order by id");
             pstm6 = con.prepareStatement
-                ("select * from tdl_info where protein_id = ?");
+                ("select * from tdl_info where protein_id = ? or target_id=?");
             pstm7 = con.prepareStatement
                 ("select * from phenotype where protein_id = ?");
             pstm8 = con.prepareStatement
@@ -997,7 +997,7 @@ public class TcrdRegistry extends Controller implements Commons {
                         target.addIfAbsent((Value)tissue);
                     }
                     else if (expr.source.startsWith("Consensus")) {
-                        sourceUrl = "http://targetcentral.ws";
+                        sourceUrl = "https://druggablegenome.net";
                         expr.sourceid = IDG_EXPR;
                         tissue = KeywordFactory.registerIfAbsent
                             (IDG_TISSUE, expr.tissue, null);
@@ -1327,6 +1327,7 @@ public class TcrdRegistry extends Controller implements Commons {
             Map<String, Integer> counts = new TreeMap<String, Integer>();
 
             pstm6.setLong(1, protein);
+            pstm6.setLong(2, protein);
             try (ResultSet rset = pstm6.executeQuery()) {
                 while (rset.next()) {
                     String type = rset.getString("itype");
@@ -1403,8 +1404,23 @@ public class TcrdRegistry extends Controller implements Commons {
                         }
                         else {
                             if (type.equalsIgnoreCase
-                                ("ChEMBL Selective Compound")) {
-                            
+                                (IDG_TOOLS_SELECTIVE_COMPOUNDS)) {
+                                String xv = (String)val.getValue();
+                                if (xv != null) {
+                                    int pos = xv.indexOf('|');
+                                    String chemblid = null, smiles = null;
+                                    if (pos > 0) {
+                                        chemblid = xv.substring(0, pos);
+                                        smiles = xv.substring(pos+1);
+                                    }
+                                    
+                                    if (chemblid != null) {
+                                        Keyword kw = KeywordFactory
+                                            .registerIfAbsent
+                                            (type, chemblid, smiles);
+                                        target.properties.add(kw);
+                                    }
+                                }
                                 ++selective;
                             }
                         
@@ -2302,7 +2318,7 @@ public class TcrdRegistry extends Controller implements Commons {
                         (name, type, tcrd, rset);
                     d.addIfAbsent((Value)source);
                     
-                    XRef xref = target.addIfAbsent(new XRef (d));
+                    XRef xref = new XRef (d);
                     if ("JensenLab Knowledge UniProtKB-KW"
                         .equalsIgnoreCase(dtype)) {
                         xref.addIfAbsent(KeywordFactory.registerIfAbsent
@@ -2355,6 +2371,7 @@ public class TcrdRegistry extends Controller implements Commons {
                         else {
                             xref.update();
                         }
+                        target.links.add(xref);
                     }
                     catch (Exception ex) {
                         ex.printStackTrace();
